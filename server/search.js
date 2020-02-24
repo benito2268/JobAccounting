@@ -1,8 +1,11 @@
 const esClient = require('./client');
+var ss = require('simple-statistics')
 let indexList;
 let jobList = [];
 let userList = {};
 let scheddList = {};
+let userHourList = {}
+let scheddHourList = {}
 
 async function search(indexName) {
     let response =  await esClient.search({
@@ -55,6 +58,7 @@ async function processResult(jobList){
         let currObs = element._source;
         if (typeof userList[currObs.User] === 'undefined') {
             let content = {};
+            let currHour = [];
             content.Jobs = 1;
             content.NumJobStarts = currObs.NumJobStarts;
             content.CoreHr = currObs.CoreHr;
@@ -65,8 +69,13 @@ async function processResult(jobList){
             content.ScheddName = currObs.ScheddName;
             content.Schedd = currObs.ScheddName.split('.')[1];
             userList[currObs.User] = content;
+            if (typeof currObs.CommittedCoreHr !== 'undefined') {
+                currHour.push(content.CommittedCoreHr);
+            }
+            userHourList[currObs.User] = currHour;
         } else {
             let content = userList[currObs.User];
+            let currHour = userHourList[currObs.User];
             content.Jobs += 1;
             content.NumJobStarts += currObs.NumJobStarts;
             content.CoreHr += currObs.CoreHr;
@@ -75,9 +84,14 @@ async function processResult(jobList){
             content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
             content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
             userList[currObs.User] = content;
+            if (typeof currObs.CommittedCoreHr !== 'undefined') {
+                currHour.push(currObs.CommittedCoreHr);
+                userHourList[currObs.User] = currHour;
+            }
         }
         if (typeof scheddList[currObs.ScheddName] === 'undefined') {
             let content = {};
+            let currHour = [];
             content.Jobs = 1;
             content.NumJobStarts = currObs.NumJobStarts;
             content.CoreHr = currObs.CoreHr;
@@ -86,9 +100,13 @@ async function processResult(jobList){
             content.MemoryUsage = typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage;
             content.MemoryMB = typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB;
             scheddList[currObs.ScheddName] = content;
-            
+            if (typeof currObs.CommittedCoreHr !== 'undefined') {
+                currHour.push(content.CommittedCoreHr);
+            }
+            scheddHourList[currObs.ScheddName] = currHour;
         } else {
             let content = scheddList[currObs.ScheddName];
+            let currHour = scheddHourList[currObs.ScheddName];
             content.Jobs += 1;
             content.NumJobStarts += currObs.NumJobStarts;
             content.CoreHr += currObs.CoreHr;
@@ -97,7 +115,11 @@ async function processResult(jobList){
             content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
             content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
             scheddList[currObs.ScheddName] = content;
-            
+            if (typeof currObs.CommittedCoreHr !== 'undefined') {
+                currHour.push(currObs.CommittedCoreHr);
+                scheddHourList[currObs.ScheddName] = currHour;
+            }
+           
         }
 
     });
@@ -106,11 +128,38 @@ async function processResult(jobList){
         value.CoreHr = Math.round((value.CoreHr + Number.EPSILON) * 100) / 100;
         value.CommittedCoreHr = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
         value.MemoryMB = Math.round(value.MemoryMB);
+        let currHour = userHourList[key];
+        currHour.sort();
+        let median_index = Math.floor(currHour.length / 2);
+        // value.Min = ss.quantile(currHour, 0);;
+        // value["25%"] = ss.quantile(currHour, 0.25);
+        // value.Median = ss.quantile(currHour, 0.5);
+        // value["75%"] = ss.quantile(currHour, 0.75);
+        // value.Max = ss.quantile(currHour, 1);
+        value.Min = Math.round(currHour[0] * 100)/ 100;
+        let per25 =  Math.floor((currHour.length-1)*.25);
+        value["25%"] =  Math.round(currHour[per25] * 100)/ 100;
+        value.Median = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
+        let per75 =  Math.floor((currHour.length-1)*.75);
+        value["75%"] =  Math.round(currHour[per75] * 100)/ 100;
+        value.Max = Math.round(currHour[currHour.length - 1] * 100) / 100;
+        value.Mean = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
     })
     Object.entries(scheddList).forEach(([key, value]) => {
         value.CoreHr = Math.round((value.CoreHr + Number.EPSILON) * 100) / 100;
         value.CommittedCoreHr = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
         value.MemoryMB = Math.round(value.MemoryMB);
+        let currHour = scheddHourList[key];
+        currHour.sort();
+        let median_index = Math.floor(currHour.length / 2);
+        value.Min = Math.round(currHour[0] * 100)/ 100;
+        let per25 =  Math.floor((currHour.length-1)*.25);
+        value["25%"] =  Math.round(currHour[per25] * 100)/ 100;
+        value.Median = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
+        let per75 =  Math.floor((currHour.length-1)*.75);
+        value["75%"] =  Math.round(currHour[per75] * 100)/ 100;
+        value.Max = Math.round(currHour[currHour.length - 1] * 100) / 100;
+        value.Mean = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
     })
    
 }

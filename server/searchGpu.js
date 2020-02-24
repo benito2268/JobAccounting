@@ -69,7 +69,7 @@ async function processResult(jobList){
         //Requestgpus
             //JobGpus
             //JobIsRunningGpus)
-        if (JobIsRunningGpus === true) {
+        if (currObs.JobIsRunningGpus === true) {
             if (typeof userList[currObs.User] === 'undefined') {
                 let content = {};
                 content.Jobs = 1;
