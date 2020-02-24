@@ -12,7 +12,7 @@ def convertFile(input_Filename, output_Filename):
     for currObs in input_data: 
         if count == 0: 
             header = list(input_data[currObs].keys())
-            if (input_Filename == 'scheddStats.json'):
+            if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json'):
                 header.insert(0, "scheedName")
             else:
                 header.insert(0, "userName")
@@ -23,7 +23,7 @@ def convertFile(input_Filename, output_Filename):
         csv_writer.writerow(content) 
     output_file.close() 
 
-def send_email(current_time, userFileName, scheddFileName):
+def send_email(current_time, userFileName, scheddFileName, userGpuFileName, scheddGpuFileName):
   from email.mime.multipart import MIMEMultipart
   from email.mime.text  import MIMEText
   from email.mime.base import MIMEBase
@@ -34,14 +34,15 @@ def send_email(current_time, userFileName, scheddFileName):
 
 
   fromaddr = "chtc.memory@gmail.com"
-  toaddr = ['yhan222@wisc.edu', 'hym980321@gmail.com']
+#   toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org']
+  toaddr = ['yhan222@wisc.edu']
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
-  msg['Subject'] = "Test - CHTC Usage Report " + current_time
+  msg['Subject'] = "Test - CHTC Usage and GPU Report " + current_time
 
-  body = "Attachment is the csv file for CHTC Usage Report (Test Only)"
-  msg.attach(MIMEText(body, 'plain'))
+  body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
+  msg.attach(MIMEText(str(body), 'html'))
 
   part = MIMEBase('application', "octet-stream")
   part.set_payload(open(userFileName, "rb").read())
@@ -53,6 +54,18 @@ def send_email(current_time, userFileName, scheddFileName):
   part.set_payload(open(scheddFileName, "rb").read())
   encoders.encode_base64(part)
   part.add_header('Content-Disposition', 'attachment', filename = scheddFileName)
+  msg.attach(part)
+
+  part = MIMEBase('application', "octet-stream")
+  part.set_payload(open(userGpuFileName, "rb").read())
+  encoders.encode_base64(part)
+  part.add_header('Content-Disposition', 'attachment', filename = userGpuFileName)
+  msg.attach(part)
+
+  part = MIMEBase('application', "octet-stream")
+  part.set_payload(open(scheddGpuFileName, "rb").read())
+  encoders.encode_base64(part)
+  part.add_header('Content-Disposition', 'attachment', filename = scheddGpuFileName)
   msg.attach(part)
 
   try:
@@ -84,10 +97,17 @@ if __name__ == '__main__':
     current_time = yest_date.strftime("%m-%d-%Y")
     os.chdir("/home/yhan222/nodejs-elasticsearch/server") 
     os.system("node searchGpu.js")
-    time.sleep(2)
+    time.sleep(1)
+    os.system("node search.js")
+    time.sleep(1)
     userFileName = "userStats_" + str(current_time) +".csv"
     scheddFileName = "scheddStats_" + str(current_time) +  ".csv"
     convertFile("scheddStats.json", scheddFileName)
     time.sleep(1)
     convertFile("userStats.json", userFileName)
-    send_email(current_time, userFileName, scheddFileName)
+    userGpuFileName = "userGpuStats_" + str(current_time) +".csv"
+    scheddGpuFileName = "scheddGpuStats_" + str(current_time) +  ".csv"
+    convertFile("userGpuStats.json", userGpuFileName)
+    time.sleep(1)
+    convertFile("scheddGpuStats.json", scheddGpuFileName)
+    send_email(current_time, userFileName, scheddFileName, userGpuFileName, scheddGpuFileName)

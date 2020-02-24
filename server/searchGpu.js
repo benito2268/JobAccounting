@@ -26,10 +26,11 @@ async function search(indexName) {
         }
     })
     let tempJobList = response.hits.hits;
-    let jobListLength = response.hits.total.value;
+    let jobListLength = jobList.length + response.hits.total.value;
     for (let curr of tempJobList) {
         jobList.push(curr);
     }
+    console.log(indexName, jobList.length)
     //jobListLength
     while (jobList.length < jobListLength) {
         
@@ -41,64 +42,91 @@ async function search(indexName) {
         for (let curr of tempJobList) {
             jobList.push(curr);
         }
-        console.log(jobList.length)
+        console.log(indexName, jobList.length)
     }
 
-    processResult(jobList);
-    exportResult()
+    // processResult(jobList);
+    // exportResult()
 
 };
-search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10))
+// search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10), "a");
+
+async function runPass() {
+    await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10));
+    await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-2)).toISOString().slice(0,10));
+    await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-3)).toISOString().slice(0,10));
+    await processResult(jobList);
+    await exportResult()
+}
+runPass()
+
+
 
 async function processResult(jobList){
+    
     jobList.forEach(element => {
         let currObs = element._source;
-        if (typeof userList[currObs.User] === 'undefined') {
-            let content = {};
-            content.Jobs = 1;
-            content.NumJobStarts = currObs.NumJobStarts;
-            content.CoreHr = currObs.CoreHr;
-            content.CommittedCoreHr = currObs.CommittedCoreHr;
-            content.RequestCpus = typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus;
-            content.MemoryUsage = typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage;
-            content.MemoryMB = typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB;
-            content.ScheddName = currObs.ScheddName;
-            content.Schedd = currObs.ScheddName.split('.')[1];
-            userList[currObs.User] = content;
-        } else {
-            let content = userList[currObs.User];
-            content.Jobs += 1;
-            content.NumJobStarts += currObs.NumJobStarts;
-            content.CoreHr += currObs.CoreHr;
-            content.CommittedCoreHr += currObs.CommittedCoreHr;
-            content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
-            content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
-            content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
-            userList[currObs.User] = content;
+        //Requestgpus
+            //JobGpus
+            //JobIsRunningGpus)
+        if (JobIsRunningGpus === true) {
+            if (typeof userList[currObs.User] === 'undefined') {
+                let content = {};
+                content.Jobs = 1;
+                content.NumJobStarts = currObs.NumJobStarts;
+                content.CoreHr = currObs.CoreHr;
+                content.CommittedCoreHr = currObs.CommittedCoreHr;
+                content.Requestgpus = currObs.Requestgpus;
+                content.JobGpus = currObs.JobGpus;
+                content.RequestCpus = typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus;
+                content.MemoryUsage = typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage;
+                content.MemoryMB = typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB;
+                content.ScheddName = currObs.ScheddName;
+                content.Schedd = currObs.ScheddName.split('.')[1];
+                userList[currObs.User] = content;
+            } else {
+                let content = userList[currObs.User];
+                content.Jobs += 1;
+                content.NumJobStarts += currObs.NumJobStarts;
+                content.CoreHr += currObs.CoreHr;
+                content.CommittedCoreHr += currObs.CommittedCoreHr;
+                content.Requestgpus = Math.max(content.Requestgpus, currObs.Requestgpus);
+                content.JobGpus = Math.max(content.JobGpus, currObs.JobGpus);
+                content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
+                content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
+                content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
+                userList[currObs.User] = content;
+            }
+            if (typeof scheddList[currObs.ScheddName] === 'undefined') {
+                let content = {};
+                content.Jobs = 1;
+                content.NumJobStarts = currObs.NumJobStarts;
+                content.CoreHr = currObs.CoreHr;
+                content.CommittedCoreHr = currObs.CommittedCoreHr;
+                content.Requestgpus = currObs.Requestgpus;
+                content.JobGpus = currObs.JobGpus;
+                content.RequestCpus = typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus;
+                content.MemoryUsage = typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage;
+                content.MemoryMB = typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB;
+                scheddList[currObs.ScheddName] = content;
+                
+            } else {
+                let content = scheddList[currObs.ScheddName];
+                content.Jobs += 1;
+                content.NumJobStarts += currObs.NumJobStarts;
+                content.CoreHr += currObs.CoreHr;
+                content.CommittedCoreHr += currObs.CommittedCoreHr;
+                content.Requestgpus = Math.max(content.Requestgpus, currObs.Requestgpus);
+                content.JobGpus = Math.max(content.JobGpus, currObs.JobGpus);
+                content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
+                content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
+                content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
+                scheddList[currObs.ScheddName] = content;
+                
+            }
         }
-        if (typeof scheddList[currObs.ScheddName] === 'undefined') {
-            let content = {};
-            content.Jobs = 1;
-            content.NumJobStarts = currObs.NumJobStarts;
-            content.CoreHr = currObs.CoreHr;
-            content.CommittedCoreHr = currObs.CommittedCoreHr;
-            content.RequestCpus = typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus;
-            content.MemoryUsage = typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage;
-            content.MemoryMB = typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB;
-            scheddList[currObs.ScheddName] = content;
             
-        } else {
-            let content = scheddList[currObs.ScheddName];
-            content.Jobs += 1;
-            content.NumJobStarts += currObs.NumJobStarts;
-            content.CoreHr += currObs.CoreHr;
-            content.CommittedCoreHr += currObs.CommittedCoreHr;
-            content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
-            content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
-            content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
-            scheddList[currObs.ScheddName] = content;
-            
-        }
+
 
     });
 
@@ -118,7 +146,7 @@ async function processResult(jobList){
 async function exportResult() {
     var fs = require('fs');
     let userFile = JSON.stringify(userList);
-    fs.writeFile('userStats.json', userFile, 'utf8', (err) => {
+    fs.writeFile('userGpuStats.json', userFile, 'utf8', (err) => {
         if (err) {
             console.error(err);
             return;
@@ -126,13 +154,21 @@ async function exportResult() {
         console.log("File has been created");
     });
     let scheddFile = JSON.stringify(scheddList);
-    fs.writeFile('scheddStats.json', scheddFile, 'utf8', (err) => {
+    fs.writeFile('scheddGpuStats.json', scheddFile, 'utf8', (err) => {
         if (err) {
             console.error(err);
             return;
         };
         console.log("File has been created");
     });
+    // let testfile = JSON.stringify(jobList);
+    // fs.writeFile('userList.json', testfile, 'utf8', (err) => {
+    //     if (err) {
+    //         console.error(err);
+    //         return;
+    //     };
+    //     console.log("File has been created");
+    // });
 
 }
 
