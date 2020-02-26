@@ -1,5 +1,7 @@
 const esClient = require('./client');
-var ss = require('simple-statistics')
+var ss = require('simple-statistics');
+var cal = require('mathjs');
+
 let indexList;
 let jobList = [];
 let userList = {};
@@ -16,7 +18,19 @@ async function search(indexName) {
             // 'query': {
             //     "match_all": {}
             // } 
-            
+            // 'query': {
+            //         User: {
+            //             quote: 'bbee@bmrb.wisc.edu'
+            //         },
+            //         range : {
+            //                         "CompletionDate" : {
+            //                             "gte" : (new Date(new Date().setDate(new Date().getDate()-2)).setHours(0,0,0,0)) / 1000 ,
+            //                             "lte" : (new Date(new Date().setDate(new Date().getDate()-2)).setHours(23,59,59,00)) / 1000,
+            //                             "boost" : 1.0
+            //                         }
+            //                     }
+            //     } 
+
             'query': {
                     range : {
                         "CompletionDate" : {
@@ -47,11 +61,18 @@ async function search(indexName) {
         console.log(jobList.length)
     }
 
-    processResult(jobList);
-    exportResult()
+    
 
 };
-search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10))
+
+async function runPass() {
+    await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10));
+    await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-2)).toISOString().slice(0,10));
+    await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-3)).toISOString().slice(0,10));
+    await processResult(jobList);
+    await exportResult()
+}
+runPass()
 
 async function processResult(jobList){
     jobList.forEach(element => {
@@ -118,10 +139,8 @@ async function processResult(jobList){
             if (typeof currObs.CommittedCoreHr !== 'undefined') {
                 currHour.push(currObs.CommittedCoreHr);
                 scheddHourList[currObs.ScheddName] = currHour;
-            }
-           
+            }  
         }
-
     });
 
     Object.entries(userList).forEach(([key, value]) => {
@@ -129,7 +148,7 @@ async function processResult(jobList){
         value.CommittedCoreHr = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
         value.MemoryMB = Math.round(value.MemoryMB);
         let currHour = userHourList[key];
-        currHour.sort();
+        currHour.sort(function(a,b){return a - b});
         let median_index = Math.floor(currHour.length / 2);
         // value.Min = ss.quantile(currHour, 0);;
         // value["25%"] = ss.quantile(currHour, 0.25);
@@ -144,13 +163,14 @@ async function processResult(jobList){
         value["75%"] =  Math.round(currHour[per75] * 100)/ 100;
         value.Max = Math.round(currHour[currHour.length - 1] * 100) / 100;
         value.Mean = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
+        value.Std = Math.round(cal.std(currHour) * 100) / 100;
     })
     Object.entries(scheddList).forEach(([key, value]) => {
         value.CoreHr = Math.round((value.CoreHr + Number.EPSILON) * 100) / 100;
         value.CommittedCoreHr = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
         value.MemoryMB = Math.round(value.MemoryMB);
         let currHour = scheddHourList[key];
-        currHour.sort();
+        currHour.sort(function(a,b){return a - b})
         let median_index = Math.floor(currHour.length / 2);
         value.Min = Math.round(currHour[0] * 100)/ 100;
         let per25 =  Math.floor((currHour.length-1)*.25);
@@ -160,6 +180,7 @@ async function processResult(jobList){
         value["75%"] =  Math.round(currHour[per75] * 100)/ 100;
         value.Max = Math.round(currHour[currHour.length - 1] * 100) / 100;
         value.Mean = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
+        value.Std = Math.round(cal.std(currHour) * 100) / 100;
     })
    
 }
@@ -183,6 +204,14 @@ async function exportResult() {
         console.log("File has been created");
     });
 
+    // let testfile = JSON.stringify(printList);
+    // fs.writeFile('userList.json', testfile, 'utf8', (err) => {
+    //     if (err) {
+    //         console.error(err);
+    //         return;
+    //     };
+    //     console.log("File has been created");
+    // });
 }
 
 //Get all the indices

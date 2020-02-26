@@ -11,7 +11,9 @@
   "license": "ISC",
   "dependencies": {
     "elasticsearch": "^16.6.0",
-    "requirejs": "^2.3.6"
+    "mathjs": "^6.6.1",
+    "requirejs": "^2.3.6",
+    "simple-statistics": "^7.0.8"
   },
   "devDependencies": {
     "webpack": "^4.41.5"

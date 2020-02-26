@@ -6,7 +6,7 @@ def convertFile(input_Filename, output_Filename):
     import csv 
     with open(input_Filename) as json_file: 
         input_data = json.load(json_file) 
-    output_file = open(output_Filename, 'w') 
+    output_file = open("./data/" + output_Filename, 'w') 
     csv_writer = csv.writer(output_file)
     count = 0
     for currObs in input_data: 
@@ -35,7 +35,7 @@ def send_email(current_time, userFileName, scheddFileName, userGpuFileName, sche
 
   fromaddr = "chtc.memory@gmail.com"
   toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org']
-#   toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu']
+#   toaddr = ['yhan222@wisc.edu']
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
@@ -110,4 +110,5 @@ if __name__ == '__main__':
     convertFile("userGpuStats.json", userGpuFileName)
     time.sleep(1)
     convertFile("scheddGpuStats.json", scheddGpuFileName)
+    os.chdir("/home/yhan222/nodejs-elasticsearch/server/data") 
     send_email(current_time, userFileName, scheddFileName, userGpuFileName, scheddGpuFileName)
