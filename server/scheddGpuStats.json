@@ -1,1 +1,1 @@
-{"sub-simprod-2.icecube.wisc.edu":{"Jobs":1130,"NumJobStarts":1249,"CoreHr":12786.13,"CommittedCoreHr":9392.25,"Requestgpus":8,"JobGpus":8,"RequestCpus":64,"MemoryUsage":244141,"MemoryMB":234061}}
+{"sub-simprod-2.icecube.wisc.edu":{"Jobs":2129,"NumJobStarts":2293,"CoreHr":26548.4,"CommittedCoreHr":23248.55,"Requestgpus":8,"JobGpus":8,"RequestCpus":20,"MemoryUsage":73243,"MemoryMB":52704}}

@@ -34,8 +34,8 @@ def send_email(current_time, userFileName, scheddFileName, userGpuFileName, sche
 
 
   fromaddr = "chtc.memory@gmail.com"
-  toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org']
-#   toaddr = ['yhan222@wisc.edu']
+#   toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org']
+  toaddr = ['yhan222@wisc.edu']
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)

@@ -1,0 +1,2 @@
+userName,Jobs,NumJobStarts,CoreHr,CommittedCoreHr,Requestgpus,JobGpus,RequestCpus,MemoryUsage,MemoryMB,ScheddName,Schedd
+ice3simusr@icecube.wisc.edu,1130,1249,12786.13,9392.25,8,8,64,244141,234061,sub-simprod-2.icecube.wisc.edu,icecube

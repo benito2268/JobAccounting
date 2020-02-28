@@ -43,7 +43,7 @@ async function search(indexName) {
         }
     })
     let tempJobList = response.hits.hits;
-    let jobListLength = response.hits.total.value;
+    let jobListLength = jobList.length + response.hits.total.value;
     for (let curr of tempJobList) {
         jobList.push(curr);
     }
@@ -58,11 +58,11 @@ async function search(indexName) {
         for (let curr of tempJobList) {
             jobList.push(curr);
         }
-        console.log(jobList.length)
+       
     }
 
     
-
+    console.log(indexName,jobList.length)
 };
 
 async function runPass() {
@@ -156,10 +156,12 @@ async function processResult(jobList){
         // value["75%"] = ss.quantile(currHour, 0.75);
         // value.Max = ss.quantile(currHour, 1);
         value.Min = Math.round(currHour[0] * 100)/ 100;
-        let per25 =  Math.floor((currHour.length-1)*.25);
+        // let per25 =  Math.floor((currHour.length-1)*.25);
+        let per25 = (Math.floor(currHour.length*.25) - 1) >= 0 ? Math.floor(currHour.length*.25) - 1 : 0;
         value["25%"] =  Math.round(currHour[per25] * 100)/ 100;
         value.Median = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
-        let per75 =  Math.floor((currHour.length-1)*.75);
+        // let per75 =  Math.floor((currHour.length-1)*.75);
+        let per75 = (Math.floor(currHour.length*.75) - 1) >= 0 ? Math.floor(currHour.length*.75) - 1 : 0;
         value["75%"] =  Math.round(currHour[per75] * 100)/ 100;
         value.Max = Math.round(currHour[currHour.length - 1] * 100) / 100;
         value.Mean = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
@@ -173,10 +175,10 @@ async function processResult(jobList){
         currHour.sort(function(a,b){return a - b})
         let median_index = Math.floor(currHour.length / 2);
         value.Min = Math.round(currHour[0] * 100)/ 100;
-        let per25 =  Math.floor((currHour.length-1)*.25);
+        let per25 = (Math.floor(currHour.length*.25) - 1) >= 0 ? Math.floor(currHour.length*.25) - 1 : 0;
         value["25%"] =  Math.round(currHour[per25] * 100)/ 100;
         value.Median = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
-        let per75 =  Math.floor((currHour.length-1)*.75);
+        let per75 = (Math.floor(currHour.length*.75) - 1) >= 0 ? Math.floor(currHour.length*.75) - 1 : 0;
         value["75%"] =  Math.round(currHour[per75] * 100)/ 100;
         value.Max = Math.round(currHour[currHour.length - 1] * 100) / 100;
         value.Mean = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;

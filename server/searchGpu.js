@@ -30,7 +30,6 @@ async function search(indexName) {
     for (let curr of tempJobList) {
         jobList.push(curr);
     }
-    console.log(indexName, jobList.length)
     //jobListLength
     while (jobList.length < jobListLength) {
         
@@ -42,11 +41,9 @@ async function search(indexName) {
         for (let curr of tempJobList) {
             jobList.push(curr);
         }
-        console.log(indexName, jobList.length)
     }
 
-    // processResult(jobList);
-    // exportResult()
+    console.log(indexName,jobList.length)
 
 };
 // search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10), "a");
