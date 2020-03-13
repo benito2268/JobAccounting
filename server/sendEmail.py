@@ -1,7 +1,6 @@
 #!/usr/bin/python
 
 def convertFile(input_Filename, output_Filename):
-    
     import json 
     import csv 
     with open(input_Filename) as json_file: 
@@ -9,13 +8,19 @@ def convertFile(input_Filename, output_Filename):
     output_file = open("./data/" + output_Filename, 'w') 
     csv_writer = csv.writer(output_file)
     count = 0
+    if len(input_data) == 0:
+        if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json'):
+            headline = ["Schedd","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","ShortJobStarts","All Starts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std"]
+        else:
+            headline = ["User","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","ShortJobStarts","All Starts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std", "ScheddName","Schedd"]
+        csv_writer.writerow(headline) 
     for currObs in input_data: 
         if count == 0: 
             header = list(input_data[currObs].keys())
             if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json'):
-                header.insert(0, "scheedName")
+                header.insert(0, "Schedd")
             else:
-                header.insert(0, "userName")
+                header.insert(0, "User")
             csv_writer.writerow(header) 
             count += 1
         content = list(input_data[currObs].values())
@@ -34,8 +39,8 @@ def send_email(current_time, userFileName, scheddFileName, userGpuFileName, sche
 
 
   fromaddr = "chtc.memory@gmail.com"
-#   toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org']
-  toaddr = ['yhan222@wisc.edu']
+  toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org']
+#   toaddr = ['yhan222@wisc.edu']
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
@@ -96,9 +101,9 @@ if __name__ == '__main__':
     yest_date = datetime.now() - timedelta(days = 1)
     current_time = yest_date.strftime("%m-%d-%Y")
     os.chdir("/home/yhan222/nodejs-elasticsearch/server") 
-    os.system("node searchGpu.js")
+    os.system("~/bin/node searchGpu.js")
     time.sleep(1)
-    os.system("node search.js")
+    os.system("~/bin/node getData.js")
     time.sleep(1)
     userFileName = "userStats_" + str(current_time) +".csv"
     scheddFileName = "scheddStats_" + str(current_time) +  ".csv"
