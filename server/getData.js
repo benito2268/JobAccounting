@@ -13,11 +13,16 @@ let scheddHourList = {};
 let scheddMemoryList = {};
 let finalUserList = {};
 let finalScheddList = {};
+// Check the memory size
+const v8 = require('v8');
+const totalHeapSize = v8.getHeapStatistics().total_available_size;
+const totalHeapSizeGb = (totalHeapSize / 1024 / 1024 / 1024).toFixed(2);
+console.log('totalHeapSizeGb: ', totalHeapSizeGb);
 
 async function search(indexName) {
     let response =  await esClient.search({
         index: indexName,
-        scroll: "30s",
+        scroll: "10s",
         size: 10000,
         body: {
             'query': {
@@ -43,7 +48,7 @@ async function search(indexName) {
         
         response = await esClient.scroll({
             scrollId: response._scroll_id,
-            scroll: '30s'
+            scroll: '10s'
         })
         tempJobList = response.hits.hits;
         for (let curr of tempJobList) {
@@ -53,7 +58,7 @@ async function search(indexName) {
     }
 
     
-    // console.log(indexName,jobList.length)
+    console.log(indexName,jobList.length)
 };
 
 async function runPass() {

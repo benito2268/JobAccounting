@@ -1,0 +1,4 @@
+User,Completed Hours,Used Hours,Uniq Job Ids,Request Mem,Used Mem,Max Mem,Request Cpus,Request Gpus,ShortJobStarts,All Starts,Min,25%,Median,75%,Max,Mean,Std,ScheddName,Schedd
+jjiang68@chtc.wisc.edu,497.86,497.86,1,2410,2442,2442,20,1,0,1,497.86,497.86,497.86,497.86,497.86,497.86,0.0,submit2.chtc.wisc.edu,chtc
+ice3simusr@icecube.wisc.edu,314.8,409.33,21,1995,1954,2198,2,1,0,25,0.51,1.8,1.88,7.02,75.82,14.99,24.56,sub-simprod-2.icecube.wisc.edu,icecube
+jzhang879@chtc.wisc.edu,50.19,50.19,8,14617,1,14250,1,1,0,8,2.2,5.41,6.7,7.92,7.94,6.27,2.06,submit2.chtc.wisc.edu,chtc

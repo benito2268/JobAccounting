@@ -1,8 +1,13 @@
 #!/usr/bin/python
 
+toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
+# toaddr = ['yhan222@wisc.edu']
+
+
 def convertFile(input_Filename, output_Filename):
     import json 
     import csv 
+    import pandas as pd
     with open(input_Filename) as json_file: 
         input_data = json.load(json_file) 
     output_file = open("./data/" + output_Filename, 'w') 
@@ -26,28 +31,68 @@ def convertFile(input_Filename, output_Filename):
         content = list(input_data[currObs].values())
         content.insert(0, currObs)
         csv_writer.writerow(content) 
-    output_file.close() 
+    output_file.close()
+    df = pd.read_csv("./data/" + output_Filename)
+    df = df.sort_values(by=['Completed Hours'], ascending=False)
+    df.to_csv("./data/" + output_Filename, index=False) 
 
-def send_email(current_time, userFileName, scheddFileName, userGpuFileName, scheddGpuFileName):
+def send_user_email(current_time, userFileName, scheddFileName):
   from email.mime.multipart import MIMEMultipart
   from email.mime.text  import MIMEText
   from email.mime.base import MIMEBase
   from email import encoders
   import smtplib
-  
+  import csv
+  from tabulate import tabulate
 
+  html = """
+    <html>
+    <head>
+    <style> 
+    table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
+    th, td {{ padding: 5px; text-align: center}}
+    </style>
+    </head>
+    <body><p>Attachment are the csv file for CHTC Usage Report <b>(Test Only)</b></p>
+    <p style="text-align: center; display: block; margin: auto">CHTC per user usage for """  + str(current_time) +  """   
+    </p>
+    {usertable}
+    <p style="text-align: center; display: block; margin: auto">CHTC per submit machine usage for """  + str(current_time) +  """   
+    </p>
+    {scheedtable}
+    <p>Legend:<br>
+        <b>Completed Hours:</b> Total hours per user for execution attempts that ran to completion <br>
+        <b>Used Hours:</b> Total Hours per user for all execution attempts, including preemption and removal <br>
+        <b>Uniq Job IDs:</b> Number of unique job ids across all execution attempts <br>
+        <b>Short Job Starts:</b> Number of execution attempts that completed in less than 60 seconds <br>
+        <b>All Starts:</b> Total number of execution attempts <br>
+        <b>72 Hour:</b> Number of execution attempts that were preempted after 72 hours <br>
+        <b>Min/25%/Median/Max/Mean/Std:</b> Statistics per completed execution attemps longer than 60 seconds</p>
+    </body></html>
+    """
 
+  with open(userFileName) as input_file:
+    reader = csv.reader(input_file)
+    userdata = list(reader)
+
+  with open(scheddFileName) as input_file:
+    reader = csv.reader(input_file)
+    schedddata = list(reader)
+
+  html = html.format(usertable=tabulate(userdata, headers="firstrow", tablefmt="html", showindex="always"),
+                     scheedtable=tabulate(schedddata, headers="firstrow", tablefmt="html", showindex="always"))
 
   fromaddr = "chtc.memory@gmail.com"
-  toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org']
-#   toaddr = ['yhan222@wisc.edu']
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
-  msg['Subject'] = "Test - CHTC Usage and GPU Report " + current_time
+  msg['Subject'] = "Test - CHTC Usage Report for " + current_time
 
-  body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
-  msg.attach(MIMEText(str(body), 'html'))
+#   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
+#   msg.attach(MIMEText(str(body), 'html'))
+    # html_body = MIMEText(html, 'html');
+  msg.attach(MIMEText(html, 'html'))
+
 
   part = MIMEBase('application', "octet-stream")
   part.set_payload(open(userFileName, "rb").read())
@@ -60,6 +105,83 @@ def send_email(current_time, userFileName, scheddFileName, userGpuFileName, sche
   encoders.encode_base64(part)
   part.add_header('Content-Disposition', 'attachment', filename = scheddFileName)
   msg.attach(part)
+
+  try:
+    
+      server = smtplib.SMTP('smtp.gmail.com', 587)
+      
+      server.ehlo()
+      server.starttls()
+      
+      server.ehlo()
+      
+     
+      server.login("chtc.memory", "uwmadison_chtc")
+      
+      text = msg.as_string()
+      server.sendmail(fromaddr, toaddr, text)
+
+  except Exception as e:
+      print(e)
+  finally:
+      server.quit() 
+
+def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName):
+  from email.mime.multipart import MIMEMultipart
+  from email.mime.text  import MIMEText
+  from email.mime.base import MIMEBase
+  from email import encoders
+  import smtplib
+  import csv
+  from tabulate import tabulate
+
+  html = """
+    <html>
+    <head>
+    <style> 
+    table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
+    th, td {{ padding: 5px; text-align: center}}
+    </style>
+    </head>
+    <body><p>Attachment are the csv file for CHTC GPU Report <b>(Test Only)</b></p>
+    <p style="text-align: center; display: block; margin: auto">CHTC per user usage for """  + str(current_time) +  """   
+    </p>
+    {usertable}
+    <p style="text-align: center; display: block; margin: auto">CHTC per submit machine usage for """  + str(current_time) +  """   
+    </p>
+    {scheedtable}
+    <p>Legend:<br>
+        <b>Completed Hours:</b> Total hours per user for execution attempts that ran to completion <br>
+        <b>Used Hours:</b> Total Hours per user for all execution attempts, including preemption and removal <br>
+        <b>Uniq Job IDs:</b> Number of unique job ids across all execution attempts <br>
+        <b>Short Job Starts:</b> Number of execution attempts that completed in less than 60 seconds <br>
+        <b>All Starts:</b> Total number of execution attempts <br>
+        <b>72 Hour:</b> Number of execution attempts that were preempted after 72 hours <br>
+        <b>Min/25%/Median/Max/Mean/Std:</b> Statistics per completed execution attemps longer than 60 seconds</p>
+    </body></html>
+    """
+
+  with open(userGpuFileName) as input_file:
+    reader = csv.reader(input_file)
+    userdata = list(reader)
+
+  with open(scheddGpuFileName) as input_file:
+    reader = csv.reader(input_file)
+    schedddata = list(reader)
+
+  html = html.format(usertable=tabulate(userdata, headers="firstrow", tablefmt="html", showindex="always"),
+                     scheedtable=tabulate(schedddata, headers="firstrow", tablefmt="html", showindex="always"))
+
+  fromaddr = "chtc.memory@gmail.com"
+  msg = MIMEMultipart()
+  msg['From'] = 'UW Madison CHTC Usage Report'
+  msg['To'] = ", ".join(toaddr)
+  msg['Subject'] = "Test - CHTC GPU Usage Report for " + current_time
+
+#   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
+#   msg.attach(MIMEText(str(body), 'html'))
+    # html_body = MIMEText(html, 'html');
+  msg.attach(MIMEText(html, 'html'))
 
   part = MIMEBase('application', "octet-stream")
   part.set_payload(open(userGpuFileName, "rb").read())
@@ -89,10 +211,10 @@ def send_email(current_time, userFileName, scheddFileName, userGpuFileName, sche
       server.sendmail(fromaddr, toaddr, text)
 
   except Exception as e:
-
       print(e)
   finally:
       server.quit() 
+
 
 if __name__ == '__main__':
     import time
@@ -101,9 +223,9 @@ if __name__ == '__main__':
     yest_date = datetime.now() - timedelta(days = 1)
     current_time = yest_date.strftime("%m-%d-%Y")
     os.chdir("/home/yhan222/nodejs-elasticsearch/server") 
-    os.system("~/bin/node searchGpu.js")
+    os.system("~/bin/node --max-old-space-size=8192 searchGpu.js")
     time.sleep(1)
-    os.system("~/bin/node getData.js")
+    os.system("~/bin/node --max-old-space-size=8192 getData.js")
     time.sleep(1)
     userFileName = "userStats_" + str(current_time) +".csv"
     scheddFileName = "scheddStats_" + str(current_time) +  ".csv"
@@ -116,4 +238,6 @@ if __name__ == '__main__':
     time.sleep(1)
     convertFile("scheddGpuStats.json", scheddGpuFileName)
     os.chdir("/home/yhan222/nodejs-elasticsearch/server/data") 
-    send_email(current_time, userFileName, scheddFileName, userGpuFileName, scheddGpuFileName)
+    send_user_email(current_time, userFileName, scheddFileName)
+    time.sleep(2)
+    send_gpu_email(current_time, userGpuFileName, scheddGpuFileName)

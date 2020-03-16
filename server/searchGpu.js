@@ -10,11 +10,18 @@ let scheddHourList = {};
 let scheddMemoryList = {};
 let finalUserList = {};
 let finalScheddList = {};
+let removelist = {}
+
+// Check the memory size
+    const v8 = require('v8');
+    const totalHeapSize = v8.getHeapStatistics().total_available_size;
+    const totalHeapSizeGb = (totalHeapSize / 1024 / 1024 / 1024).toFixed(2);
+    console.log('totalHeapSizeGb: ', totalHeapSizeGb);
 
 async function search(indexName) {
     let response =  await esClient.search({
         index: indexName,
-        scroll: "5s",
+        scroll: "10s",
         size: 1000,
         body: {
             // 'query': {
@@ -38,24 +45,24 @@ async function search(indexName) {
         jobList.push(curr);
     }
     //jobListLength
-    console.log(jobListLength)
+    // console.log(jobListLength)
     while (jobList.length < jobListLength) {
-        
         response = await esClient.scroll({
             scrollId: response._scroll_id,
-            scroll: '5s'
+            scroll: '10s',
         })
         tempJobList = response.hits.hits;
+        // jobList = jobList.concat(tempJobList)
         for (let curr of tempJobList) {
             jobList.push(curr);
         }
-        console.log(jobList.length);
+        // console.log("hello3");
+        // tempLength += 1000;
+        // console.log("Current Size: " + jobList.length);
     }
-    console.log("finish");
-    // console.log(indexName,jobList.length)
+    console.log(indexName,jobList.length)
 
 };
-// search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10), "a");
 
 async function runPass() {
     await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10));
@@ -75,7 +82,8 @@ async function processResult(jobList){
         //Requestgpus
             //JobGpus
             //JobIsRunningGpus)
-        if (currObs.RequestGpus != 0 || currObs.Requestgpus != 0 || currObs.GPUsProvisioned != 0) {
+        if (typeof currObs.Requestgpus !== 'undefined' && currObs.Requestgpus != 0) {
+        
             if (typeof userList[currObs.User] === 'undefined') {
                 let content = {};
                 let currHour = [];
@@ -92,8 +100,8 @@ async function processResult(jobList){
                 }
                 content.NumJobStarts = currObs.NumJobStarts;
                 content.Requestgpus = currObs.Requestgpus;
-                content.JobGpus = currObs.JobGpus;
-                
+                content.JobGpus =  typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus;
+                // content.GPUsProvisioned = currObs.GPUsProvisioned;
                 content.ScheddName = currObs.ScheddName;
                 content.Schedd = currObs.ScheddName.split('.')[1];
                 
@@ -130,7 +138,8 @@ async function processResult(jobList){
                 content.CoreHr += currObs.CoreHr;
                 content.CommittedCoreHr += currObs.CommittedCoreHr;
                 content.Requestgpus = Math.max(content.Requestgpus, currObs.Requestgpus);
-                content.JobGpus = Math.max(content.JobGpus, currObs.JobGpus);
+                content.JobGpus = Math.max(content.JobGpus, typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus);
+                // content.GPUsProvisioned = Math.max(content.GPUsProvisioned, currObs.GPUsProvisioned);
                 content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
                 // content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
                 content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
@@ -171,7 +180,7 @@ async function processResult(jobList){
                 content.Jobs = 1;
                 content.MemoryMB = typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB;
                 content.Requestgpus = currObs.Requestgpus;
-                content.JobGpus = currObs.JobGpus;
+                content.JobGpus =  typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus;
                 content.RequestCpus = typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus;
                 if (currObs.CompletionDate - currObs.JobCurrentStartDate < 60) {
                     content.ShortJobStarts = 1;
@@ -217,7 +226,7 @@ async function processResult(jobList){
                 content.CommittedCoreHr += currObs.CommittedCoreHr;
                 content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
                 content.Requestgpus = Math.max(content.Requestgpus, currObs.Requestgpus);
-                content.JobGpus = Math.max(content.JobGpus, currObs.JobGpus);
+                content.JobGpus = Math.max(content.JobGpus, typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus);
                 content.MemoryMB = Math.max(content.MemoryMB, typeof currObs.MemoryMB === 'undefined' ? 0 : currObs.MemoryMB);
                 if (currObs.CompletionDate - currObs.JobCurrentStartDate < 60) {
                     content.ShortJobStarts ++;
@@ -280,8 +289,8 @@ async function processResult(jobList){
         currUser["Max Mem"] = Math.round(currMemory[currMemory.length - 1] * 100) / 100;
         currUser["Request Cpus"] = value.RequestCpus;
         currUser["Request Gpus"] = value.Requestgpus;
-        currUser["Gpus Usage"] = value.JobGpus;
-
+        // currUser["Gpus Usage"] = value.JobGpus;
+        // currUser.GPUsProvisioned  = value.GPUsProvisioned;
         currUser["ShortJobStarts"] = value.ShortJobStarts;
         currUser["All Starts"] = value.NumJobStarts;
         
@@ -318,7 +327,7 @@ async function processResult(jobList){
         currSchedd["ShortJobStarts"] = value.ShortJobStarts;
         currSchedd["All Starts"] = value.NumJobStarts;
         currSchedd["Request Gpus"] = value.Requestgpus;
-        currSchedd["Gpus Usage"] = value.JobGpus;
+        // currSchedd["Gpus Usage"] = value.JobGpus;
         
         let currHour = scheddHourList[key];
         currHour.sort(function(a,b){return a - b});
@@ -360,7 +369,7 @@ async function exportResult() {
         };
         console.log("File has been created");
     });
-    // let testfile = JSON.stringify(jobList);
+    // let testfile = JSON.stringify(removelist);
     // fs.writeFile('userList.json', testfile, 'utf8', (err) => {
     //     if (err) {
     //         console.error(err);
