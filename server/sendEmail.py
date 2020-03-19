@@ -4,6 +4,7 @@ toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelm
 # toaddr = ['yhan222@wisc.edu']
 
 
+
 def convertFile(input_Filename, output_Filename):
     import json 
     import csv 
@@ -15,9 +16,9 @@ def convertFile(input_Filename, output_Filename):
     count = 0
     if len(input_data) == 0:
         if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json'):
-            headline = ["Schedd","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","ShortJobStarts","All Starts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std"]
+            headline = ["Schedd","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","Short Jobs","All Jobs","NumShadowStarts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std"]
         else:
-            headline = ["User","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","ShortJobStarts","All Starts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std", "ScheddName","Schedd"]
+            headline = ["User","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","Short Jobs","All Jobs", "NumShadowStarts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std", "ScheddName","Schedd"]
         csv_writer.writerow(headline) 
     for currObs in input_data: 
         if count == 0: 
@@ -36,6 +37,16 @@ def convertFile(input_Filename, output_Filename):
     df = df.sort_values(by=['Completed Hours'], ascending=False)
     df.to_csv("./data/" + output_Filename, index=False) 
 
+
+def color_tr(s):
+    import re
+    n = [1]
+    def repl(m):
+        n[0] += 1
+        return '<tr>' if n[0] % 2 else '<tr bgcolor="MistyRose">'
+    return re.sub(r'<tr>', repl, s)
+
+
 def send_user_email(current_time, userFileName, scheddFileName):
   from email.mime.multipart import MIMEMultipart
   from email.mime.text  import MIMEText
@@ -45,12 +56,30 @@ def send_user_email(current_time, userFileName, scheddFileName):
   import csv
   from tabulate import tabulate
 
+  with open(userFileName) as input_file:
+    reader = csv.reader(input_file)
+    userdata = list(reader)
+
+  with open(scheddFileName) as input_file:
+    reader = csv.reader(input_file)
+    schedddata = list(reader)
+
   html = """
     <html>
     <head>
-    <style> 
-    table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
-    th, td {{ padding: 5px; text-align: center}}
+    <style> """
+    
+  if (len(userdata) == 1 or len(schedddata) == 1): 
+    html = html + """
+      table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
+      td {{ padding: 5px; text-align: right; font-weight: bold;}}
+      td,th {{background-color: #D3D3D3}}"""
+  else:
+    html = html + """
+      table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
+      td {{ padding: 5px; text-align: right}}
+      th {{background-color: #D3D3D3}}"""
+  html = html + """  
     </style>
     </head>
     <body><p>Attachment are the csv file for CHTC Usage Report <b>(Test Only)</b></p>
@@ -71,19 +100,23 @@ def send_user_email(current_time, userFileName, scheddFileName):
     </body></html>
     """
 
-  with open(userFileName) as input_file:
-    reader = csv.reader(input_file)
-    userdata = list(reader)
 
-  with open(scheddFileName) as input_file:
-    reader = csv.reader(input_file)
-    schedddata = list(reader)
 
-  html = html.format(usertable=tabulate(userdata, headers="firstrow", tablefmt="html", showindex="always"),
+  if (len(userdata) == 1 or len(schedddata) == 1):
+    html = html.format(usertable=tabulate(userdata, tablefmt="html"),
+                     scheedtable=tabulate(schedddata, tablefmt="html"))
+  else:
+    html = html.format(usertable=tabulate(userdata, headers="firstrow", tablefmt="html", showindex="always"),
                      scheedtable=tabulate(schedddata, headers="firstrow", tablefmt="html", showindex="always"))
 
+
+
+  html = color_tr(html)
+
+
+
   fromaddr = "chtc.memory@gmail.com"
-  msg = MIMEMultipart()
+  msg = MIMEMultipart('alternative')
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
   msg['Subject'] = "Test - CHTC Usage Report for " + current_time
@@ -91,8 +124,8 @@ def send_user_email(current_time, userFileName, scheddFileName):
 #   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
 #   msg.attach(MIMEText(str(body), 'html'))
     # html_body = MIMEText(html, 'html');
+  
   msg.attach(MIMEText(html, 'html'))
-
 
   part = MIMEBase('application', "octet-stream")
   part.set_payload(open(userFileName, "rb").read())
@@ -134,13 +167,32 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName):
   import smtplib
   import csv
   from tabulate import tabulate
+  
+  with open(userGpuFileName) as input_file:
+    reader = csv.reader(input_file)
+    userdata = list(reader)
+  
+  with open(scheddGpuFileName) as input_file:
+    reader = csv.reader(input_file)
+    schedddata = list(reader)
+ 
 
   html = """
     <html>
     <head>
-    <style> 
-    table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
-    th, td {{ padding: 5px; text-align: center}}
+    <style> """
+  
+  if (len(userdata) == 1 or len(schedddata) == 1): 
+    html = html + """
+      table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
+      td {{ padding: 5px; text-align: right; font-weight: bold;}}
+      td,th {{background-color: #D3D3D3}}"""
+  else:
+    html = html + """
+      table, th, td {{ border: 1px solid black; border-collapse: separate; text-align: center}}
+      td {{ padding: 5px; text-align: right}}
+      th {{background-color: #D3D3D3}}"""
+  html = html + """  
     </style>
     </head>
     <body><p>Attachment are the csv file for CHTC GPU Report <b>(Test Only)</b></p>
@@ -161,16 +213,15 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName):
     </body></html>
     """
 
-  with open(userGpuFileName) as input_file:
-    reader = csv.reader(input_file)
-    userdata = list(reader)
 
-  with open(scheddGpuFileName) as input_file:
-    reader = csv.reader(input_file)
-    schedddata = list(reader)
-
-  html = html.format(usertable=tabulate(userdata, headers="firstrow", tablefmt="html", showindex="always"),
+  if (len(userdata) == 1 or len(schedddata) == 1):
+    html = html.format(usertable=tabulate(userdata, tablefmt="html"),
+                     scheedtable=tabulate(schedddata, tablefmt="html"))
+  else:
+    html = html.format(usertable=tabulate(userdata, headers="firstrow", tablefmt="html", showindex="always"),
                      scheedtable=tabulate(schedddata, headers="firstrow", tablefmt="html", showindex="always"))
+
+  html = color_tr(html)
 
   fromaddr = "chtc.memory@gmail.com"
   msg = MIMEMultipart()
