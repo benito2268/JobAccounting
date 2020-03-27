@@ -15,7 +15,7 @@ def convertFile(input_Filename, output_Filename):
     csv_writer = csv.writer(output_file)
     count = 0
     if len(input_data) == 0:
-        if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json'):
+        if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json' or input_Filename == "scheddPrintStats.json" or input_Filename == "scheddGpuPrintStats.json"):
             headline = ["Schedd","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","Short Jobs","All Jobs","NumShadowStarts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std"]
         else:
             headline = ["User","Completed Hours","Used Hours","Uniq Job Ids","Request Mem","Used Mem","Max Mem","Request Cpus","Short Jobs","All Jobs", "NumShadowStarts","Request Gpus","Gpus Usage","Min","25%","Median","75%","Max","Mean","Std", "ScheddName","Schedd"]
@@ -23,7 +23,7 @@ def convertFile(input_Filename, output_Filename):
     for currObs in input_data: 
         if count == 0: 
             header = list(input_data[currObs].keys())
-            if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json'):
+            if (input_Filename == 'scheddStats.json' or input_Filename == 'scheddGpuStats.json' or input_Filename == "scheddPrintStats.json" or input_Filename == "scheddGpuPrintStats.json"):
                 header.insert(0, "Schedd")
             else:
                 header.insert(0, "User")
@@ -33,9 +33,9 @@ def convertFile(input_Filename, output_Filename):
         content.insert(0, currObs)
         csv_writer.writerow(content) 
     output_file.close()
-    df = pd.read_csv("./data/" + output_Filename)
-    df = df.sort_values(by=['Completed Hours'], ascending=False)
-    df.to_csv("./data/" + output_Filename, index=False) 
+    # df = pd.read_csv("./data/" + output_Filename)
+    # df = df.sort_values(by=['Completed Hours'], ascending=False)
+    # df.to_csv("./data/" + output_Filename, index=False) 
 
 
 def color_tr(s):
@@ -47,7 +47,7 @@ def color_tr(s):
     return re.sub(r'<tr>', repl, s)
 
 
-def send_user_email(current_time, userFileName, scheddFileName):
+def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, scheedPrintFile):
   from email.mime.multipart import MIMEMultipart
   from email.mime.text  import MIMEText
   from email.mime.base import MIMEBase
@@ -56,11 +56,11 @@ def send_user_email(current_time, userFileName, scheddFileName):
   import csv
   from tabulate import tabulate
 
-  with open(userFileName) as input_file:
+  with open(userPrintFile) as input_file:
     reader = csv.reader(input_file)
     userdata = list(reader)
 
-  with open(scheddFileName) as input_file:
+  with open(scheedPrintFile) as input_file:
     reader = csv.reader(input_file)
     schedddata = list(reader)
 
@@ -116,7 +116,7 @@ def send_user_email(current_time, userFileName, scheddFileName):
 
 
   fromaddr = "chtc.memory@gmail.com"
-  msg = MIMEMultipart('alternative')
+  msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
   msg['Subject'] = "Test - CHTC Usage Report for " + current_time
@@ -159,7 +159,7 @@ def send_user_email(current_time, userFileName, scheddFileName):
   finally:
       server.quit() 
 
-def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName):
+def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrintFile, scheedGpuPrintFile):
   from email.mime.multipart import MIMEMultipart
   from email.mime.text  import MIMEText
   from email.mime.base import MIMEBase
@@ -168,11 +168,11 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName):
   import csv
   from tabulate import tabulate
   
-  with open(userGpuFileName) as input_file:
+  with open(userGpuPrintFile) as input_file:
     reader = csv.reader(input_file)
     userdata = list(reader)
   
-  with open(scheddGpuFileName) as input_file:
+  with open(scheedGpuPrintFile) as input_file:
     reader = csv.reader(input_file)
     schedddata = list(reader)
  
@@ -288,7 +288,20 @@ if __name__ == '__main__':
     convertFile("userGpuStats.json", userGpuFileName)
     time.sleep(1)
     convertFile("scheddGpuStats.json", scheddGpuFileName)
+
+    time.sleep(1)
+    userPrintFileName = "userPrintStats.csv"
+    scheddPrintFileName = "scheddPrintStats.csv"
+    convertFile("userPrintStats.json", userPrintFileName)
+    time.sleep(1)
+    convertFile("scheddPrintStats.json", scheddPrintFileName)
+    userGpuPrintFileName = "userGpuPrintStats.csv"
+    scheddGpuPrintFileName = "scheddGpuPrintStats.csv"
+    convertFile("userGpuPrintStats.json", userGpuPrintFileName)
+    time.sleep(1)
+    convertFile("scheddGpuPrintStats.json", scheddGpuPrintFileName)
+
     os.chdir("/home/yhan222/nodejs-elasticsearch/server/data") 
-    send_user_email(current_time, userFileName, scheddFileName)
+    send_user_email(current_time, userFileName, scheddFileName, userPrintFileName, scheddPrintFileName)
     time.sleep(2)
-    send_gpu_email(current_time, userGpuFileName, scheddGpuFileName)
+    send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrintFileName, scheddGpuPrintFileName)

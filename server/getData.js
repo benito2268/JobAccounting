@@ -11,6 +11,10 @@ let scheddHourList = {};
 let scheddMemoryList = {};
 let finalUserList = {};
 let finalScheddList = {};
+let printUserList = {};
+let printScheddList = {};
+let unsortUserList = {};
+let unsortScheddList = {};
 // Check the memory size
 const v8 = require('v8');
 const totalHeapSize = v8.getHeapStatistics().total_available_size;
@@ -194,10 +198,6 @@ async function processResult(jobList){
     
     Object.entries(userList).forEach(([key, value]) => {
         let currUser = {};
-        // currUser["Completed Hours"] = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
-        // currUser["Used Hours"] = Math.round((value.CoreHr + Number.EPSILON) * 100) / 100;
-        // currUser["Uniq Job Ids"] = value.Jobs;
-        // currUser["Request Mem"] = Math.round(value.RequestMemory);
         currUser["Completed Hours"] = Math.round(value.CommittedCoreHr);
         currUser["Used Hours"] = Math.round(value.CoreHr);
         currUser["Uniq Job Ids"] = value.Jobs;
@@ -206,11 +206,7 @@ async function processResult(jobList){
         let currMemory = userMemoryList[key];
         currMemory.sort(function(a,b){return a - b});
         let median_index = Math.floor(currMemory.length / 2);
-        // currUser["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2) * 100) / 100;
-        // currUser["Max Mem"] = Math.round(currMemory[currMemory.length - 1] * 100) / 100;
-        // currUser["Request Cpus"] = value.RequestCpus;
-        // currUser["ShortJobStarts"] = value.ShortJobStarts;
-        // currUser["All Starts"] = value.NumJobStarts;
+
         currUser["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2));
         currUser["Max Mem"] = Math.round(currMemory[currMemory.length - 1]);
 
@@ -223,38 +219,27 @@ async function processResult(jobList){
         currHour.sort(function(a,b){return a - b});
         
         median_index = Math.floor(currHour.length / 2);
-        // currUser["Min"]  = Math.round(currHour[0] * 100)/ 100;
         currUser["Min"]  = getHours(currHour[0]);
         let per25 = (Math.floor(currHour.length*.25) - 1) >= 0 ? Math.floor(currHour.length*.25) - 1 : 0;
-        // currUser["25%"] =  Math.round(currHour[per25] * 100)/ 100;
-        // currUser["Median"] = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
         currUser["25%"]  = getHours(currHour[per25]);
         currUser["Median"] = getHours((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2));
 
 
 
         let per75 = (Math.floor(currHour.length*.75) - 1) >= 0 ? Math.floor(currHour.length*.75) - 1 : 0;
-        // currUser["75%"] =  Math.round(currHour[per75] * 100)/ 100;
-        // currUser["Max"] = Math.round(currHour[currHour.length - 1] * 100) / 100;
-        // currUser["Mean"] = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
-        // currUser["Std"] = Math.round(cal.std(currHour) * 100) / 100;
         currUser["75%"] = getHours(currHour[per75]);
         currUser["Max"] = getHours(currHour[currHour.length - 1]);
-        currUser["Mean"] = getHours(value.CommittedCoreHr / currHour.length);
+        currUser["Mean"] = getHours(value.WallClockHr / currHour.length);
         currUser["Std"] = getHours(cal.std(currHour));
 
         currUser["ScheddName"] = value.ScheddName;
         currUser["Schedd"] = value.Schedd;
 
-        finalUserList[key] = currUser;
+        unsortUserList[key] = currUser;
     })
     Object.entries(scheddList).forEach(([key, value]) => {
 
         let currSchedd = {};
-        // currSchedd["Completed Hours"] = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
-        // currSchedd["Used Hours"] = Math.round((value.CoreHr + Number.EPSILON) * 100) / 100;
-        // currSchedd["Uniq Job Ids"] = value.Jobs;
-        // currSchedd["Request Mem"] = Math.round(value.RequestMemory);
         currSchedd["Completed Hours"] = Math.round(value.CommittedCoreHr);
         currSchedd["Used Hours"] = Math.round(value.CoreHr);
         currSchedd["Uniq Job Ids"] = value.Jobs;
@@ -263,11 +248,6 @@ async function processResult(jobList){
         let currMemory = scheddMemoryList[key];
         currMemory.sort(function(a,b){return a - b});
         let median_index = Math.floor(currMemory.length / 2);
-        // currSchedd["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2) * 100) / 100;
-        // currSchedd["Max Mem"] = Math.round(currMemory[currMemory.length - 1] * 100) / 100;
-        // currSchedd["Request Cpus"] = value.RequestCpus;
-        // currSchedd["ShortJobStarts"] = value.ShortJobStarts;
-        // currSchedd["All Starts"] = value.NumJobStarts;
 
         currSchedd["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2));
         currSchedd["Max Mem"] = Math.round(currMemory[currMemory.length - 1]);
@@ -282,32 +262,77 @@ async function processResult(jobList){
         currHour.sort(function(a,b){return a - b});
         
         median_index = Math.floor(currHour.length / 2);
-        // currSchedd["Min"]  = Math.round(currHour[0] * 100)/ 100;
         currSchedd["Min"]  = getHours(currHour[0]);
 
         let per25 = (Math.floor(currHour.length*.25) - 1) >= 0 ? Math.floor(currHour.length*.25) - 1 : 0;
-        // currSchedd["25%"] =  Math.round(currHour[per25] * 100)/ 100;
-        // currSchedd["Median"] = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
         currSchedd["25%"]  = getHours(currHour[per25]);
         currSchedd["Median"] = getHours((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2));
 
         
         let per75 = (Math.floor(currHour.length*.75) - 1) >= 0 ? Math.floor(currHour.length*.75) - 1 : 0;
-        // currSchedd["75%"] =  Math.round(currHour[per75] * 100)/ 100;
-        // currSchedd["Max"] = Math.round(currHour[currHour.length - 1] * 100) / 100;
-        // currSchedd["Mean"] = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
-        // currSchedd["Std"] = Math.round(cal.std(currHour) * 100) / 100;
-        
-        
         currSchedd["75%"] = getHours(currHour[per75]);
         currSchedd["Max"] = getHours(currHour[currHour.length - 1]);
-        currSchedd["Mean"] = getHours(value.CommittedCoreHr / currHour.length);
+        currSchedd["Mean"] = getHours(value.WallClockHr / currHour.length);
         currSchedd["Std"] = getHours(cal.std(currHour));
 
 
-        finalScheddList[key] = currSchedd;
+        unsortScheddList[key] = currSchedd;
     })
     
+    Object.keys(unsortUserList).sort(function(a,b){
+        return unsortUserList[b]["Completed Hours"] - unsortUserList[a]["Completed Hours"]
+    }).forEach(function(k){
+        finalUserList[k]=unsortUserList[k]
+    });
+    
+    
+    Object.keys(unsortScheddList).sort(function(a,b){
+        return unsortScheddList[b]["Completed Hours"] - unsortScheddList[a]["Completed Hours"]
+    }).forEach(function(k){
+        finalScheddList[k]=unsortScheddList[k]
+    });
+
+
+    
+
+
+    Object.entries(finalUserList).forEach(([key, value]) => {
+        let currUser = JSON.parse(JSON.stringify(value));
+        currUser["Completed Hours"] = currUser["Completed Hours"].toLocaleString();
+        currUser["Used Hours"] = currUser["Used Hours"].toLocaleString();
+        currUser["Uniq Job Ids"] = currUser["Uniq Job Ids"].toLocaleString();
+        currUser["Request Mem"] = currUser["Request Mem"].toLocaleString();
+
+        currUser["Used Mem"] = currUser["Used Mem"].toLocaleString();
+        currUser["Max Mem"] = currUser["Max Mem"].toLocaleString();
+
+        currUser["Request Cpus"] = currUser["Request Cpus"].toLocaleString();
+        currUser["Short Jobs"] = currUser["Short Jobs"].toLocaleString();
+        currUser["All Jobs"] = currUser["All Jobs"].toLocaleString();
+        currUser["NumShadowStarts"] = currUser["NumShadowStarts"].toLocaleString();
+        
+        printUserList[key] = currUser;
+    })
+    
+    Object.entries(finalScheddList).forEach(([key, value]) => {
+
+        let currSchedd = JSON.parse(JSON.stringify(value));
+        currSchedd["Completed Hours"] = currSchedd["Completed Hours"].toLocaleString();
+        currSchedd["Used Hours"] = currSchedd["Used Hours"].toLocaleString();
+        currSchedd["Uniq Job Ids"] = currSchedd["Uniq Job Ids"].toLocaleString();
+        currSchedd["Request Mem"] = currSchedd["Request Mem"].toLocaleString();
+
+        currSchedd["Used Mem"] = currSchedd["Used Mem"].toLocaleString();
+        currSchedd["Max Mem"] = currSchedd["Max Mem"].toLocaleString();
+
+        currSchedd["Request Cpus"] = currSchedd["Request Cpus"].toLocaleString();
+        currSchedd["Short Jobs"] = currSchedd["Short Jobs"].toLocaleString();
+        currSchedd["All Jobs"] = currSchedd["All Jobs"].toLocaleString();
+     
+        currSchedd["NumShadowStarts"] = currSchedd["NumShadowStarts"].toLocaleString();
+
+        printScheddList[key] = currSchedd;
+    })
 
     
 }
@@ -352,6 +377,24 @@ async function exportResult() {
         };
         console.log("File has been created");
     });
+
+    let userPrintFile = JSON.stringify(printUserList);
+    fs.writeFile('userPrintStats.json', userPrintFile, 'utf8', (err) => {
+        if (err) {
+            console.error(err);
+            return;
+        };
+        console.log("File has been created");
+    });
+    let scheddPrintFile = JSON.stringify(printScheddList);
+    fs.writeFile('scheddPrintStats.json', scheddPrintFile, 'utf8', (err) => {
+        if (err) {
+            console.error(err);
+            return;
+        };
+        console.log("File has been created");
+    });
+
 
     // let testfile = JSON.stringify(testList);
     // fs.writeFile('userList.json', testfile, 'utf8', (err) => {

@@ -10,6 +10,10 @@ let scheddHourList = {};
 let scheddMemoryList = {};
 let finalUserList = {};
 let finalScheddList = {};
+let printUserList = {};
+let printScheddList = {};
+let unsortUserList = {};
+let unsortScheddList = {};
 let removelist = {}
 
 // Check the memory size
@@ -100,8 +104,8 @@ async function processResult(jobList){
     jobList.forEach(element => {
         let currObs = element._source;
 
-        if (typeof currObs.Requestgpus !== 'undefined' && currObs.Requestgpus != 0) {
-        // if (true) {
+        if (typeof currObs.RequestGpus !== 'undefined' && currObs.RequestGpus != 0) {
+        
             if (typeof userList[currObs.User] === 'undefined') {
                 let content = {};
                 let currHour = [];
@@ -117,7 +121,7 @@ async function processResult(jobList){
                     content.ShortJobStarts = 0;
                 }
                 content.NumJobStarts = currObs.NumJobStarts;
-                content.Requestgpus = currObs.Requestgpus;
+                content.RequestGpus = currObs.RequestGpus;
                 content.NumShadowStarts = typeof currObs.NumShadowStarts === 'undefined' ? 0 : currObs.NumShadowStarts;
                 
                 content.JobGpus =  typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus;
@@ -146,7 +150,7 @@ async function processResult(jobList){
                 content.NumJobStarts += currObs.NumJobStarts;
                 content.CoreHr += currObs.CoreHr;
                 content.CommittedCoreHr += currObs.CommittedCoreHr;
-                content.Requestgpus = Math.max(content.Requestgpus, currObs.Requestgpus);
+                content.RequestGpus = Math.max(content.RequestGpus, currObs.RequestGpus);
                 content.JobGpus = Math.max(content.JobGpus, typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus);
                 content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
                 content.RequestMemory = Math.max(content.RequestMemory, typeof currObs.RequestMemory === 'undefined' ? 0 : currObs.RequestMemory);
@@ -174,7 +178,7 @@ async function processResult(jobList){
                 content.CoreHr = currObs.CoreHr;
                 content.Jobs = 1;
                 content.RequestMemory = typeof currObs.RequestMemory === 'undefined' ? 0 : currObs.RequestMemory;
-                content.Requestgpus = currObs.Requestgpus;
+                content.RequestGpus = currObs.RequestGpus;
                 content.JobGpus =  typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus;
                 content.RequestCpus = typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus;
                 if (currObs.CompletionDate - currObs.JobCurrentStartDate < 60) {
@@ -206,7 +210,7 @@ async function processResult(jobList){
                 content.CoreHr += currObs.CoreHr;
                 content.CommittedCoreHr += currObs.CommittedCoreHr;
                 content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
-                content.Requestgpus = Math.max(content.Requestgpus, currObs.Requestgpus);
+                content.RequestGpus = Math.max(content.RequestGpus, currObs.RequestGpus);
                 content.JobGpus = Math.max(content.JobGpus, typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus);
                 content.RequestMemory = Math.max(content.RequestMemory, typeof currObs.RequestMemory === 'undefined' ? 0 : currObs.RequestMemory);
                 if (currObs.CompletionDate - currObs.JobCurrentStartDate < 60) {
@@ -250,7 +254,7 @@ async function processResult(jobList){
         currUser["Max Mem"] = Math.round(currMemory[currMemory.length - 1]);
 
         currUser["Request Cpus"] = value.RequestCpus;
-        currUser["Request Gpus"] = value.Requestgpus;
+        currUser["Request Gpus"] = value.RequestGpus;
         currUser["Short Jobs"] = value.ShortJobStarts;
         currUser["All Jobs"] = value.NumJobStarts;
         currUser["NumShadowStarts"] = value.NumShadowStarts;
@@ -278,7 +282,7 @@ async function processResult(jobList){
         currUser["ScheddName"] = value.ScheddName;
         currUser["Schedd"] = value.Schedd;
 
-        finalUserList[key] = currUser;
+        unsortUserList[key] = currUser;
     })
     Object.entries(scheddList).forEach(([key, value]) => {
         let currSchedd = {};
@@ -300,7 +304,7 @@ async function processResult(jobList){
         currSchedd["Short Jobs"] = value.ShortJobStarts;
         currSchedd["All Jobs"] = value.NumJobStarts;
         currSchedd["NumShadowStarts"] = value.NumShadowStarts;
-        currSchedd["Request Gpus"] = value.Requestgpus;
+        currSchedd["Request Gpus"] = value.RequestGpus;
         // currSchedd["Gpus Usage"] = value.JobGpus;
         
         let currHour = scheddHourList[key];
@@ -309,22 +313,77 @@ async function processResult(jobList){
         // currSchedd["Min"]  = Math.round(currHour[0] * 100)/ 100;
         currSchedd["Min"]  = getHours(currHour[0]);
         let per25 = (Math.floor(currHour.length*.25) - 1) >= 0 ? Math.floor(currHour.length*.25) - 1 : 0;
-        // currSchedd["25%"] =  Math.round(currHour[per25] * 100)/ 100;
-        // currSchedd["Median"] = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
         currSchedd["25%"] = getHours(currHour[per25]);
         currSchedd["Median"] = getHours((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2));
         let per75 = (Math.floor(currHour.length*.75) - 1) >= 0 ? Math.floor(currHour.length*.75) - 1 : 0;
-        // currSchedd["75%"] =  Math.round(currHour[per75] * 100)/ 100;
-        // currSchedd["Max"] = Math.round(currHour[currHour.length - 1] * 100) / 100;
-        // currSchedd["Mean"] = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
-        // currSchedd["Std"] = Math.round(cal.std(currHour) * 100) / 100;
         currSchedd["75%"] = getHours(currHour[per75]);
         currSchedd["Max"] = getHours(currHour[currHour.length - 1]);
         currSchedd["Mean"] = getHours((value.WallClockHr / currHour.length));
         currSchedd["Std"] = getHours(cal.std(currHour));
 
-        finalScheddList[key] = currSchedd;
+        unsortScheddList[key] = currSchedd;
     })
+
+
+    Object.keys(unsortUserList).sort(function(a,b){
+        return unsortUserList[b]["Completed Hours"] - unsortUserList[a]["Completed Hours"]
+    }).forEach(function(k){
+        finalUserList[k]=unsortUserList[k]
+    });
+    
+    
+    Object.keys(unsortScheddList).sort(function(a,b){
+        return unsortScheddList[b]["Completed Hours"] - unsortScheddList[a]["Completed Hours"]
+    }).forEach(function(k){
+        finalScheddList[k]=unsortScheddList[k]
+    });
+
+
+    
+
+
+    Object.entries(finalUserList).forEach(([key, value]) => {
+        let currUser = JSON.parse(JSON.stringify(value));
+        currUser["Completed Hours"] = currUser["Completed Hours"].toLocaleString();
+        currUser["Used Hours"] = currUser["Used Hours"].toLocaleString();
+        currUser["Uniq Job Ids"] = currUser["Uniq Job Ids"].toLocaleString();
+        currUser["Request Mem"] = currUser["Request Mem"].toLocaleString();
+
+        currUser["Used Mem"] = currUser["Used Mem"].toLocaleString();
+        currUser["Max Mem"] = currUser["Max Mem"].toLocaleString();
+
+        currUser["Request Cpus"] = currUser["Request Cpus"].toLocaleString();
+        currUser["Short Jobs"] = currUser["Short Jobs"].toLocaleString();
+        currUser["All Jobs"] = currUser["All Jobs"].toLocaleString();
+        currUser["NumShadowStarts"] = currUser["NumShadowStarts"].toLocaleString();
+        currUser["Request Gpus"] = currUser["Request Gpus"].toLocaleString();
+
+        printUserList[key] = currUser;
+    })
+
+
+    Object.entries(finalScheddList).forEach(([key, value]) => {
+
+        let currSchedd = JSON.parse(JSON.stringify(value));
+        currSchedd["Completed Hours"] = currSchedd["Completed Hours"].toLocaleString();
+        currSchedd["Used Hours"] = currSchedd["Used Hours"].toLocaleString();
+        currSchedd["Uniq Job Ids"] = currSchedd["Uniq Job Ids"].toLocaleString();
+        currSchedd["Request Mem"] = currSchedd["Request Mem"].toLocaleString();
+
+        currSchedd["Used Mem"] = currSchedd["Used Mem"].toLocaleString();
+        currSchedd["Max Mem"] = currSchedd["Max Mem"].toLocaleString();
+
+        currSchedd["Request Cpus"] = currSchedd["Request Cpus"].toLocaleString();
+        currSchedd["Short Jobs"] = currSchedd["Short Jobs"].toLocaleString();
+        currSchedd["All Jobs"] = currSchedd["All Jobs"].toLocaleString();
+     
+        currSchedd["NumShadowStarts"] = currSchedd["NumShadowStarts"].toLocaleString();
+        currSchedd["Request Gpus"] = currSchedd["Request Gpus"].toLocaleString();
+        printScheddList[key] = currSchedd;
+    })
+
+
+
 
    
 }
@@ -348,6 +407,25 @@ async function exportResult() {
         };
         console.log("File has been created");
     });
+
+    let userPrintFile = JSON.stringify(printUserList);
+    fs.writeFile('userGpuPrintStats.json', userPrintFile, 'utf8', (err) => {
+        if (err) {
+            console.error(err);
+            return;
+        };
+        console.log("File has been created");
+    });
+    let scheddPrintFile = JSON.stringify(printScheddList);
+    fs.writeFile('scheddGpuPrintStats.json', scheddPrintFile, 'utf8', (err) => {
+        if (err) {
+            console.error(err);
+            return;
+        };
+        console.log("File has been created");
+    });
+
+
     // let testfile = JSON.stringify(removelist);
     // fs.writeFile('userList.json', testfile, 'utf8', (err) => {
     //     if (err) {
