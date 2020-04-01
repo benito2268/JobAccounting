@@ -82,7 +82,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
   html = html + """  
     </style>
     </head>
-    <body><p>Attachment are the csv file for CHTC Usage Report <b>(Test Only)</b></p>
+    <body>
     <p style="text-align: center; display: block; margin: auto">CHTC per user usage for """  + str(current_time) +  """   
     </p>
     {usertable}
@@ -119,7 +119,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
-  msg['Subject'] = "Test - CHTC Usage Report for " + current_time
+  msg['Subject'] = "CHTC Usage Report for " + current_time
 
 #   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
 #   msg.attach(MIMEText(str(body), 'html'))
@@ -195,7 +195,7 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
   html = html + """  
     </style>
     </head>
-    <body><p>Attachment are the csv file for CHTC GPU Report <b>(Test Only)</b></p>
+    <body>
     <p style="text-align: center; display: block; margin: auto">CHTC per user usage for """  + str(current_time) +  """   
     </p>
     {usertable}
@@ -227,7 +227,7 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
   msg['To'] = ", ".join(toaddr)
-  msg['Subject'] = "Test - CHTC GPU Usage Report for " + current_time
+  msg['Subject'] = "CHTC GPU Usage Report for " + current_time
 
 #   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
 #   msg.attach(MIMEText(str(body), 'html'))
