@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-toaddr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
-# toaddr = ['yhan222@wisc.edu']
-
-
+to_cpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
+to_gpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
+# to_cpu_addr = ['yhan222@wisc.edu']
+# to_gpu_addr = ['hym980321@gmail.com']
 
 def convertFile(input_Filename, output_Filename):
     import json 
@@ -118,7 +118,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
   fromaddr = "chtc.memory@gmail.com"
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
-  msg['To'] = ", ".join(toaddr)
+  msg['To'] = ", ".join(to_cpu_addr)
   msg['Subject'] = "CHTC Usage Report for " + current_time
 
 #   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
@@ -152,7 +152,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
       server.login("chtc.memory", "uwmadison_chtc")
       
       text = msg.as_string()
-      server.sendmail(fromaddr, toaddr, text)
+      server.sendmail(fromaddr, to_cpu_addr, text)
 
   except Exception as e:
       print(e)
@@ -226,7 +226,7 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
   fromaddr = "chtc.memory@gmail.com"
   msg = MIMEMultipart()
   msg['From'] = 'UW Madison CHTC Usage Report'
-  msg['To'] = ", ".join(toaddr)
+  msg['To'] = ", ".join(to_gpu_addr)
   msg['Subject'] = "CHTC GPU Usage Report for " + current_time
 
 #   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
@@ -259,7 +259,7 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
       server.login("chtc.memory", "uwmadison_chtc")
       
       text = msg.as_string()
-      server.sendmail(fromaddr, toaddr, text)
+      server.sendmail(fromaddr, to_gpu_addr, text)
 
   except Exception as e:
       print(e)
