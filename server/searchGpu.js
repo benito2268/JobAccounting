@@ -22,22 +22,19 @@ let removelist = {}
     const totalHeapSizeGb = (totalHeapSize / 1024 / 1024 / 1024).toFixed(2);
     console.log('totalHeapSizeGb: ', totalHeapSizeGb);
 
-async function search(indexName) {
+async function search(indexName, input_date) {
     let response =  await esClient.search({
         index: indexName,
         scroll: "10s",
         size: 1000,
         body: {
-            // 'query': {
-            //     "match_all": {}
-            // } 
+
             
             'query': {
                     range : {
                         "CompletionDate" : {
-                            "gte" : (new Date(new Date().setDate(new Date().getDate()-1)).setHours(0,0,0,0)) / 1000 ,
-                            "lte" : (new Date(new Date().setDate(new Date().getDate()-1)).setHours(23,59,59,00)) / 1000,
-                            // "boost" : 1.0
+                            "gte" : (new Date(input_date + " CST").setHours(0,0,0,0)) / 1000 ,
+                            "lte" : (new Date(input_date + " CST").setHours(23,59,59,0)) / 1000,
                         }
                     }
                 } 
@@ -69,9 +66,8 @@ async function search(indexName) {
 };
 
 async function runPass() {
-    await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10));
-    // console.log(new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10));
-    // await search('chtc-2020-03-05')
+    // await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10));
+    await search('chtc-' + process.argv[2], process.argv[2]);
     await processResult(jobList);
     await exportResult()
 }
@@ -239,8 +235,6 @@ async function processResult(jobList){
 
     Object.entries(userList).forEach(([key, value]) => {
         let currUser = {};
-        // currUser["Completed Hours"] = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
-        // currUser["Used Hours"] = Math.round((value.CoreHr + Number.EPSILON) * 100) / 100;
         currUser["Completed Hours"] = Math.round(value.CommittedCoreHr);
         currUser["Used Hours"] = Math.round(value.CoreHr);
         currUser["Uniq Job Ids"] = value.Jobs;
@@ -248,10 +242,16 @@ async function processResult(jobList){
         let currMemory = userMemoryList[key];
         currMemory.sort(function(a,b){return a - b});
         let median_index = Math.floor(currMemory.length / 2);
-        // currUser["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2) * 100) / 100;
-        // currUser["Max Mem"] = Math.round(currMemory[currMemory.length - 1] * 100) / 100;
+        
         currUser["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2));
         currUser["Max Mem"] = Math.round(currMemory[currMemory.length - 1]);
+
+        if (Number.isNaN(currUser["Used Mem"])) {
+            currUser["Used Mem"] = 0;
+        }
+        if (Number.isNaN(currUser["Max Mem"])) {
+            currUser["Max Mem"] = 0;
+        }
 
         currUser["Request Cpus"] = value.RequestCpus;
         currUser["Request Gpus"] = value.RequestGpus;
@@ -295,10 +295,16 @@ async function processResult(jobList){
         let currMemory = scheddMemoryList[key];
         currMemory.sort(function(a,b){return a - b});
         let median_index = Math.floor(currMemory.length / 2);
-        // currSchedd["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2) * 100) / 100;
-        // currSchedd["Max Mem"] = Math.round(currMemory[currMemory.length - 1] * 100) / 100;
+        
         currSchedd["Used Mem"] = Math.round((currMemory.length % 2 !== 0  ? currMemory[median_index] :  (currMemory[median_index - 1] + currMemory[median_index]) / 2));
         currSchedd["Max Mem"] = Math.round(currMemory[currMemory.length - 1]);
+
+        if (Number.isNaN(currSchedd["Used Mem"])) {
+            currSchedd["Used Mem"] = 0;
+        }
+        if (Number.isNaN(currSchedd["Max Mem"])) {
+            currSchedd["Max Mem"] = 0;
+        }
 
         currSchedd["Request Cpus"] = value.RequestCpus;
         currSchedd["Short Jobs"] = value.ShortJobStarts;
@@ -426,27 +432,20 @@ async function exportResult() {
     });
 
 
-    // let testfile = JSON.stringify(removelist);
-    // fs.writeFile('userList.json', testfile, 'utf8', (err) => {
-    //     if (err) {
-    //         console.error(err);
-    //         return;
-    //     };
-    //     console.log("File has been created");
-    // });
+
 
 }
 
 //Get all the indices
-async function indices() {
-    indexList = await esClient.indices.stats({
-        index: 'chtc-2020-02-18', 
-        format: 'json'
-    })
-    // .then(reuslt => console.log(reuslt))
-    // .catch(err => console.error(`Error connecting to the es client: ${err}`));
-    console.log(indexList);
-};
+// async function indices() {
+//     indexList = await esClient.indices.stats({
+//         index: 'chtc-2020-02-18', 
+//         format: 'json'
+//     })
+//     .then(reuslt => console.log(reuslt))
+//     .catch(err => console.error(`Error connecting to the es client: ${err}`));
+//     console.log(indexList);
+// };
 // indices();
 
 

@@ -1,4 +1,0 @@
-Schedd,Completed Hours,Used Hours,Uniq Job Ids,Request Mem,Used Mem,Max Mem,Request Cpus,ShortJobStarts,All Starts,Request Gpus,Min,25%,Median,75%,Max,Mean,Std
-sub-simprod-2.icecube.wisc.edu,2710.28,6671.93,2292,47726,318,48829,2,1803,2728,1,0,0.02,0.02,0.02,143.04,1.18,5.55
-submittest0000.chtc.wisc.edu,51.07,51.07,52,2,1,2,1,0,52,1,0.03,1,1,1,1,0.98,0.13
-submit2.chtc.wisc.edu,1170.17,1170.17,7,4216,1465,4395,20,2,7,1,0.01,0.01,0.24,243.56,490.54,167.17,221.4

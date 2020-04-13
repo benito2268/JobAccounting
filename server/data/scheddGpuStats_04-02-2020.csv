@@ -1,3 +1,0 @@
-Schedd,Completed Hours,Used Hours,Uniq Job Ids,Request Mem,Used Mem,Max Mem,Request Cpus,Short Jobs,All Jobs,NumShadowStarts,Request Gpus,Min,25%,Median,75%,Max,Mean,Std
-submit2.chtc.wisc.edu,41,42,117,35840,42,18213,20,29,119,123,1,00:00,00:00,00:01,00:05,03:00,00:08,00:26
-submit-1.chtc.wisc.edu,3,3,12,16384,12208,14649,1,0,12,12,1,00:05,00:09,00:16,00:19,00:27,00:16,00:07

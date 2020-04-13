@@ -1,4 +1,0 @@
-User,Completed Hours,Used Hours,Uniq Job Ids,Request Mem,Used Mem,Max Mem,Request Cpus,Request Gpus,Short Jobs,All Jobs,NumShadowStarts,Min,25%,Median,75%,Max,Mean,Std,ScheddName,Schedd
-ice3simusr@icecube.wisc.edu,6539,10471,1591,3300,1221,4883,2,1,1,1976,2222,00:09,00:09,00:40,05:02,59:02,03:17,05:16,sub-simprod-2.icecube.wisc.edu,icecube
-kelkar2@chtc.wisc.edu,382,382,124,10240,687,3950,8,1,90,124,124,00:00,00:00,00:00,00:49,02:07,00:23,00:40,submit-1.chtc.wisc.edu,chtc
-nu_bemowr@chtc.wisc.edu,13,13,1,65536,73243,73243,2,1,0,1,1,06:20,06:20,06:20,06:20,06:20,06:20,00:00,learn.chtc.wisc.edu,chtc

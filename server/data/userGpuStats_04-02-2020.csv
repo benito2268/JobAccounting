@@ -1,6 +1,0 @@
-User,Completed Hours,Used Hours,Uniq Job Ids,Request Mem,Used Mem,Max Mem,Request Cpus,Request Gpus,Short Jobs,All Jobs,NumShadowStarts,Min,25%,Median,75%,Max,Mean,Std,ScheddName,Schedd
-jxie58@chtc.wisc.edu,27,27,1,10000,2686,2686,20,1,0,1,1,01:21,01:21,01:21,01:21,01:21,01:21,00:00,submit2.chtc.wisc.edu,chtc
-jzhang879@chtc.wisc.edu,9,9,5,35840,7738,18213,1,1,0,6,6,00:04,00:04,02:13,02:13,03:00,01:52,01:05,submit2.chtc.wisc.edu,chtc
-sgelman2@chtc.wisc.edu,3,3,12,16384,12208,14649,1,1,0,12,12,00:05,00:09,00:16,00:19,00:27,00:16,00:07,submit-1.chtc.wisc.edu,chtc
-ckoch5@chtc.wisc.edu,3,3,43,1024,1,20,1,1,0,44,44,00:01,00:02,00:05,00:05,00:06,00:03,00:01,submit2.chtc.wisc.edu,chtc
-stsievert@chtc.wisc.edu,2,2,68,2048,1406,1585,1,1,29,68,72,00:00,00:00,00:01,00:01,00:59,00:02,00:07,submit2.chtc.wisc.edu,chtc

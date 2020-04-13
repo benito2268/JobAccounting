@@ -1,2 +1,0 @@
-scheedName,Jobs,NumJobStarts,CoreHr,CommittedCoreHr,Requestgpus,JobGpus,RequestCpus,MemoryUsage,MemoryMB
-sub-simprod-2.icecube.wisc.edu,263,278,3890.74,3047.94,8,8,58,48829,47569

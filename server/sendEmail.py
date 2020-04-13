@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-to_cpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
-to_gpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
-# to_cpu_addr = ['yhan222@wisc.edu']
-# to_gpu_addr = ['hym980321@gmail.com']
+# to_cpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
+# to_gpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
+to_cpu_addr = ['yhan222@wisc.edu']
+to_gpu_addr = ['yhan222@wisc.edu']
 
 def convertFile(input_Filename, output_Filename):
     import json 
@@ -33,9 +33,7 @@ def convertFile(input_Filename, output_Filename):
         content.insert(0, currObs)
         csv_writer.writerow(content) 
     output_file.close()
-    # df = pd.read_csv("./data/" + output_Filename)
-    # df = df.sort_values(by=['Completed Hours'], ascending=False)
-    # df.to_csv("./data/" + output_Filename, index=False) 
+
 
 
 def color_tr(s):
@@ -229,9 +227,7 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
   msg['To'] = ", ".join(to_gpu_addr)
   msg['Subject'] = "CHTC GPU Usage Report for " + current_time
 
-#   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
-#   msg.attach(MIMEText(str(body), 'html'))
-    # html_body = MIMEText(html, 'html');
+
   msg.attach(MIMEText(html, 'html'))
 
   part = MIMEBase('application', "octet-stream")
@@ -266,17 +262,42 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
   finally:
       server.quit() 
 
+def remove_file(file_name):
+  import os
+  if os.path.exists(file_name):
+    os.remove(file_name)
+  else:
+    print("The file does not exist")
 
 if __name__ == '__main__':
     import time
     from datetime import datetime, timedelta
     import os 
+    import sys
+    
+    
     yest_date = datetime.now() - timedelta(days = 1)
-    current_time = yest_date.strftime("%m-%d-%Y")
+
+    # Check the Argument
+    if len(sys.argv) == 2:
+      current_time = sys.argv[1]
+      str_arr = current_time.split("-")
+      if len(str_arr) == 3:
+        if int(str_arr[0]) < 1900 or int(str_arr[0]) > 2200 or int(str_arr[1]) < 1 or int(str_arr[1]) > 12 or int(str_arr[2]) < 1 or int(str_arr[2]) > 31:
+          sys.stderr.write("""\n\033[1mERROR: Please check your argument\033[0m\n\n""")
+          sys.exit(0)
+      else:
+        sys.stderr.write("""\n\033[1mERROR: Please check your argument\033[0m\n\n""")
+        sys.exit(0)
+    elif len(sys.argv) == 1:
+      current_time = yest_date.strftime("%Y-%m-%d")
+    else:
+      sys.stderr.write("""\n\033[1mERROR: Please check your argument\033[0m\n\n""")
+      sys.exit(0)
     os.chdir("/home/yhan222/nodejs-elasticsearch/server") 
-    os.system("~/bin/node --max-old-space-size=8192 searchGpu.js")
+    os.system("~/bin/node --max-old-space-size=8192 searchGpu.js " + current_time)
     time.sleep(1)
-    os.system("~/bin/node --max-old-space-size=8192 getData.js")
+    os.system("~/bin/node --max-old-space-size=8192 searchUser.js " + current_time)
     time.sleep(1)
     userFileName = "userStats_" + str(current_time) +".csv"
     scheddFileName = "scheddStats_" + str(current_time) +  ".csv"
@@ -305,3 +326,23 @@ if __name__ == '__main__':
     send_user_email(current_time, userFileName, scheddFileName, userPrintFileName, scheddPrintFileName)
     time.sleep(2)
     send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrintFileName, scheddGpuPrintFileName)
+    time.sleep(2)
+    remove_file(userFileName)
+    time.sleep(2)
+    remove_file(scheddFileName)
+    time.sleep(2)
+    remove_file(scheddGpuFileName)
+    time.sleep(2)
+    remove_file(userGpuFileName)
+    time.sleep(2)
+
+    remove_file(userPrintFileName)
+    time.sleep(2)
+    remove_file(scheddPrintFileName)
+    time.sleep(2)
+    remove_file(userGpuPrintFileName)
+    time.sleep(2)
+    remove_file(scheddGpuPrintFileName)
+
+    
+    
