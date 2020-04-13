@@ -43,6 +43,7 @@ In order to schedule the job running regularly, we may need to use the [crontab]
 
 The following is an example of the scripts running every day at 6:58 am.
 ```bash
+crontab -l
 58 06 * * * /home/yhan222/miniconda3/bin/python /home/yhan222/nodejs-elasticsearch/server/sendEmail.py
 ```
 
