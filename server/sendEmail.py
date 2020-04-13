@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
-# to_cpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
-# to_gpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
-to_cpu_addr = ['yhan222@wisc.edu']
-to_gpu_addr = ['yhan222@wisc.edu']
+to_cpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
+to_gpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
+# to_cpu_addr = ['yhan222@wisc.edu']
+# to_gpu_addr = ['yhan222@wisc.edu']
 
 def convertFile(input_Filename, output_Filename):
     import json 
