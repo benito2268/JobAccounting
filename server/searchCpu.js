@@ -1,7 +1,6 @@
 const esClient = require('./client');
 var cal = require('mathjs');
-let testList;
-let indexList;
+
 let jobList = [];
 let userList = {};
 let scheddList = {};
@@ -21,6 +20,7 @@ const totalHeapSize = v8.getHeapStatistics().total_available_size;
 const totalHeapSizeGb = (totalHeapSize / 1024 / 1024 / 1024).toFixed(2);
 console.log('totalHeapSizeGb: ', totalHeapSizeGb);
 
+// This function query the data from elastic search and store into an array
 async function search(indexName, input_date) {
     let response =  await esClient.search({
         index: indexName,
@@ -43,7 +43,6 @@ async function search(indexName, input_date) {
     for (let curr of tempJobList) {
         jobList.push(curr);
     }
-    
     while (jobList.length < jobListLength) {
         
         response = await esClient.scroll({
@@ -61,6 +60,7 @@ async function search(indexName, input_date) {
     console.log(indexName,jobList.length)
 };
 
+// Main Function
 async function runPass() {
     await search('chtc-' + process.argv[2], process.argv[2]);
     await processResult(jobList);
@@ -68,6 +68,7 @@ async function runPass() {
 }
 runPass()
 
+// Traverse the joblist and retrieve the information that we need 
 async function processResult(jobList){
     jobList.forEach(element => {
         let currObs = element._source;
@@ -79,7 +80,6 @@ async function processResult(jobList){
             content.CoreHr = currObs.CoreHr;
             content.Jobs = 1;
             content.RequestMemory = typeof currObs.RequestMemory === 'undefined' ? 0 : currObs.RequestMemory;
-            // content.MemoryUsage = typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage;
             content.RequestCpus = typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus;
             if (currObs.CompletionDate - currObs.JobCurrentStartDate < 60) {
                 content.ShortJobStarts = 1;
@@ -113,15 +113,12 @@ async function processResult(jobList){
             content.CoreHr += currObs.CoreHr;
             content.CommittedCoreHr += currObs.CommittedCoreHr;
             content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
-            // content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
             content.RequestMemory = Math.max(content.RequestMemory, typeof currObs.RequestMemory === 'undefined' ? 0 : currObs.RequestMemory);
             if (currObs.CompletionDate - currObs.JobCurrentStartDate < 60) {
                 content.ShortJobStarts ++;
             } 
             content.NumShadowStarts += typeof currObs.NumShadowStarts === 'undefined' ? 0 : currObs.NumShadowStarts;
-                
-
-            
+        
             if (typeof currObs.WallClockHr !== 'undefined') {
                 content.WallClockHr += currObs.WallClockHr ;
                 currHour.push(currObs.WallClockHr );
@@ -174,7 +171,6 @@ async function processResult(jobList){
             content.CoreHr += currObs.CoreHr;
             content.CommittedCoreHr += currObs.CommittedCoreHr;
             content.RequestCpus = Math.max(content.RequestCpus, typeof currObs.RequestCpus === 'undefined' ? 0 : currObs.RequestCpus);
-            // content.MemoryUsage = Math.max(content.MemoryUsage, typeof currObs.MemoryUsage === 'undefined' ? 0 : currObs.MemoryUsage);
             content.RequestMemory = Math.max(content.RequestMemory, typeof currObs.RequestMemory === 'undefined' ? 0 : currObs.RequestMemory);
             if (currObs.CompletionDate - currObs.JobCurrentStartDate < 60) {
                 content.ShortJobStarts ++;
@@ -193,8 +189,8 @@ async function processResult(jobList){
             scheddList[currObs.ScheddName] = content;
         }
     });
-    // Reorder
     
+    // Reorder the user list
     Object.entries(userList).forEach(([key, value]) => {
         let currUser = {};
         currUser["Completed Hours"] = Math.round(value.CommittedCoreHr);
@@ -245,6 +241,8 @@ async function processResult(jobList){
 
         unsortUserList[key] = currUser;
     })
+
+    // Reorder the scheddList
     Object.entries(scheddList).forEach(([key, value]) => {
 
         let currSchedd = {};
@@ -319,7 +317,6 @@ async function processResult(jobList){
         currUser["Uniq Job Ids"] = currUser["Uniq Job Ids"].toLocaleString();
         
         currUser["Request Mem"] = currUser["Request Mem"].toLocaleString();
-        // console.log(currUser["Used Mem"], key)
         currUser["Used Mem"] = currUser["Used Mem"].toLocaleString();
         currUser["Max Mem"] = currUser["Max Mem"].toLocaleString();
 
@@ -354,6 +351,7 @@ async function processResult(jobList){
     
 }
 
+// Function for changing the format of hours
 function getHours(input_hours) {
     let decimalTime = input_hours * 60 * 60;
     let hours = Math.floor((decimalTime / (60 * 60)));
@@ -376,6 +374,7 @@ function getHours(input_hours) {
     return ("" + hours + ":" + minutes);
 } 
 
+// Generate the result in json
 async function exportResult() {
     var fs = require('fs');
     let userFile = JSON.stringify(finalUserList);
@@ -413,21 +412,3 @@ async function exportResult() {
     });
 
 }
-
-//Get all the indices
-// async function indices() {
-//     indexList = await esClient.indices.stats({
-//         index: 'chtc-2020-02-18', 
-//         format: 'json'
-//     })
-//     // .then(reuslt => console.log(reuslt))
-//     // .catch(err => console.error(`Error connecting to the es client: ${err}`));
-//     console.log(indexList);
-// };
-// indices();
-
-
-
-
-  
-

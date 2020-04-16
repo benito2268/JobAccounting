@@ -1,10 +1,13 @@
 #!/usr/bin/python
 
-to_cpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
-to_gpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
-# to_cpu_addr = ['yhan222@wisc.edu']
-# to_gpu_addr = ['yhan222@wisc.edu']
+# The following is the email address list for CPU stats
+# to_cpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
+# The following is the email address list for GPU stats
+# to_gpu_addr = ['yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
+to_cpu_addr = ['yhan222@wisc.edu']
+to_gpu_addr = ['yhan222@wisc.edu']
 
+# Convert the json file to csv
 def convertFile(input_Filename, output_Filename):
     import json 
     import csv 
@@ -34,8 +37,7 @@ def convertFile(input_Filename, output_Filename):
         csv_writer.writerow(content) 
     output_file.close()
 
-
-
+# Shade differnt color for every other row 
 def color_tr(s):
     import re
     n = [1]
@@ -44,7 +46,7 @@ def color_tr(s):
         return '<tr>' if n[0] % 2 else '<tr bgcolor="MistyRose">'
     return re.sub(r'<tr>', repl, s)
 
-
+# Function to send email for CPU stats
 def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, scheedPrintFile):
   from email.mime.multipart import MIMEMultipart
   from email.mime.text  import MIMEText
@@ -119,9 +121,6 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
   msg['To'] = ", ".join(to_cpu_addr)
   msg['Subject'] = "CHTC Usage Report for " + current_time
 
-#   body = "Attachment are the csv file for CHTC Usage and GPU Report <b>(Test Only)</b> <br> The reports traverse for the last three day's indices with the completion date equal to " + current_time
-#   msg.attach(MIMEText(str(body), 'html'))
-    # html_body = MIMEText(html, 'html');
   
   msg.attach(MIMEText(html, 'html'))
 
@@ -157,6 +156,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
   finally:
       server.quit() 
 
+# Function to send email for GPU stats
 def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrintFile, scheedGpuPrintFile):
   from email.mime.multipart import MIMEMultipart
   from email.mime.text  import MIMEText
@@ -262,6 +262,7 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
   finally:
       server.quit() 
 
+# Function to remove the json or csv file
 def remove_file(file_name):
   import os
   if os.path.exists(file_name):
@@ -294,11 +295,15 @@ if __name__ == '__main__':
     else:
       sys.stderr.write("""\n\033[1mERROR: Please check your argument\033[0m\n\n""")
       sys.exit(0)
-    os.chdir("/home/yhan222/nodejs-elasticsearch/server") 
-    os.system("~/bin/node --max-old-space-size=8192 searchGpu.js " + current_time)
+    
+    # Run the js script to generate json file from elasticsearch server
+    os.chdir("/opt/scripts/JobAccounting/server") 
+    os.system("/usr/bin/node --max-old-space-size=8192 searchGpu.js " + current_time)
     time.sleep(1)
-    os.system("~/bin/node --max-old-space-size=8192 searchUser.js " + current_time)
+    os.system("/usr/bin/node --max-old-space-size=8192 searchCpu.js " + current_time)
     time.sleep(1)
+    
+    # Convert json file to csv
     userFileName = "userStats_" + str(current_time) +".csv"
     scheddFileName = "scheddStats_" + str(current_time) +  ".csv"
     convertFile("scheddStats.json", scheddFileName)
@@ -322,11 +327,14 @@ if __name__ == '__main__':
     time.sleep(1)
     convertFile("scheddGpuPrintStats.json", scheddGpuPrintFileName)
 
-    os.chdir("/home/yhan222/nodejs-elasticsearch/server/data") 
+    # Send email to the user in email list
+    os.chdir("/opt/scripts/JobAccounting/server/data") 
     send_user_email(current_time, userFileName, scheddFileName, userPrintFileName, scheddPrintFileName)
     time.sleep(2)
     send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrintFileName, scheddGpuPrintFileName)
     time.sleep(2)
+    
+    # Remove unnecessary file
     remove_file(userFileName)
     time.sleep(2)
     remove_file(scheddFileName)
@@ -343,6 +351,24 @@ if __name__ == '__main__':
     remove_file(userGpuPrintFileName)
     time.sleep(2)
     remove_file(scheddGpuPrintFileName)
+
+    os.chdir("/opt/scripts/JobAccounting/server") 
+    remove_file("scheddGpuPrintStats.json")
+    time.sleep(1)
+    remove_file("scheddGpuStats.json")
+    time.sleep(1)
+    remove_file("scheddPrintStats.json")
+    time.sleep(1)
+    remove_file("scheddStats.json")
+    time.sleep(1)
+
+    remove_file("userGpuPrintStats.json")
+    time.sleep(1)
+    remove_file("userPrintStats.json")
+    time.sleep(1)
+    remove_file("userGpuStats.json")
+    time.sleep(1)
+    remove_file("userStats.json")
 
     
     

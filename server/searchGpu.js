@@ -17,11 +17,12 @@ let unsortScheddList = {};
 let removelist = {}
 
 // Check the memory size
-    const v8 = require('v8');
-    const totalHeapSize = v8.getHeapStatistics().total_available_size;
-    const totalHeapSizeGb = (totalHeapSize / 1024 / 1024 / 1024).toFixed(2);
-    console.log('totalHeapSizeGb: ', totalHeapSizeGb);
+const v8 = require('v8');
+const totalHeapSize = v8.getHeapStatistics().total_available_size;
+const totalHeapSizeGb = (totalHeapSize / 1024 / 1024 / 1024).toFixed(2);
+console.log('totalHeapSizeGb: ', totalHeapSizeGb);
 
+// This function query the data from elastic search and store into an array
 async function search(indexName, input_date) {
     let response =  await esClient.search({
         index: indexName,
@@ -45,34 +46,29 @@ async function search(indexName, input_date) {
     for (let curr of tempJobList) {
         jobList.push(curr);
     }
-    //jobListLength
-    // console.log(jobListLength)
     while (jobList.length < jobListLength) {
         response = await esClient.scroll({
             scrollId: response._scroll_id,
             scroll: '10s',
         })
         tempJobList = response.hits.hits;
-        // jobList = jobList.concat(tempJobList)
         for (let curr of tempJobList) {
             jobList.push(curr);
         }
-        // console.log("hello3");
-        // tempLength += 1000;
-        // console.log("Current Size: " + jobList.length);
     }
     console.log(indexName,jobList.length)
 
 };
 
+// Main Function
 async function runPass() {
-    // await search('chtc-' + new Date(new Date().setDate(new Date().getDate()-1)).toISOString().slice(0,10));
     await search('chtc-' + process.argv[2], process.argv[2]);
     await processResult(jobList);
     await exportResult()
 }
 runPass()
 
+// Function for changing the format of hours
 function getHours(input_hours) {
     let decimalTime = input_hours * 60 * 60;
     let hours = Math.floor((decimalTime / (60 * 60)));
@@ -95,8 +91,8 @@ function getHours(input_hours) {
     return ("" + hours + ":" + minutes);
 } 
 
+// Traverse the joblist and retrieve the information that we need 
 async function processResult(jobList){
-    
     jobList.forEach(element => {
         let currObs = element._source;
 
@@ -121,7 +117,6 @@ async function processResult(jobList){
                 content.NumShadowStarts = typeof currObs.NumShadowStarts === 'undefined' ? 0 : currObs.NumShadowStarts;
                 
                 content.JobGpus =  typeof currObs.JobGpus === 'undefined' ? 0 : currObs.JobGpus;
-                // content.GPUsProvisioned = currObs.GPUsProvisioned;
                 content.ScheddName = currObs.ScheddName;
                 content.Schedd = currObs.ScheddName.split('.')[1];
                 
@@ -261,20 +256,13 @@ async function processResult(jobList){
         let currHour = userHourList[key];
         currHour.sort(function(a,b){return a - b});
         median_index = Math.floor(currHour.length / 2);
-        // currUser["Min"]  = Math.round(currHour[0] * 100)/ 100;
         currUser["Min"]  = getHours(currHour[0]);
         let per25 = (Math.floor(currHour.length*.25) - 1) >= 0 ? Math.floor(currHour.length*.25) - 1 : 0;
-        // currUser["25%"] =  Math.round(currHour[per25] * 100)/ 100;
-        // currUser["Median"] = Math.round((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2) * 100) / 100;
         currUser["25%"] = getHours(currHour[per25]);
         currUser["Median"] = getHours((currHour.length % 2 !== 0  ? currHour[median_index] :  (currHour[median_index - 1] + currHour[median_index]) / 2));
 
 
         let per75 = (Math.floor(currHour.length*.75) - 1) >= 0 ? Math.floor(currHour.length*.75) - 1 : 0;
-        // currUser["75%"] =  Math.round(currHour[per75] * 100)/ 100;
-        // currUser["Max"] = Math.round(currHour[currHour.length - 1] * 100) / 100;
-        // currUser["Mean"] = Math.round((value.CommittedCoreHr / currHour.length) * 100 )/100;
-        // currUser["Std"] = Math.round(cal.std(currHour) * 100) / 100;
         currUser["75%"] = getHours(currHour[per75]);
         currUser["Max"] = getHours(currHour[currHour.length - 1]);
         currUser["Mean"] = getHours((value.WallClockHr / currHour.length));
@@ -286,8 +274,6 @@ async function processResult(jobList){
     })
     Object.entries(scheddList).forEach(([key, value]) => {
         let currSchedd = {};
-        // currSchedd["Completed Hours"] = Math.round((value.CommittedCoreHr + Number.EPSILON) * 100) / 100
-        // currSchedd["Used Hours"] = Math.round((value.CoreHr + Number.EPSILON) * 100) / 100;
         currSchedd["Completed Hours"] = Math.round(value.CommittedCoreHr);
         currSchedd["Used Hours"] = Math.round(value.CoreHr);
         currSchedd["Uniq Job Ids"] = value.Jobs;
@@ -311,12 +297,9 @@ async function processResult(jobList){
         currSchedd["All Jobs"] = value.NumJobStarts;
         currSchedd["NumShadowStarts"] = value.NumShadowStarts;
         currSchedd["Request Gpus"] = value.RequestGpus;
-        // currSchedd["Gpus Usage"] = value.JobGpus;
-        
         let currHour = scheddHourList[key];
         currHour.sort(function(a,b){return a - b});
         median_index = Math.floor(currHour.length / 2);
-        // currSchedd["Min"]  = Math.round(currHour[0] * 100)/ 100;
         currSchedd["Min"]  = getHours(currHour[0]);
         let per25 = (Math.floor(currHour.length*.25) - 1) >= 0 ? Math.floor(currHour.length*.25) - 1 : 0;
         currSchedd["25%"] = getHours(currHour[per25]);
@@ -394,10 +377,10 @@ async function processResult(jobList){
    
 }
 
+// Generate the result in json
 async function exportResult() {
     var fs = require('fs');
     let userFile = JSON.stringify(finalUserList);
-    // fs.writeFileSync('userGpuStats.json', userFile);
     fs.writeFile('userGpuStats.json', userFile, 'utf8', (err) => {
         if (err) {
             console.error(err);
@@ -430,23 +413,7 @@ async function exportResult() {
         };
         console.log("File has been created");
     });
-
-
-
-
 }
-
-//Get all the indices
-// async function indices() {
-//     indexList = await esClient.indices.stats({
-//         index: 'chtc-2020-02-18', 
-//         format: 'json'
-//     })
-//     .then(reuslt => console.log(reuslt))
-//     .catch(err => console.error(`Error connecting to the es client: ${err}`));
-//     console.log(indexList);
-// };
-// indices();
 
 
 
