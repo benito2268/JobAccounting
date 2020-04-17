@@ -295,7 +295,8 @@ if __name__ == '__main__':
       sys.exit(0)
     
     # Run the js script to generate json file from elasticsearch server
-    os.mkdir("/opt/scripts/JobAccounting/server/data")
+    if not os.path.exists("/opt/scripts/JobAccounting/server/data"):
+      os.mkdir("/opt/scripts/JobAccounting/server/data")
     os.chdir("/opt/scripts/JobAccounting/server") 
     os.system("/usr/bin/node --max-old-space-size=8192 searchGpu.js " + current_time)
     time.sleep(1)
