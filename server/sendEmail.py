@@ -251,7 +251,7 @@ def sendMail(sender, recipient, message):
         print("Failed to send to " + recipient)
         print("Error code: " + result)
     else:
-        print("Squid report sent to " + recipient)
+        print("Job Accounting report sent to " + recipient)
 
 # Function to remove the json or csv file
 def remove_file(file_name):
