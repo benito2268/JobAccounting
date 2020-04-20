@@ -135,7 +135,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
   msg.attach(part)
 
   for toaddr in to_cpu_addr:
-    sendMail(fromaddr,toaddr,msg)  
+    sendMail(fromaddr, toaddr, msg)  
 
 # Function to send email for GPU stats
 def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrintFile, scheedGpuPrintFile):
