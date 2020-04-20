@@ -113,9 +113,9 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
 
 
 
-  fromaddr = "chtc.memory@gmail.com"
+  fromaddr = "accounting@chtc.wisc.edu"
   msg = MIMEMultipart()
-  msg['From'] = 'UW Madison CHTC Usage Report'
+  msg['From'] = 'accounting@chtc.wisc.edu'
   msg['To'] = ", ".join(to_cpu_addr)
   msg['Subject'] = "CHTC Usage Report for " + current_time
 
@@ -136,7 +136,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
 
   try:
     
-      server = smtplib.SMTP('smtp.gmail.com', 587)
+      server = smtplib.SMTP('smtp.wiscmail.wisc.edu', 25)
       
       server.ehlo()
       server.starttls()
@@ -144,7 +144,7 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
       server.ehlo()
       
      
-      server.login("chtc.memory", "uwmadison_chtc")
+      # server.login("chtc.memory", "uwmadison_chtc")
       
       text = msg.as_string()
       server.sendmail(fromaddr, to_cpu_addr, text)
@@ -219,9 +219,9 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
 
   html = color_tr(html)
 
-  fromaddr = "chtc.memory@gmail.com"
+  fromaddr = "accounting@chtc.wisc.edu"
   msg = MIMEMultipart()
-  msg['From'] = 'UW Madison CHTC Usage Report'
+  msg['From'] = 'accounting@chtc.wisc.edu'
   msg['To'] = ", ".join(to_gpu_addr)
   msg['Subject'] = "CHTC GPU Usage Report for " + current_time
 
@@ -242,15 +242,14 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
 
   try:
     
-      server = smtplib.SMTP('smtp.gmail.com', 587)
+      server = smtplib.SMTP('smtp.wiscmail.wisc.edu', 25)
       
       server.ehlo()
       server.starttls()
-      
       server.ehlo()
       
      
-      server.login("chtc.memory", "uwmadison_chtc")
+      # server.login("chtc.memory", "uwmadison_chtc")
       
       text = msg.as_string()
       server.sendmail(fromaddr, to_gpu_addr, text)
@@ -369,6 +368,10 @@ if __name__ == '__main__':
     remove_file("userGpuStats.json")
     time.sleep(1)
     remove_file("userStats.json")
+    time.sleep(1)
+    
+    if os.path.exists("/opt/scripts/JobAccounting/server/data"):
+      os.rmdir("/opt/scripts/JobAccounting/server/data")
 
     
     
