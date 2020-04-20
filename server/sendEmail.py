@@ -134,25 +134,8 @@ def send_user_email(current_time, userFileName, scheddFileName, userPrintFile, s
   part.add_header('Content-Disposition', 'attachment', filename = scheddFileName)
   msg.attach(part)
 
-  try:
-    
-      server = smtplib.SMTP('smtp.wiscmail.wisc.edu', 25)
-      
-      server.ehlo()
-      server.starttls()
-      
-      server.ehlo()
-      
-     
-      # server.login("chtc.memory", "uwmadison_chtc")
-      
-      text = msg.as_string()
-      server.sendmail(fromaddr, to_cpu_addr, text)
-
-  except Exception as e:
-      print(e)
-  finally:
-      server.quit() 
+  for toaddr in to_cpu_addr:
+    sendMail(fromaddr,toaddr,msg)  
 
 # Function to send email for GPU stats
 def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrintFile, scheedGpuPrintFile):
@@ -240,24 +223,35 @@ def send_gpu_email(current_time, userGpuFileName, scheddGpuFileName, userGpuPrin
   part.add_header('Content-Disposition', 'attachment', filename = scheddGpuFileName)
   msg.attach(part)
 
-  try:
-    
-      server = smtplib.SMTP('smtp.wiscmail.wisc.edu', 25)
-      
-      server.ehlo()
-      server.starttls()
-      server.ehlo()
-      
-     
-      # server.login("chtc.memory", "uwmadison_chtc")
-      
-      text = msg.as_string()
-      server.sendmail(fromaddr, to_gpu_addr, text)
+  for toaddr in to_gpu_addr:
+    sendMail(fromaddr, toaddr, msg)
+  
 
-  except Exception as e:
-      print(e)
-  finally:
-      server.quit() 
+def sendMail(sender, recipient, message):
+    import dns.resolver
+    import smtplib
+    
+    address = recipient.split('@')
+    domain = address[1]
+    sent = False
+    result = "Error"
+    # Try to send mail using each server on recipient domain until one works
+    for domain in dns.resolver.query(domain, 'MX'):
+        serverDomain = str(domain).split()[1]
+        serverDomain = serverDomain[:-1]
+        try:
+            server = smtplib.SMTP(serverDomain)
+            result = server.sendmail(sender, recipient, message.as_string())
+            server.quit
+            sent = True
+            break
+        except (BaseException, Exception):
+            continue
+    if (not sent):
+        print("Failed to send to " + recipient)
+        print("Error code: " + result)
+    else:
+        print("Squid report sent to " + recipient)
 
 # Function to remove the json or csv file
 def remove_file(file_name):
@@ -369,9 +363,6 @@ if __name__ == '__main__':
     time.sleep(1)
     remove_file("userStats.json")
     time.sleep(1)
-    
+
     if os.path.exists("/opt/scripts/JobAccounting/server/data"):
       os.rmdir("/opt/scripts/JobAccounting/server/data")
-
-    
-    
