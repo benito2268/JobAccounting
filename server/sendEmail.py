@@ -1,9 +1,9 @@
 #!/usr/bin/python
 
 # The following is the email address list for CPU stats
-to_cpu_addr = ['miron@cs.wisc.edu', 'yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
+to_cpu_addr = ['miron@cs.wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu']
 # The following is the email address list for GPU stats
-to_gpu_addr = ['miron@cs.wisc.edu', 'yhan222@wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
+to_gpu_addr = ['miron@cs.wisc.edu', 'ckoch5@wisc.edu', 'gthain@cs.wisc.edu', 'bbockelman@morgridge.org', 'jcpatton@wisc.edu', 'AGitter@morgridge.org']
 
 # Convert the json file to csv
 def convertFile(input_Filename, output_Filename):
