@@ -6,16 +6,21 @@ to_cpu_addr = [
     'ckoch5@wisc.edu',
     'gthain@cs.wisc.edu',
     'jcpatton@wisc.edu',
-    'miron@cs.wisc.edu'
+    'lmichael@wisc.edu',
+    'miron@cs.wisc.edu',
+    'moate@wisc.edu'
 ]
 # The following is the email address list for GPU stats
 to_gpu_addr = [
     'AGitter@morgridge.org',
     'bbockelman@morgridge.org',
     'ckoch5@wisc.edu',
+    'dcooper@morgridge.org',
     'gthain@cs.wisc.edu',
     'jcpatton@wisc.edu',
-    'miron@cs.wisc.edu'
+    'lmichael@wisc.edu',
+    'miron@cs.wisc.edu',
+    'moate@wisc.edu'
 ]
 
 # Convert the json file to csv
