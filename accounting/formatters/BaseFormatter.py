@@ -135,7 +135,7 @@ class BaseFormatter:
                 # First column (blank header) contains row number
                 # except total row contains total number of rows
                 if col == "" and i == 0:
-                    rows[i][j] = default_numeric_fmt(len(rows))
+                    rows[i][j] = default_numeric_fmt(len(rows)-1)
                     continue
                 elif col == "" and value == "":
                     rows[i][j] = default_numeric_fmt(float(i))

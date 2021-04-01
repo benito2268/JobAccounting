@@ -403,7 +403,7 @@ class OsgScheddCpuFilter(BaseFilter):
                     long_job_log = Path.cwd() / "long_job_log.txt"
                     if not long_job_log.exists():
                         with long_job_log.open("w") as f:
-                            f.write("IP\tName\tMips\tHours\tUser\GlobalJobId\n")
+                            f.write("IP\tName\tMips\tHours\tUser\tGlobalJobId\n")
                             f.write(line)
                     else:
                         with long_job_log.open("a") as f:
