@@ -1,4 +1,4 @@
-# Elasticsearch Job Accounting
+# Elasticsearch Job Accounting Scripts
 
 ## Install
 
