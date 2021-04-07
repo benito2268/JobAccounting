@@ -34,7 +34,7 @@ DEFAULT_STYLES = {
         ],
     "table": [
         "font-size: 10pt",
-        "border-collapse: collapse;,
+        "border-collapse: collapse,
 	"border-color: #ffffff",
         ],
     "tr.odd": ["background-color: #fee"],
