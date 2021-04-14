@@ -17,15 +17,6 @@ DEFAULT_COLUMNS = {
     81: "Max MB Sent",
     90: "Avg MB Recv",
     91: "Max MB Recv",
-    
-    100: "Num Short Jobs",
-    110: "Min Hrs",
-    120: "25% Hrs",
-    130: "Med Hrs",
-    140: "75% Hrs",
-    150: "Max Hrs",
-    160: "Mean Hrs",
-    170: "Std Hrs",
 
     200: "Max Rqst Mem MB",
     210: "Med Used Mem MB",
@@ -101,7 +92,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
 
         return self.schedd_collector_host_map[schedd]
 
-    def schedd_filter_executed(self, data, doc):
+    def schedd_filter(self, data, doc):
 
         # Get input dict
         i = doc["_source"]
@@ -109,14 +100,10 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this schedd
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         o = data["Schedds"][schedd]
-	
-	# Filter out jobs that are not removed
-         if i.get("JobStatus", 4) != 3:
-             return
 
-	# Filter out jobs that had 0 execution attempts
-	if i.get("NumJobStarts",1) == 0:
-	     return
+        # Filter out jobs that were not removed
+        if i.get("JobStatus",4) != 3:
+            return
 
         # Filter out jobs that did not run in the OS pool        
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
@@ -151,57 +138,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         for attr in filter_attrs:
             o[attr].append(i.get(attr, None))
 
-    def schedd_filter_not_executed(self, data, doc):
-
-        # Get input dict
-        i = doc["_source"]
-
-        # Get output dict for this schedd
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        o = data["Schedds"][schedd]
-
-        # Filter out jobs that are not removed
-         if i.get("JobStatus", 4) != 3:
-             return
-
-        # Filter out jobs that had 1 or more execution attempts
-        if i.get("NumJobStarts",1) > 0:
-             return
-
-        # Filter out jobs that did not run in the OS pool
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
-            return
-
-        # Get list of attrs
-        filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-
-        # Count number of history ads (i.e. number of unique job ids)
-        o["_NumJobs"].append(1)
-
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
-        # Compute badput fields
-        if (
-                univ not in [7, 12] and
-                i.get("NumJobStarts", 0) > 1 and
-                i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != i.get("CommittedTime")
-            ):
-            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
-            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
-        else:
-            o["_BadWallClockTime"].append(0)
-            o["_NumBadJobStarts"].append(0)
-
-        # Add attr values to the output dict, use None if missing
-        for attr in filter_attrs:
-            o[attr].append(i.get(attr, None))
-
-    def user_filter_executed(self, data, doc):
+    def user_filter(self, data, doc):
 
         # Get input dict
         i = doc["_source"]
@@ -209,14 +146,10 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this user
         user = i.get("User", "UNKNOWN") or "UNKNOWN"
         o = data["Users"][user]
-
-	# Filter out jobs that are not removed
-        if i.get("JobStatus", 4) != 3:
-             return
-
-        # Filter out jobs that had 0 execution attempts
-        if i.get("NumJobStarts",1) == 0:
-             return
+        
+        # Filter out jobs that were not removed
+        if i.get("JobStatus",4) != 3:
+            return
 
         # Filter out jobs that did not run in the OS pool
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
@@ -257,64 +190,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
             else:
                 o[attr].append(i.get(attr, None))
 
-    def user_filter_not_executed(self, data, doc):
-
-        # Get input dict
-        i = doc["_source"]
-
-        # Get output dict for this user
-        user = i.get("User", "UNKNOWN") or "UNKNOWN"
-        o = data["Users"][user]
-
-        # Filter out jobs that are not removed
-        if i.get("JobStatus", 4) != 3:
-             return
-
-        # Filter out jobs that had 1 or more execution attempts
-        if i.get("NumJobStarts",1) > 0:
-             return
-
-        # Filter out jobs that did not run in the OS pool
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
-            return
-
-        # Add custom attrs to the list of attrs
-        filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-        filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
-
-        # Count number of history ads (i.e. number of unique job ids)
-        o["_NumJobs"].append(1)
-
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-	
-	# Compute badput fields
-        if (
-                univ not in [7, 12] and
-                i.get("NumJobStarts", 0) > 1 and
-                i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != i.get("CommittedTime")
-            ):
-            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
-            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
-        else:
-            o["_BadWallClockTime"].append(0)
-            o["_NumBadJobStarts"].append(0)
-
-        # Add attr values to the output dict, use None if missing
-        for attr in filter_attrs:
-            # Use UNKNOWN for missing or blank ProjectName and ScheddName
-            if attr in ["ScheddName", "ProjectName"]:
-                o[attr].append(i.get(attr, "UNKNOWN") or "UNKNOWN")
-            else:
-                o[attr].append(i.get(attr, None))
-
-
-    def project_filter_executed(self, data, doc):
+    def project_filter(self, data, doc):
 
         # Get input dict
         i = doc["_source"]
@@ -322,14 +198,10 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this project
         project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
         o = data["Projects"][project]
-
-	# Filter out jobs that are not removed
-        if i.get("JobStatus", 4) != 3:
-             return
-
-        # Filter out jobs that had 0 execution attempts
-        if i.get("NumJobStarts",1) == 0:
-             return
+     
+        # Filter out jobs that were not removed
+        if i.get("JobStatus",4) != 3:
+            return
 
         # Filter out jobs that did not run in the OS pool
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
@@ -365,76 +237,20 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
             o[attr].append(i.get(attr, None))
-
-    def project_filter_not_executed(self, data, doc):
-
-        # Get input dict
-        i = doc["_source"]
-
-        # Get output dict for this project
-        project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
-        o = data["Projects"][project]
-        
-        # Filter out jobs that are not removed
-        if i.get("JobStatus", 4) != 3:
-             return
-        
-        # Filter out jobs that had 1 or more execution attempts
-        if i.get("NumJobStarts",1) > 0:
-             return
-        
-        # Filter out jobs that did not run in the OS pool
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
-            return
-        
-        # Add custom attrs to the list of attrs
-        filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-        filter_attrs = filter_attrs + ["User"]
-        
-        # Count number of history ads (i.e. number of unique job ids)
-        o["_NumJobs"].append(1)
-        
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-        
-        # Compute badput fields 
-        if (    
-                univ not in [7, 12] and
-                i.get("NumJobStarts", 0) > 1 and
-                i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != i.get("CommittedTime")
-            ):
-            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
-            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
-        else:
-            o["_BadWallClockTime"].append(0)
-            o["_NumBadJobStarts"].append(0)
-
-        # Add attr values to the output dict, use None if missing
-        for attr in filter_attrs:
-            o[attr].append(i.get(attr, None))
-
 
     def get_filters(self):
         # Add all filter methods to a list
         filters = [
-            self.schedd_filter_executed,
-            self.schedd_filter_not_executed,
-            self.user_filter_executed,
-	    self.user_filter_not_executed,
-            self.project_filter_executed,
-            self.project_filter_not_executed,
-
-	]
+            self.schedd_filter,
+            self.user_filter,
+            self.project_filter,
+        ]
         return filters
 
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
+        columns[75] = "Num Jobs Rm'd w/o exec"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
@@ -512,6 +328,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["Good CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
         row["Num Rm'd Jobs"]    = sum([status == 3 for status in data["JobStatus"]])
+        row["Num Jobs Rm'd w/o exec"]= sum([starts == 0 for starts in data["NumJobStarts"]]) 
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
@@ -543,23 +360,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
             row["CPU Hours / Bad Exec Att"] = (sum(badput_cpu_time) / 3600) / sum(data["_NumBadJobStarts"])
         else:
             row["CPU Hours / Bad Exec Att"] = 0
-
-        # Compute time percentiles and stats
-        if len(long_times_sorted) > 0:
-            row["Min Hrs"]  = long_times_sorted[ 0] / 3600
-            row["25% Hrs"]  = long_times_sorted[  len(long_times_sorted)//4] / 3600
-            row["Med Hrs"]  = stats.median(long_times_sorted) / 3600
-            row["75% Hrs"]  = long_times_sorted[3*len(long_times_sorted)//4] / 3600
-            row["Max Hrs"]  = long_times_sorted[-1] / 3600
-            row["Mean Hrs"] = stats.mean(long_times_sorted) / 3600
-        else:
-            for col in [f"{x} Hrs" for x in ["Min", "25%", "Med", "75%", "Max", "Mean"]]:
-                row[col] = 0
-        if len(long_times_sorted) > 1:
-            row["Std Hrs"] = stats.stdev(long_times_sorted) / 3600
-        else:
-            # There is no variance if there is only one value
-            row["Std Hrs"] = 0
 
         # Compute mode for Project and Schedd columns in the Users table
         if agg == "Users":

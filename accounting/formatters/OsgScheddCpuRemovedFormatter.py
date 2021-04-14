@@ -1,7 +1,7 @@
 from .BaseFormatter import BaseFormatter
 from datetime import datetime
 from collections import OrderedDict
-
+from pathlib import Path
 
 def hhmm(hours):
     # Convert float hours to HH:MM
@@ -18,6 +18,7 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
         # Format date(s)
         start = datetime.fromtimestamp(start_ts)
         if report_period in ["daily"]:
+            basename = Path(table_file).stem
             start_date = start.strftime("%Y-%m-%d")
             title_str = f"OSPool per {info['agg'].rstrip('s')} usage for jobs removed on <strong>{start_date}</strong>"
         elif report_period in ["weekly", "monthly"]:
