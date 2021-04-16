@@ -67,7 +67,7 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
         custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
         custom_items["Shadw Starts / Job Id"] = "Num Shadw Starts per Num Uniq Job Ids"
         custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
-        custom_items["Num Rm'd Jobs"]    = "Number of jobs that were removed from the queue instead of allowing to complete"
+        custom_items["Num Rm'd Jobs w/o Execs"]    = "Number of jobs that were removed from the queue before any execution attempts"
         custom_items["Avg MB Sent"] = "Mean MB sent to a job sandbox from a submit point"
         custom_items["Avg MB Recv"] = "Mean MB sent to a submit point from a job sandbox"
         custom_items["Num Short Jobs"]   = "Number of execution attempts that completed in less than 60 seconds"
@@ -79,4 +79,3 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
         custom_items["Num Sched Univ Jobs"] = "Number of jobs that used scheduler universe"
         html = super().get_legend(custom_items)
         return html
-
