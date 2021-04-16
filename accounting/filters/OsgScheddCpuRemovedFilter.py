@@ -353,10 +353,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
 
         # Compute derivative columns
-        if row["All CPU Hours"] > 0:
-            row["% Good CPU Hours"] = 100 * row["Good CPU Hours"] / row["All CPU Hours"]
-        else:
-            row["% Good CPU Hours"] = 0
         if row["Num Uniq Job Ids"] > 0:
             row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / row["Num Uniq Job Ids"]
         else:
