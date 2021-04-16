@@ -230,12 +230,16 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Compute badput fields
         if (
                 univ not in [7, 12] and
-                i.get("NumJobStarts", 0) > 1 and
+                i.get("NumJobStarts", 0) > 0 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
             ):
-            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
-            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
+            if i.get("CommittedTime", 0) > 0:
+                o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
+                o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
+            else:
+                o["_BadWallClockTime"].append(i["RemoteWallClockTime"])
+                o["_NumBadJobStarts"].append(i["NumJobStarts"])
         else:
             o["_BadWallClockTime"].append(0)
             o["_NumBadJobStarts"].append(0)
