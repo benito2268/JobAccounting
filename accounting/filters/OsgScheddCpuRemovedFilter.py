@@ -250,7 +250,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
-        columns[75] = "Num Jobs Rm'd w/o exec"
+        columns[75] = "Num Rm'd Jobs w/o Execs"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
