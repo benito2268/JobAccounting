@@ -7,12 +7,10 @@ from .BaseFilter import BaseFilter
 
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
-    20: "% Good CPU Hours",
-    30: "CPU Hours / Bad Exec Att",
+    30: "CPU Hours / Exec Att",
     40: "Num Uniq Job Ids",
     50: "Shadw Starts / Job Id",
     60: "Exec Atts / Shadw Start",
-    70: "Num Rm'd Jobs",
     80: "Avg MB Sent",
     81: "Max MB Sent",
     90: "Avg MB Recv",
