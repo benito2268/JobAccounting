@@ -362,9 +362,9 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         else:
             row["Exec Atts / Shadw Start"] = 0
         if sum(data["_NumBadJobStarts"]) > 0:
-            row["CPU Hours / Bad Exec Att"] = (sum(badput_cpu_time) / 3600) / sum(data["_NumBadJobStarts"])
+            row["CPU Hours / Exec Att"] = (sum(badput_cpu_time) / 3600) / sum(data["_NumBadJobStarts"])
         else:
-            row["CPU Hours / Bad Exec Att"] = 0
+            row["CPU Hours / Exec Att"] = 0
 
         # Compute mode for Project and Schedd columns in the Users table
         if agg == "Users":
