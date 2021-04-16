@@ -376,25 +376,3 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(set(data["User"]))
-
-        # Do whatever else here
-        if agg == "Users":
-            for i in range(len(data["_NumJobs"])):
-                if data["CommittedTime"][i] > 20*3600:
-                    user = agg_name
-                    jobid = data["GlobalJobId"][i]
-                    walltime = data["CommittedTime"][i]
-                    startdname = data["StartdName"][i]
-                    startdip = data["StartdPrincipal"][i].split("/")[-1]
-                    mips = data["MachineAttrMips0"][i] or "UNKNOWN"
-                    line = f"{startdip}\t{startdname}\t{mips}\t{walltime/3600:.1f}\t{user}\t{jobid}\n"
-                    long_job_log = Path.cwd() / "long_job_log.txt"
-                    if not long_job_log.exists():
-                        with long_job_log.open("w") as f:
-                            f.write("IP\tName\tMips\tHours\tUser\tGlobalJobId\n")
-                            f.write(line)
-                    else:
-                        with long_job_log.open("a") as f:
-                            f.write(line)
-
-        return row
