@@ -38,7 +38,7 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
         start = datetime.fromtimestamp(start_ts)
         if report_period in ["daily", "weekly", "monthly"]:
             start_date = start.strftime("%Y-%m-%d")
-            subject_str = f"OSPool {report_period.capitalize()} Removed Jobs Usage Report {start_date}"
+            subject_str = f"OSPool {report_period.capitalize()} Removed Jobs Report {start_date}"
         else:
             end = datetime.fromtimestamp(end_ts)
             start_date = start.strftime("%Y-%m-%d %H:%M:%S")
