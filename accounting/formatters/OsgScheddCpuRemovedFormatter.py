@@ -55,7 +55,7 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
             "Max Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "Mean Hrs":   lambda x: f"<td>{hhmm(x)}</td>",
             "Std Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
-            "CPU Hours / Bad Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
+            "CPU Hours / Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
             "Shadw Starts / Job Id":    lambda x: f"<td>{float(x):.2f}</td>",
             "Exec Atts / Shadw Start":  lambda x: f"<td>{float(x):.3f}</td>",
         }
