@@ -43,7 +43,7 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
             end = datetime.fromtimestamp(end_ts)
             start_date = start.strftime("%Y-%m-%d %H:%M:%S")
             end_date = end.strftime("%Y-%m-%d %H:%M:%S")
-            subject_str = f"OSPool Removed Jobs Usage Report {start_date} to {end_date}"
+            subject_str = f"OSPool Removed Jobs Report {start_date} to {end_date}"
         return subject_str
 
     def format_rows(self, header, rows, custom_fmts={}, default_text_fmt=None, default_numeric_fmt=None):
