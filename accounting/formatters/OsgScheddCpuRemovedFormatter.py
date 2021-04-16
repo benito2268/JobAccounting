@@ -64,7 +64,7 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
     
     def get_legend(self):
         custom_items = OrderedDict()
-        custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
+        custom_items["CPU Hours / Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
         custom_items["Shadw Starts / Job Id"] = "Num Shadw Starts per Num Uniq Job Ids"
         custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
         custom_items["Num Rm'd Jobs w/o Execs"]    = "Number of jobs that were removed from the queue before any execution attempts"
