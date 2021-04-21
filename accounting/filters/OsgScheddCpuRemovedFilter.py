@@ -260,7 +260,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
-        columns[75] = "Num Rm'd Jobs w/o Execs"
+        columns[75] = "Num Rm'd Jobs w/o Exec"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
@@ -337,12 +337,11 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["All CPU Hours"]    = sum(self.clean(total_cpu_time)) / 3600
         row["Good CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
-        row["Num Rm'd Jobs w/o Execs"]= sum([starts == 0 for starts in data["NumJobStarts"]]) 
+        row["Num Rm'd Jobs w/o Exec"]= sum([starts == 0 for starts in data["NumJobStarts"]]) 
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
         row["Max MB Recv"]      = max(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
-        row["Num Short Jobs"]   = sum(self.clean(is_short_job))
         row["Max Rqst Mem MB"]  = max(self.clean(data['RequestMemory'], allow_empty_list=False))
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
@@ -381,3 +380,5 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(set(data["User"]))
+
+        return row
