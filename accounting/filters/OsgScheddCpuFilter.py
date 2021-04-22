@@ -247,6 +247,7 @@ class OsgScheddCpuFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
+        columns[45] = "Num Jobs w/>1 Exec Att"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
@@ -324,6 +325,7 @@ class OsgScheddCpuFilter(BaseFilter):
         row["Good CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
         row["Num Rm'd Jobs"]    = sum([status == 3 for status in data["JobStatus"]])
+        row["Num Jobs w/>1 Exec Att"] = sum([starts > 1 for starts in data["NumJobStarts"]])
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
