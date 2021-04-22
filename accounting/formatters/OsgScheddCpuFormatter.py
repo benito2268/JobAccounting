@@ -63,6 +63,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
     def get_legend(self):
         custom_items = OrderedDict()
         custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
+        custom_items["Num Jobs w/>1 Exec Att"] = "Number of unique jobs that were executed more than once"
         custom_items["Shadw Starts / Job Id"] = "Num Shadw Starts per Num Uniq Job Ids"
         custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
         custom_items["Num Rm'd Jobs"]    = "Number of jobs that were removed from the queue instead of allowing to complete"
