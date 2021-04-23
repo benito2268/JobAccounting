@@ -11,6 +11,7 @@ DEFAULT_COLUMNS = {
     40: "Num Uniq Job Ids",
     50: "Shadw Starts / Job Id",
     60: "Exec Atts / Shadw Start",
+    75: "Rm'd Jobs w/o Shadw Start"
     80: "Avg MB Sent",
     81: "Max MB Sent",
     90: "Avg MB Recv",
@@ -260,7 +261,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
-        columns[75] = "Num Rm'd Jobs w/o Exec"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
@@ -337,7 +337,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["All CPU Hours"]    = sum(self.clean(total_cpu_time)) / 3600
         row["Good CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
-        row["Num Rm'd Jobs w/o Exec"]= sum([starts == 0 for starts in data["NumJobStarts"]]) 
+        row["Rm'd Jobs w/o Shadw Start"]= sum([starts == 0 for starts in data["NumShadowStarts"]])
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
