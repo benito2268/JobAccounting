@@ -11,7 +11,7 @@ DEFAULT_COLUMNS = {
     40: "Num Uniq Job Ids",
     50: "Shadw Starts / Job Id",
     60: "Exec Atts / Shadw Start",
-    75: "Rm'd Jobs w/o Shadw Start"
+    75: "Rm'd Jobs w/o Shadw Start",
     80: "Avg MB Sent",
     81: "Max MB Sent",
     90: "Avg MB Recv",
