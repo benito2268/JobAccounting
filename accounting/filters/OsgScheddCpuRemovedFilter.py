@@ -103,6 +103,9 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
+        
+        if i.get("NumJobCompletions")>0:
+            return
 
         # Filter out jobs that did not run in the OS pool        
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
@@ -152,6 +155,9 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
+            return
+         
+        if i.get("NumJobCompletions")>0:
             return
 
         # Filter out jobs that did not run in the OS pool
@@ -208,6 +214,9 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
      
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
+            return
+        
+        if i.get("NumJobCompletions")>0:
             return
 
         # Filter out jobs that did not run in the OS pool
