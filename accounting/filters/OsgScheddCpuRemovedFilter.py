@@ -337,7 +337,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["All CPU Hours"]    = sum(self.clean(total_cpu_time)) / 3600
         row["Good CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
-        row["Rm'd Jobs w/o Shadw Start"]= sum([starts == 0 for starts in data["NumShadowStarts"]])
+        row["Rm'd Jobs w/o Shadw Start"]= sum([starts in [0, None] for starts in data["NumShadowStarts"]])
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
