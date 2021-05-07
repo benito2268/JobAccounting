@@ -109,13 +109,18 @@ class OsgScheddCpuFilter(BaseFilter):
         # Get output dict for this schedd
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         o = data["Schedds"][schedd]
-
+        
         # Filter out jobs that did not run in the OS pool        
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
             return
 
         # Get list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
+        
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
 
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
@@ -161,6 +166,11 @@ class OsgScheddCpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
         
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
@@ -209,6 +219,11 @@ class OsgScheddCpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
 
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
@@ -247,6 +262,7 @@ class OsgScheddCpuFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
+        columns[41] = "Num DAG Node Jobs"
         columns[45] = "Num Jobs w/>1 Exec Att"
         if agg == "Users":
             columns[5] = "Most Used Project"
@@ -325,6 +341,7 @@ class OsgScheddCpuFilter(BaseFilter):
         row["Good CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
         row["Num Rm'd Jobs"]    = sum([status == 3 for status in data["JobStatus"]])
+        row["Num DAG Node Jobs"] = sum(data['_NumDAGNodes'])
         row["Num Jobs w/>1 Exec Att"] = sum([starts > 1 for starts in self.clean(data["NumJobStarts"])])
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
