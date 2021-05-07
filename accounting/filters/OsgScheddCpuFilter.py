@@ -117,6 +117,7 @@ class OsgScheddCpuFilter(BaseFilter):
         # Get list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         
+        # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
             o["_NumDAGNodes"].append(1)
         else:
@@ -165,7 +166,8 @@ class OsgScheddCpuFilter(BaseFilter):
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
-        
+
+        # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
             o["_NumDAGNodes"].append(1)
         else:
@@ -219,6 +221,7 @@ class OsgScheddCpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
 
+        # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
             o["_NumDAGNodes"].append(1)
         else:
