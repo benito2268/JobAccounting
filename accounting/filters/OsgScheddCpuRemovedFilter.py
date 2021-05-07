@@ -99,7 +99,9 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this schedd
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         o = data["Schedds"][schedd]
-
+       
+        if i.get("JobUniverse",5)==12:
+            return
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
@@ -113,6 +115,11 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
 
         # Get list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
+
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
 
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
@@ -153,6 +160,9 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         user = i.get("User", "UNKNOWN") or "UNKNOWN"
         o = data["Users"][user]
         
+        if i.get("JobUniverse",5)==12:
+            return
+ 
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
@@ -168,6 +178,11 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
+
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
         
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
@@ -211,7 +226,10 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this project
         project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
         o = data["Projects"][project]
-     
+    
+        if i.get("JobUniverse",5)==12:
+            return
+ 
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
@@ -227,6 +245,11 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
+        
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
 
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
@@ -270,6 +293,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
+        columns[45] = "Num DAG Node Jobs"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
@@ -351,6 +375,8 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
         row["Max MB Recv"]      = max(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
+        
+        row["Num DAG Node Jobs"] = sum(data["_NumDAGNodes"])
         row["Max Rqst Mem MB"]  = max(self.clean(data['RequestMemory'], allow_empty_list=False))
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
