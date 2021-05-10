@@ -100,8 +100,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         o = data["Schedds"][schedd]
        
-        if i.get("JobUniverse",5)==12:
-            return
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
@@ -116,6 +114,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Get list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
 
+        # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
             o["_NumDAGNodes"].append(1)
         else:
@@ -160,9 +159,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         user = i.get("User", "UNKNOWN") or "UNKNOWN"
         o = data["Users"][user]
         
-        if i.get("JobUniverse",5)==12:
-            return
- 
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
@@ -179,6 +175,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
 
+        # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
             o["_NumDAGNodes"].append(1)
         else:
@@ -227,9 +224,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
         o = data["Projects"][project]
     
-        if i.get("JobUniverse",5)==12:
-            return
- 
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
@@ -246,6 +240,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
         
+        # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
             o["_NumDAGNodes"].append(1)
         else:
