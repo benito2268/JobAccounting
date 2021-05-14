@@ -117,6 +117,12 @@ class OsgScheddCpuFilter(BaseFilter):
         # Get list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
 
+        # Count number of DAGNode Jobs
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
@@ -160,6 +166,12 @@ class OsgScheddCpuFilter(BaseFilter):
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
+
+        # Count number of DAGNode Jobs
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
         
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
@@ -209,6 +221,12 @@ class OsgScheddCpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
 
+        # Count number of DAGNode Jobs
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
@@ -235,27 +253,177 @@ class OsgScheddCpuFilter(BaseFilter):
         for attr in filter_attrs:
             o[attr].append(i.get(attr, None))
 
+    
+    def site_filter(self, data, doc):
+
+        # Get input dict
+        i = doc["_source"]
+
+        # Filter out jobs that were removed
+        if i.get("JobStatus", 4) == 3:
+            return
+
+        # Filter out scheduler and local universe jobs
+        if i.get("JobUniverse") in [7, 12]:
+            return
+
+        # Get output dict for this site
+        site = i.get("MachineAttrGLIDEIN_ResourceName0", "UNKNOWN") or "UNKNOWN"
+        o = data["Site"][site]
+
+        # Filter out jobs that did not run in the OS pool
+        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
+        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+            return
+
+        # Add custom attrs to the list of attrs
+        filter_attrs = DEFAULT_FILTER_ATTRS.copy()
+        filter_attrs = filter_attrs + ["User"]
+
+        # Count number of DAGNode Jobs
+        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+            o["_NumDAGNodes"].append(1)
+        else:
+            o["_NumDAGNodes"].append(0)
+
+        # Count number of history ads (i.e. number of unique job ids)
+        o["_NumJobs"].append(1)
+
+        # Add attr values to the output dict, use None if missing
+        for attr in filter_attrs:
+            o[attr].append(i.get(attr, None))
+
     def get_filters(self):
         # Add all filter methods to a list
         filters = [
             self.schedd_filter,
             self.user_filter,
             self.project_filter,
+            self.site_filter,
         ]
         return filters
 
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
+        site_rem = [20,30,41,45,50,60,70,300,310,320,330,340]
         columns[45] = "Num Jobs w/>1 Exec Att"
+        columns[41] = "Num DAG Node Jobs"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
+        if agg == "Site":
+            [columns.pop(key) for key in site_rem]
+            columns[5] = "Num Users"
         return columns
             
+    def merge_filtered_data(self, data, agg):
+        rows = super().merge_filtered_data(data, agg)
+        if agg == "Site":
+            columns_sorted = list(rows[0])
+            columns_sorted[columns_sorted.index("All CPU Hours")] = "Final Exec Att CPU Hours"
+            rows[0] = tuple(columns_sorted)
+        return rows
+
+
+    def compute_site_custom_columns(self, data, agg, agg_name):
+
+        # Output dictionary
+        row = {}
+
+        # Compute goodput and total CPU hours columns
+        goodput_cpu_time = []
+        for (goodput_time, cpus) in zip(
+                data["CommittedTime"],
+                data["RequestCpus"]):
+            if None in [goodput_time, cpus]:
+                goodput_cpu_time.append(None)
+            else:
+                goodput_cpu_time.append(goodput_time * cpus)
+
+        # Short jobs are jobs that ran for < 1 minute
+        is_short_job = []
+        for (goodput_time, record_date, start_date) in zip(
+                data["CommittedTime"],
+                data["RecordTime"],
+                data["JobCurrentStartDate"]):
+            if (goodput_time is not None) and (goodput_time > 0):
+                is_short_job.append(goodput_time < 60)
+            elif None in (record_date, start_date):
+                is_short_job.append(None)
+            else:
+                is_short_job.append((record_date - start_date) < 60)
+
+        # "Long" (i.e. "normal") jobs ran >= 1 minute
+        # We only want to use these when computing percentiles,
+        # so filter out short jobs and removed jobs,
+        # and sort them so we can easily grab the percentiles later
+        long_times_sorted = []
+        for (is_short, goodput_time) in zip(
+                is_short_job,
+                data["CommittedTime"]):
+            if (is_short == False):
+                long_times_sorted.append(goodput_time)
+        long_times_sorted = self.clean(long_times_sorted)
+        long_times_sorted.sort()
+
+        # Compute columns
+        row["All CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
+        row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
+        #row["Num DAG Node Jobs"] = sum(data['_NumDAGNodes'])
+        row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
+        row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
+        row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
+        row["Max MB Recv"]      = max(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
+        row["Num Short Jobs"]   = sum(self.clean(is_short_job))
+        row["Max Rqst Mem MB"]  = max(self.clean(data['RequestMemory'], allow_empty_list=False))
+        row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
+        row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
+        row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
+        row["Num Exec Atts"]    = sum(self.clean(data["NumJobStarts"]))
+        row["Num Shadw Starts"] = sum(self.clean(data["NumShadowStarts"]))
+        row["Num Users"] = len(set(data["User"]))
+   
+        if row["Num Uniq Job Ids"] > 0:
+            row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / row["Num Uniq Job Ids"]
+        else:
+            row["Shadw Starts / Job Id"] = 0
+        if row["Num Shadw Starts"] > 0:
+            row["Exec Atts / Shadw Start"] = row["Num Exec Atts"] / row["Num Shadw Starts"]
+        else:
+            row["Exec Atts / Shadw Start"] = 0
+
+        # Compute time percentiles and stats
+        if len(long_times_sorted) > 0:
+            row["Min Hrs"]  = long_times_sorted[ 0] / 3600
+            row["25% Hrs"]  = long_times_sorted[  len(long_times_sorted)//4] / 3600
+            row["Med Hrs"]  = stats.median(long_times_sorted) / 3600
+            row["75% Hrs"]  = long_times_sorted[3*len(long_times_sorted)//4] / 3600
+            row["Max Hrs"]  = long_times_sorted[-1] / 3600
+            row["Mean Hrs"] = stats.mean(long_times_sorted) / 3600
+        else:
+            for col in [f"{x} Hrs" for x in ["Min", "25%", "Med", "75%", "Max", "Mean"]]:
+                row[col] = 0
+
+        if len(long_times_sorted) > 1:
+            row["Std Hrs"] = stats.stdev(long_times_sorted) / 3600
+        else:
+            # There is no variance if there is only one value
+            row["Std Hrs"] = 0
+
+        # Compute mode for Project and Schedd columns in the Users table
+        row["Num Users"] = len(set(data["User"]))
+
+        return row
+
     def compute_custom_columns(self, data, agg, agg_name):
+
+        if agg == "Site":
+            row = self.compute_site_custom_columns(data, agg, agg_name)
+            return row
+
         # Output dictionary
         row = {}
 
@@ -324,6 +492,7 @@ class OsgScheddCpuFilter(BaseFilter):
         row["All CPU Hours"]    = sum(self.clean(total_cpu_time)) / 3600
         row["Good CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
+        row["Num DAG Node Jobs"] = sum(data['_NumDAGNodes'])
         row["Num Rm'd Jobs"]    = sum([status == 3 for status in data["JobStatus"]])
         row["Num Jobs w/>1 Exec Att"] = sum([starts > 1 for starts in self.clean(data["NumJobStarts"])])
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
@@ -389,26 +558,6 @@ class OsgScheddCpuFilter(BaseFilter):
             else:
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
-            row["Num Users"] = len(set(data["User"]))
+            row["Num Users"] = len(set(data["User"]))  
 
-        # Do whatever else here
-        if agg == "Users":
-            for i in range(len(data["_NumJobs"])):
-                if data["CommittedTime"][i] > 20*3600:
-                    user = agg_name
-                    jobid = data["GlobalJobId"][i]
-                    walltime = data["CommittedTime"][i]
-                    startdname = data["StartdName"][i]
-                    startdip = data["StartdPrincipal"][i].split("/")[-1]
-                    mips = data["MachineAttrMips0"][i] or "UNKNOWN"
-                    line = f"{startdip}\t{startdname}\t{mips}\t{walltime/3600:.1f}\t{user}\t{jobid}\n"
-                    long_job_log = Path.cwd() / "long_job_log.txt"
-                    if not long_job_log.exists():
-                        with long_job_log.open("w") as f:
-                            f.write("IP\tName\tMips\tHours\tUser\tGlobalJobId\n")
-                            f.write(line)
-                    else:
-                        with long_job_log.open("a") as f:
-                            f.write(line)
-
-        return row
+        return row 

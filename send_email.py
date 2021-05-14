@@ -25,7 +25,7 @@ for table_name in table_names:
     table_data = filtr.merge_filtered_data(filtr.get_filtered_data(), table_name)
     csv_files[table_name] = accounting.write_csv(table_data, filtr.name, table_name, **vars(args))
 
-table_files = [csv_files[name] for name in ["Projects", "Users", "Schedds"] if name in csv_files]
+table_files = [csv_files[name] for name in ["Projects", "Users", "Schedds", "Site"] if name in csv_files]
 formatter = args.formatter(table_files, **vars(args))
 html = formatter.get_html()
 with open("last_html.html", "w") as f:
