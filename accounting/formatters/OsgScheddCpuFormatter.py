@@ -62,18 +62,27 @@ class OsgScheddCpuFormatter(BaseFormatter):
     
     def get_legend(self):
         custom_items = OrderedDict()
-        custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
-        custom_items["Num Jobs w/>1 Exec Att"] = "Number of unique jobs that were executed more than once"
-        custom_items["Shadw Starts / Job Id"] = "Num Shadw Starts per Num Uniq Job Ids"
-        custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
+        custom_items["Num Shadw Starts"] = "Total times a condor_shadow was spawned across all submitted jobs (excluding Local and Scheduler Universe jobs)"
+        custom_items["Num Exec Atts"]    = "Total number of execution attempts (excluding Local and Scheduler Universe jobs)"
         custom_items["Num Rm'd Jobs"]    = "Number of jobs that were removed from the queue instead of allowing to complete"
+        custom_items["Num Short Jobs"]   = "Number of execution attempts that completed in less than 60 seconds"
+        custom_items["Num Jobs w/>1 Exec Att"] = "Number of unique jobs that were executed more than once"
+
+        custom_items["% Rm'd Jobs"] = "Percent of Num Uniq Job Ids that were removed"
+        custom_items["% Short Jobs"] = "Percent of Num Uniq Job Ids that were short jobs"
+        custom_items["% Jobs w/>1 Exec Att"] = "Percent of Num Uniq Job Ids that had more than one execution attempt"
+
+        custom_items["Shadw Starts / Job Id"]   = "Num Shadw Starts per Num Uniq Job Ids"
+        custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
+
+        custom_items["Min/25%/Median/75%/Max/Mean/Std Hrs"] = "Final execution wallclock hours that a non-short job (Min-Max) or jobs (Mean/Std) ran for (excluding Short jobs, excluding Local and Scheduler Universe jobs)"
+
         custom_items["Avg MB Sent"] = "Mean MB sent to a job sandbox from a submit point"
         custom_items["Avg MB Recv"] = "Mean MB sent to a submit point from a job sandbox"
-        custom_items["Num Short Jobs"]   = "Number of execution attempts that completed in less than 60 seconds"
-        custom_items["Min/25%/Median/75%/Max/Mean/Std Hrs"] = "Final execution wallclock hours that a non-short job (Min-Max) or jobs (Mean/Std) ran for (excluding Short jobs, excluding Local and Scheduler Universe jobs)"
+
         custom_items["Med Used Mem MB"]  = "Median measured memory usage across all submitted jobs' last execution attempts in MB"
-        custom_items["Num Exec Atts"]    = "Total number of execution attempts (excluding Local and Scheduler Universe jobs)"
-        custom_items["Num Shadw Starts"] = "Total times a condor_shadow was spawned across all submitted jobs (excluding Local and Scheduler Universe jobs)"
+
+        custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
         custom_items["Num Local Univ Jobs"] = "Number of jobs that used local universe"
         custom_items["Num Sched Univ Jobs"] = "Number of jobs that used scheduler universe"
         html = super().get_legend(custom_items)

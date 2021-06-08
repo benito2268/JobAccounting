@@ -8,17 +8,14 @@ from .BaseFilter import BaseFilter
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
     20: "% Good CPU Hours",
-    30: "CPU Hours / Bad Exec Att",
     40: "Num Uniq Job Ids",
     50: "Shadw Starts / Job Id",
     60: "Exec Atts / Shadw Start",
-    70: "Num Rm'd Jobs",
-    80: "Avg MB Sent",
-    81: "Max MB Sent",
-    90: "Avg MB Recv",
-    91: "Max MB Recv",
     
-    100: "Num Short Jobs",
+    70: "% Rm'd Jobs",
+    80: "% Short Jobs",
+    90: "% Jobs w/>1 Exec Att",
+
     110: "Min Hrs",
     120: "25% Hrs",
     130: "Med Hrs",
@@ -27,16 +24,26 @@ DEFAULT_COLUMNS = {
     160: "Mean Hrs",
     170: "Std Hrs",
 
+    180: "Avg MB Sent",
+    181: "Max MB Sent",
+    190: "Avg MB Recv",
+    191: "Max MB Recv",
+
     200: "Max Rqst Mem MB",
     210: "Med Used Mem MB",
     220: "Max Used Mem MB",
     230: "Max Rqst Cpus",
 
     300: "Good CPU Hours",
+    305: "CPU Hours / Bad Exec Att",
     310: "Num Exec Atts",
     320: "Num Shadw Starts",
-    330: "Num Local Univ Jobs",
-    340: "Num Sched Univ Jobs",
+    330: "Num Rm'd Jobs",
+    340: "Num DAG Node Jobs",
+    350: "Num Jobs w/>1 Exec Att",
+    360: "Num Short Jobs",
+    370: "Num Local Univ Jobs",
+    380: "Num Sched Univ Jobs",
 }
 
 
@@ -306,17 +313,15 @@ class OsgScheddCpuFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
-        site_rem = [20,30,41,45,50,60,70,300,310,320,330,340]
-        columns[45] = "Num Jobs w/>1 Exec Att"
-        columns[41] = "Num DAG Node Jobs"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
         if agg == "Site":
-            [columns.pop(key) for key in site_rem]
             columns[5] = "Num Users"
+            rm_columns = [20,50,60,70,90,300,305,310,320,330,340,350,370,380]
+            [columns.pop(key) for key in rm_columns]
         return columns
             
     def merge_filtered_data(self, data, agg):
@@ -372,7 +377,6 @@ class OsgScheddCpuFilter(BaseFilter):
         # Compute columns
         row["All CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
-        #row["Num DAG Node Jobs"] = sum(data['_NumDAGNodes'])
         row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
@@ -382,18 +386,12 @@ class OsgScheddCpuFilter(BaseFilter):
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
-        row["Num Exec Atts"]    = sum(self.clean(data["NumJobStarts"]))
-        row["Num Shadw Starts"] = sum(self.clean(data["NumShadowStarts"]))
         row["Num Users"] = len(set(data["User"]))
    
         if row["Num Uniq Job Ids"] > 0:
-            row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / row["Num Uniq Job Ids"]
+            row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
         else:
-            row["Shadw Starts / Job Id"] = 0
-        if row["Num Shadw Starts"] > 0:
-            row["Exec Atts / Shadw Start"] = row["Num Exec Atts"] / row["Num Shadw Starts"]
-        else:
-            row["Exec Atts / Shadw Start"] = 0
+            row["% Short Jobs"] = 0
 
         # Compute time percentiles and stats
         if len(long_times_sorted) > 0:
@@ -516,8 +514,14 @@ class OsgScheddCpuFilter(BaseFilter):
             row["% Good CPU Hours"] = 0
         if row["Num Uniq Job Ids"] > 0:
             row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / row["Num Uniq Job Ids"]
+            row["% Rm'd Jobs"] = 100 * row["Num Rm'd Jobs"] / row["Num Uniq Job Ids"]
+            row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
+            row["% Jobs w/>1 Exec Att"] = 100 * row["Num Jobs w/>1 Exec Att"] / row["Num Uniq Job Ids"]
         else:
             row["Shadw Starts / Job Id"] = 0
+            row["% Rm'd Jobs"] = 0
+            row["% Short Jobs"] = 0
+            row["% Jobs w/>1 Exec Att"] = 0
         if row["Num Shadw Starts"] > 0:
             row["Exec Atts / Shadw Start"] = row["Num Exec Atts"] / row["Num Shadw Starts"]
         else:
