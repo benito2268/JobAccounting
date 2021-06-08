@@ -56,6 +56,9 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "CPU Hours / Bad Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
             "Shadw Starts / Job Id":    lambda x: f"<td>{float(x):.2f}</td>",
             "Exec Atts / Shadw Start":  lambda x: f"<td>{float(x):.3f}</td>",
+            "% Rm'd Jobs":          lambda x: f"<td>{float(x):.1f}</td>",
+            "% Short Jobs":         lambda x: f"<td>{float(x):.1f}</td>",
+            "% Jobs w/>1 Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
         }
         rows = super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
         return rows
