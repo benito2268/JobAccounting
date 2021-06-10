@@ -55,9 +55,10 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
             "Max Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "Mean Hrs":   lambda x: f"<td>{hhmm(x)}</td>",
             "Std Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
-            "CPU Hours / Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
+            "CPU Hours / Exec Att":     lambda x: f"<td>{float(x):.1f}</td>",
             "Shadw Starts / Job Id":    lambda x: f"<td>{float(x):.2f}</td>",
             "Exec Atts / Shadw Start":  lambda x: f"<td>{float(x):.3f}</td>",
+            "% Jobs w/o Shadw":         lambda x: f"<td>{float(x):.1f}</td>",
         }
         rows = super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
         return rows
@@ -65,9 +66,10 @@ class OsgScheddCpuRemovedFormatter(BaseFormatter):
     def get_legend(self):
         custom_items = OrderedDict()
         custom_items["CPU Hours / Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
-        custom_items["Shadw Starts / Job Id"] = "Num Shadw Starts per Num Uniq Job Ids"
-        custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
         custom_items["Rm'd Jobs w/o Shadw Start"] = "Number of jobs that were removed from the queue before any shadow starts"
+        custom_items["% Jobs w/o Shadw"] = "Percentage of removed jobs that never had a shadow start, i.e. were removed before running"
+        custom_items["Shadw Starts / Job Id"] = "Num Shadw Starts per (Num Uniq Job Ids - Rm'd Jobs w/o Shadw Start), i.e. per job that had at least one shadow"
+        custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
         custom_items["Avg MB Sent"] = "Mean MB sent to a job sandbox from a submit point"
         custom_items["Avg MB Recv"] = "Mean MB sent to a submit point from a job sandbox"
         custom_items["Num Short Jobs"]   = "Number of execution attempts that completed in less than 60 seconds"

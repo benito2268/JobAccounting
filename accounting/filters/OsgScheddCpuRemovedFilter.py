@@ -9,9 +9,9 @@ DEFAULT_COLUMNS = {
     10: "All CPU Hours",
     30: "CPU Hours / Exec Att",
     40: "Num Uniq Job Ids",
-    50: "Shadw Starts / Job Id",
-    60: "Exec Atts / Shadw Start",
-    75: "Rm'd Jobs w/o Shadw Start",
+    50: "% Jobs w/o Shadw",
+    60: "Shadw Starts / Job Id",
+    70: "Exec Atts / Shadw Start",
     80: "Avg MB Sent",
     81: "Max MB Sent",
     90: "Avg MB Recv",
@@ -22,11 +22,12 @@ DEFAULT_COLUMNS = {
     220: "Max Used Mem MB",
     230: "Max Rqst Cpus",
 
-    300: "Good CPU Hours",
+    300: "Rm'd Jobs w/o Shadw Start",
     310: "Num Exec Atts",
     320: "Num Shadw Starts",
-    330: "Num Local Univ Jobs",
-    340: "Num Sched Univ Jobs",
+    330: "Num DAG Node Jobs",
+    340: "Num Local Univ Jobs",
+    350: "Num Sched Univ Jobs",
 }
 
 
@@ -288,7 +289,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
-        columns[45] = "Num DAG Node Jobs"
         if agg == "Users":
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
@@ -383,9 +383,11 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
 
         # Compute derivative columns
         if row["Num Uniq Job Ids"] > 0:
-            row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / row["Num Uniq Job Ids"]
+            row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / (row["Num Uniq Job Ids"] - row["Rm'd Jobs w/o Shadw Start"])
+            row["% Jobs w/o Shadw"] = 100 * (row["Rm'd Jobs w/o Shadw Start"] / row["Num Uniq Job Ids"])
         else:
             row["Shadw Starts / Job Id"] = 0
+            row["% Jobs w/o Shadw"] = 0
         if row["Num Shadw Starts"] > 0:
             row["Exec Atts / Shadw Start"] = row["Num Exec Atts"] / row["Num Shadw Starts"]
         else:
