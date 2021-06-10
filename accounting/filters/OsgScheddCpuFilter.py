@@ -9,11 +9,12 @@ DEFAULT_COLUMNS = {
     10: "All CPU Hours",
     20: "% Good CPU Hours",
     40: "Num Uniq Job Ids",
-    50: "Shadw Starts / Job Id",
-    60: "Exec Atts / Shadw Start",
+    50: "% Rm'd Jobs",
+    60: "% Short Jobs",
     
-    70: "% Rm'd Jobs",
-    80: "% Short Jobs",
+    70: "Shadw Starts / Job Id",
+    80: "Exec Atts / Shadw Start",
+
     90: "% Jobs w/>1 Exec Att",
 
     110: "Min Hrs",
@@ -320,7 +321,7 @@ class OsgScheddCpuFilter(BaseFilter):
             columns[5] = "Num Users"
         if agg == "Site":
             columns[5] = "Num Users"
-            rm_columns = [20,50,60,70,90,300,305,310,320,330,340,350,370,380]
+            rm_columns = [20,50,70,80,90,300,305,310,320,330,340,350,370,380]
             [columns.pop(key) for key in rm_columns]
         return columns
             

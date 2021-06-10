@@ -382,11 +382,13 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
 
         # Compute derivative columns
-        if row["Num Uniq Job Ids"] > 0:
+        if row["Num Uniq Job Ids"] - row["Rm'd Jobs w/o Shadw Start"] > 0:
             row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / (row["Num Uniq Job Ids"] - row["Rm'd Jobs w/o Shadw Start"])
-            row["% Jobs w/o Shadw"] = 100 * (row["Rm'd Jobs w/o Shadw Start"] / row["Num Uniq Job Ids"])
         else:
             row["Shadw Starts / Job Id"] = 0
+        if row["Num Uniq Job Ids"] > 0:
+            row["% Jobs w/o Shadw"] = 100 * (row["Rm'd Jobs w/o Shadw Start"] / row["Num Uniq Job Ids"])
+        else:
             row["% Jobs w/o Shadw"] = 0
         if row["Num Shadw Starts"] > 0:
             row["Exec Atts / Shadw Start"] = row["Num Exec Atts"] / row["Num Shadw Starts"]
