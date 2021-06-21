@@ -46,52 +46,12 @@ DEFAULT_FILTER_ATTRS = [
     "EnteredCurrentStatus",
     "BytesSent",
     "BytesRecvd",
-
-    # Addded for tracking long running jobs
-    "StartdPrincipal",
-    "StartdName",
-    "GlobalJobId",
-    "MachineAttrMips0",
 ]
 
 
-class OsgScheddCpuRemovedFilter(BaseFilter):
-    name = "OSG schedd removed job history"
+class ChtcScheddCpuRemovedFilter(BaseFilter):
+    name = "CHTC schedd removed job history"
     
-    def __init__(self, **kwargs):
-        self.collector_host = "flock.opensciencegrid.org"
-        self.schedd_collector_host_map = {}
-        super().__init__(**kwargs)
-
-    def schedd_collector_host(self, schedd):
-        # Query Schedd ad in Collector for its CollectorHost,
-        # unless result previously cached
-        if schedd not in self.schedd_collector_host_map:
-
-            collector = htcondor.Collector(self.collector_host)
-            ads = collector.query(
-                htcondor.AdTypes.Schedd,
-                constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
-                projection=["CollectorHost"],
-            )
-            ads = list(ads)
-            if len(ads) == 0:
-                logging.warning(f'Could not find Schedd ClassAd for Machine == "{schedd}"')
-                logging.warning(f"Assuming jobs from {schedd} are in OS pool")
-                self.schedd_collector_host_map[schedd] = self.collector_host
-                return self.collector_host
-            if len(ads) > 1:
-                logging.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
-
-            # Cache the CollectorHost in the map
-            if "CollectorHost" in ads[0]:
-                self.schedd_collector_host_map[schedd] = ads[0]["CollectorHost"].split(':')[0]
-            else:
-                logging.warning(f"CollectorHost not found in Schedd ClassAd for {schedd}")
-                self.schedd_collector_host_map[schedd] = "UNKNOWN"
-
-        return self.schedd_collector_host_map[schedd]
-
     def schedd_filter(self, data, doc):
 
         # Get input dict
@@ -102,14 +62,10 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         o = data["Schedds"][schedd]
        
         # Filter out jobs that were not removed
-        if i.get("JobStatus",4) != 3:
+        if i.get("JobStatus", 4) != 3:
             return
         
-        if i.get("NumJobCompletions")>0:
-            return
-
-        # Filter out jobs that did not run in the OS pool        
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+        if i.get("NumJobCompletions") > 0:
             return
 
         # Get list of attrs
@@ -161,20 +117,15 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         o = data["Users"][user]
         
         # Filter out jobs that were not removed
-        if i.get("JobStatus",4) != 3:
+        if i.get("JobStatus", 4) != 3:
             return
          
-        if i.get("NumJobCompletions")>0:
-            return
-
-        # Filter out jobs that did not run in the OS pool
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+        if i.get("NumJobCompletions") > 0:
             return
 
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-        filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
+        filter_attrs = filter_attrs + ["ScheddName"]
 
         # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
@@ -211,7 +162,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
             # Use UNKNOWN for missing or blank ProjectName and ScheddName
-            if attr in ["ScheddName", "ProjectName"]:
+            if attr in ["ScheddName"]:
                 o[attr].append(i.get(attr, "UNKNOWN") or "UNKNOWN")
             else:
                 o[attr].append(i.get(attr, None))
@@ -282,7 +233,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         filters = [
             self.schedd_filter,
             self.user_filter,
-            self.project_filter,
         ]
         return filters
 
@@ -290,7 +240,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
         if agg == "Users":
-            columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
@@ -401,12 +350,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
 
         # Compute mode for Project and Schedd columns in the Users table
         if agg == "Users":
-            projects = self.clean(data["ProjectName"])
-            if len(projects) > 0:
-                row["Most Used Project"] = max(set(projects), key=projects.count)
-            else:
-                row["Most Used Project"] = "UNKNOWN"
-
             schedds = self.clean(data["ScheddName"])
             if len(schedds) > 0:
                 row["Most Used Schedd"] = max(set(schedds), key=schedds.count)

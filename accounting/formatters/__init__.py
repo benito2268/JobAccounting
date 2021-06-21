@@ -1,3 +1,5 @@
 from .BaseFormatter import BaseFormatter
 from .OsgScheddCpuFormatter import OsgScheddCpuFormatter
 from .OsgScheddCpuRemovedFormatter import OsgScheddCpuRemovedFormatter
+from .ChtcScheddCpuFormatter import ChtcScheddCpuFormatter
+from .ChtcScheddCpuRemovedFormatter import ChtcScheddCpuRemovedFormatter
