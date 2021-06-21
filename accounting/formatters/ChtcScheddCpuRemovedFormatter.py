@@ -1,7 +1,7 @@
 from .BaseFormatter import BaseFormatter
 from datetime import datetime
 from collections import OrderedDict
-from pathlib import Path
+
 
 def hhmm(hours):
     # Convert float hours to HH:MM
@@ -12,13 +12,11 @@ def hhmm(hours):
 
 class ChtcScheddCpuRemovedFormatter(BaseFormatter):
 
-
     def get_table_title(self, table_file, report_period, start_ts, end_ts):
         info = self.parse_table_filename(table_file)
         # Format date(s)
         start = datetime.fromtimestamp(start_ts)
         if report_period in ["daily"]:
-            basename = Path(table_file).stem
             start_date = start.strftime("%Y-%m-%d")
             title_str = f"CHTC per {info['agg'].rstrip('s')} usage for jobs removed on <strong>{start_date}</strong>"
         elif report_period in ["weekly", "monthly"]:
