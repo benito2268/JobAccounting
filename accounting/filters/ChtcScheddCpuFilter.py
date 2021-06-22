@@ -20,6 +20,7 @@ DEFAULT_COLUMNS = {
     120: "25% Hrs",
     130: "Med Hrs",
     140: "75% Hrs",
+    145: "95% Hrs",
     150: "Max Hrs",
     160: "Mean Hrs",
     170: "Std Hrs",
@@ -337,6 +338,7 @@ class ChtcScheddCpuFilter(BaseFilter):
             row["25% Hrs"]  = long_times_sorted[  len(long_times_sorted)//4] / 3600
             row["Med Hrs"]  = stats.median(long_times_sorted) / 3600
             row["75% Hrs"]  = long_times_sorted[3*len(long_times_sorted)//4] / 3600
+            row["95% Hrs"]  = long_times_sorted[int(0.95*len(long_times_sorted))] / 3600
             row["Max Hrs"]  = long_times_sorted[-1] / 3600
             row["Mean Hrs"] = stats.mean(long_times_sorted) / 3600
         else:
@@ -475,6 +477,7 @@ class ChtcScheddCpuFilter(BaseFilter):
             row["25% Hrs"]  = long_times_sorted[  len(long_times_sorted)//4] / 3600
             row["Med Hrs"]  = stats.median(long_times_sorted) / 3600
             row["75% Hrs"]  = long_times_sorted[3*len(long_times_sorted)//4] / 3600
+            row["95% Hrs"]  = long_times_sorted[int(0.95*len(long_times_sorted))] / 3600
             row["Max Hrs"]  = long_times_sorted[-1] / 3600
             row["Mean Hrs"] = stats.mean(long_times_sorted) / 3600
         else:
