@@ -342,7 +342,7 @@ class ChtcScheddCpuFilter(BaseFilter):
             row["Max Hrs"]  = long_times_sorted[-1] / 3600
             row["Mean Hrs"] = stats.mean(long_times_sorted) / 3600
         else:
-            for col in [f"{x} Hrs" for x in ["Min", "25%", "Med", "75%", "Max", "Mean"]]:
+            for col in [f"{x} Hrs" for x in ["Min", "25%", "Med", "75%", "95%", "Max", "Mean"]]:
                 row[col] = 0
 
         if len(long_times_sorted) > 1:
