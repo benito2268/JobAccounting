@@ -11,7 +11,7 @@ DEFAULT_COLUMNS = {
     40: "Num Uniq Job Ids",
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
-    
+
     70: "Shadw Starts / Job Id",
     80: "Exec Atts / Shadw Start",
 
@@ -51,7 +51,7 @@ DEFAULT_COLUMNS = {
 
 class OsgScheddCpuMonthlyFilter(BaseFilter):
     name = "OSG schedd job history"
-    
+
     def __init__(self, **kwargs):
         self.collector_host = "flock.opensciencegrid.org"
         self.schedd_collector_host_map = {}
@@ -86,19 +86,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         return self.schedd_collector_host_map[schedd]
 
-    def schedd_filter(self, data, doc):
-
-        # Get input dict
-        i = doc["_source"]
-
-        # Get output dict for this schedd
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        o = data["Schedds"][schedd]
-        t = data["Schedds"]["TOTAL"]
-
-        # Filter out jobs that did not run in the OS pool        
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
-            return
+    def reduce_data(self, o, t):
 
         is_removed = i.get("JobStatus") == 3
         is_scheduler = i.get("JobUniverse") == 7
@@ -126,7 +114,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["DAGNodeJobs"] = int(is_dagnode)
         sum_cols["MultiExecJobs"] = int(is_multiexec)
         sum_cols["ShortJobs"] = int(is_short)
-        
+
         sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * i.get("RequestCpus", 1))
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * i.get("RequestCpus", 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - i.get("CommittedTime", 0)) * i.get("RequestCpus", 1))
@@ -149,9 +137,6 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if not is_short and not is_removed and has_shadow:
             list_cols["LongJobTimes"] = i.get("CommittedTime")
 
-        set_cols = {}
-        set_cols["User"] = i.get("User", "UNKNOWN")
-
         for col in sum_cols:
             o[col] = (o.get(col) or 0) + sum_cols[col]
             t[col] = (t.get(col) or 0) + sum_cols[col]
@@ -161,9 +146,22 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         for col in list_cols:
             o[col].append(list_cols[col])
             t[col].append(list_cols[col])
-        for col in set_cols:
-            o[col] = (t.get(col) or set()).add(set_cols[col])
-            t[col] = (t.get(col) or set()).add(set_cols[col])
+
+    def schedd_filter(self, data, doc):
+
+        # Get input dict
+        i = doc["_source"]
+
+        # Get output dict for this schedd
+        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
+        output = data["Schedds"][schedd]
+        total = data["Schedds"]["TOTAL"]
+
+        # Filter out jobs that did not run in the OS pool
+        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+            return
+
+        reduce_data(output, total)
 
     def user_filter(self, data, doc):
 
@@ -172,52 +170,27 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         # Get output dict for this user
         user = i.get("User", "UNKNOWN") or "UNKNOWN"
-        o = data["Users"][user]
+        output = data["Users"][user]
+        total = data["Users"]["TOTAL"]
 
         # Filter out jobs that did not run in the OS pool
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
             return
 
-        # Add custom attrs to the list of attrs
-        filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-        filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
+        reduce_data(output, total)
 
-        # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
-            o["_NumDAGNodes"].append(1)
-        else:
-            o["_NumDAGNodes"].append(0)
-        
-        # Count number of history ads (i.e. number of unique job ids)
-        o["_NumJobs"].append(1)
+        counter_cols = {}
+        counter_cols["ScheddNames"] = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
+        counter_cols["ProjectNames"] = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
-        # Compute badput fields
-        if (
-                univ not in [7, 12] and
-                i.get("NumJobStarts", 0) > 1 and
-                i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != i.get("CommittedTime")
-            ):
-            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
-            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
-        else:
-            o["_BadWallClockTime"].append(0)
-            o["_NumBadJobStarts"].append(0)
-
-        # Add attr values to the output dict, use None if missing
-        for attr in filter_attrs:
-            # Use UNKNOWN for missing or blank ProjectName and ScheddName
-            if attr in ["ScheddName", "ProjectName"]:
-                o[attr].append(i.get(attr, "UNKNOWN") or "UNKNOWN")
-            else:
-                o[attr].append(i.get(attr, None))
+        for col in counter_cols:
+            if not col in output:
+                output[col] = defaultdict(int)
+            output[col][counter_cols[col]] += 1
+            if not col in total:
+                total[col] = defaultdict(int)
+            total[col][counter_cols[col]] += 1
 
     def project_filter(self, data, doc):
 
@@ -226,50 +199,23 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         # Get output dict for this project
         project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
-        o = data["Projects"][project]
+        output = data["Projects"][project]
+        total = data["Projects"]["TOTAL"]
 
         # Filter out jobs that did not run in the OS pool
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
             return
 
-        # Add custom attrs to the list of attrs
-        filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-        filter_attrs = filter_attrs + ["User"]
+        reduce_data(output, total)
 
-        # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
-            o["_NumDAGNodes"].append(1)
-        else:
-            o["_NumDAGNodes"].append(0)
+        set_cols = {}
+        set_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
 
-        # Count number of history ads (i.e. number of unique job ids)
-        o["_NumJobs"].append(1)
+        for col in set_cols:
+            output[col] = (output.get(col) or set()).add(set_cols[col])
+            total[col] = (total.get(col) or set()).add(set_cols[col])
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
-        # Compute badput fields
-        if (
-                univ not in [7, 12] and
-                i.get("NumJobStarts", 0) > 1 and
-                i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != i.get("CommittedTime")
-            ):
-            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
-            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
-        else:
-            o["_BadWallClockTime"].append(0)
-            o["_NumBadJobStarts"].append(0)
-
-        # Add attr values to the output dict, use None if missing
-        for attr in filter_attrs:
-            o[attr].append(i.get(attr, None))
-
-    
     def site_filter(self, data, doc):
 
         # Get input dict
@@ -283,39 +229,70 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if i.get("JobUniverse") in [7, 12]:
             return
 
-        # Get output dict for this site
-        site = i.get("MachineAttrGLIDEIN_ResourceName0", "UNKNOWN") or "UNKNOWN"
-        o = data["Site"][site]
-
         # Filter out jobs that did not run in the OS pool
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
             return
 
-        # Add custom attrs to the list of attrs
-        filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-        filter_attrs = filter_attrs + ["User"]
+        # Get output dict for this site
+        site = i.get("MachineAttrGLIDEIN_ResourceName0", "UNKNOWN") or "UNKNOWN"
+        o = data["Site"][site]
+        t = data["Site"]["TOTAL"]
 
-        # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
-            o["_NumDAGNodes"].append(1)
-        else:
-            o["_NumDAGNodes"].append(0)
+        # Reduce data
+        is_short = False
+        if i.get("CommittedTime", 0) > 0 and i.get("CommittedTime", 60) < 60:
+            is_short = True
+        elif None in [i.get("RecordTime"), i.get("JobCurrentStartDate")]:
+            if i.get("CommittedTime") == 0:
+                is_short = True
+        elif i.get("RecordTime") - i.get("JobCurrentStartDate") < 60:
+            is_short = True
 
-        # Count number of history ads (i.e. number of unique job ids)
-        o["_NumJobs"].append(1)
+        sum_cols = {}
+        sum_cols["Jobs"] = 1
+        sum_cols["ShortJobs"] = int(is_short)
 
-        # Add attr values to the output dict, use None if missing
-        for attr in filter_attrs:
-            o[attr].append(i.get(attr, None))
+        sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * i.get("RequestCpus", 1))
+        sum_cols["BytesSent"] = i.get("BytesSent", 0)
+        sum_cols["BytesRecvd"] = i.get("BytesRecvd", 0)
+
+        max_cols = {}
+        max_cols["MaxBytesSent"] = i.get("BytesSent", 0)
+        max_cols["MaxBytesRecvd"] = i.get("BytesRecvd", 0)
+        max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
+        sum_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
+        sum_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
+
+        list_cols = {}
+        list_cols["MemoryUsage"] = i.get("MemoryUsage")
+        list_cols["LongJobTimes"] = None
+        if not is_short and not is_removed and has_shadow:
+            list_cols["LongJobTimes"] = i.get("CommittedTime")
+
+        set_cols = {}
+        set_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
+
+        for col in sum_cols:
+            o[col] = (o.get(col) or 0) + sum_cols[col]
+            t[col] = (t.get(col) or 0) + sum_cols[col]
+        for col in max_cols:
+            o[col] = max((o.get(col) or 0), max_cols[col])
+            t[col] = max((t.get(col) or 0) + max_cols[col])
+        for col in list_cols:
+            o[col].append(list_cols[col])
+            t[col].append(list_cols[col])
+        for col in set_cols:
+            o[col] = (o.get(col) or set()).add(set_cols[col])
+            t[col] = (t.get(col) or set()).add(set_cols[col])
 
     def get_filters(self):
         # Add all filter methods to a list
         filters = [
             self.schedd_filter,
-            #self.user_filter,
-            #self.project_filter,
-            #self.site_filter,
+            self.user_filter,
+            self.project_filter,
+            self.site_filter,
         ]
         return filters
 
@@ -332,7 +309,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             rm_columns = [20,50,70,80,90,300,305,310,320,330,340,350,370,380]
             [columns.pop(key) for key in rm_columns]
         return columns
-            
+
     def merge_filtered_data(self, data, agg):
         rows = super().merge_filtered_data(data, agg)
         if agg == "Site":
@@ -347,82 +324,45 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Output dictionary
         row = {}
 
-        # Compute goodput and total CPU hours columns
-        goodput_cpu_time = []
-        for (goodput_time, cpus) in zip(
-                data["CommittedTime"],
-                data["RequestCpus"]):
-            if None in [goodput_time, cpus]:
-                goodput_cpu_time.append(None)
-            else:
-                goodput_cpu_time.append(goodput_time * cpus)
-
-        # Short jobs are jobs that ran for < 1 minute
-        is_short_job = []
-        for (goodput_time, record_date, start_date) in zip(
-                data["CommittedTime"],
-                data["RecordTime"],
-                data["JobCurrentStartDate"]):
-            if (goodput_time is not None) and (goodput_time > 0):
-                is_short_job.append(goodput_time < 60)
-            elif None in (record_date, start_date):
-                is_short_job.append(None)
-            else:
-                is_short_job.append((record_date - start_date) < 60)
-
-        # "Long" (i.e. "normal") jobs ran >= 1 minute
-        # We only want to use these when computing percentiles,
-        # so filter out short jobs and removed jobs,
-        # and sort them so we can easily grab the percentiles later
-        long_times_sorted = []
-        for (is_short, goodput_time) in zip(
-                is_short_job,
-                data["CommittedTime"]):
-            if (is_short == False):
-                long_times_sorted.append(goodput_time)
-        long_times_sorted = self.clean(long_times_sorted)
-        long_times_sorted.sort()
-
         # Compute columns
-        row["All CPU Hours"]   = sum(self.clean(goodput_cpu_time)) / 3600
-        row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
-        row["Avg MB Sent"]      = stats.mean(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
-        row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
-        row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
-        row["Max MB Recv"]      = max(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
-        row["Num Short Jobs"]   = sum(self.clean(is_short_job))
-        row["Max Rqst Mem MB"]  = max(self.clean(data['RequestMemory'], allow_empty_list=False))
+        row["All CPU Hours"]    = data["GoodCpuTime"] / 3600
+        row["Num Uniq Job Ids"] = data["Jobs"]
+        row["Avg MB Sent"]      = (data["BytesSent"] / data["Jobs"]) / 1e6
+        row["Max MB Sent"]      = data["MaxBytesSent"] / 1e6
+        row["Avg MB Recv"]      = (data["BytesRecvd"] / data["Jobs"]) / 1e6
+        row["Max MB Recv"]      = data["MaxBytesRecvd"] / 1e6
+        row["Num Short Jobs"]   = data["ShortJobs"]
+        row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
-        row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
-        row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
-        row["Num Users"] = len(set(data["User"]))
-   
+        row["Max Used Mem MB"]  = data["MaxMemoryUsage"]
+        row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
+        row["Num Users"] = len(data["Users"])
+
         if row["Num Uniq Job Ids"] > 0:
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
         else:
             row["% Short Jobs"] = 0
 
         # Compute time percentiles and stats
-        if len(long_times_sorted) > 0:
-            row["Min Hrs"]  = long_times_sorted[ 0] / 3600
-            row["25% Hrs"]  = long_times_sorted[  len(long_times_sorted)//4] / 3600
-            row["Med Hrs"]  = stats.median(long_times_sorted) / 3600
-            row["75% Hrs"]  = long_times_sorted[3*len(long_times_sorted)//4] / 3600
-            row["95% Hrs"]  = long_times_sorted[int(0.95*len(long_times_sorted))] / 3600
-            row["Max Hrs"]  = long_times_sorted[-1] / 3600
-            row["Mean Hrs"] = stats.mean(long_times_sorted) / 3600
+        n = len(data["LongJobTimes"])
+        if n > 0:
+            data["LongJobTimes"].sort()
+
+            row["Min Hrs"]  = data["LongJobTimes"][0] / 3600
+            row["25% Hrs"]  = data["LongJobTimes"][n//4] / 3600
+            row["Med Hrs"]  = stats.median(data["LongJobTimes"]) / 3600
+            row["75% Hrs"]  = data["LongJobTimes"][(3*n)//4] / 3600
+            row["95% Hrs"]  = data["LongJobTimes"][int(0.95*n)] / 3600
+            row["Max Hrs"]  = data["LongJobTimes"][-1] / 3600
+            row["Mean Hrs"] = stats.mean(data["LongJobTimes"]) / 3600
         else:
             for col in [f"{x} Hrs" for x in ["Min", "25%", "Med", "75%", "95%", "Max", "Mean"]]:
                 row[col] = 0
-
-        if len(long_times_sorted) > 1:
-            row["Std Hrs"] = stats.stdev(long_times_sorted) / 3600
+        if n > 1:
+            row["Std Hrs"] = stats.stdev(data["LongJobTimes"]) / 3600
         else:
             # There is no variance if there is only one value
             row["Std Hrs"] = 0
-
-        # Compute mode for Project and Schedd columns in the Users table
-        row["Num Users"] = len(set(data["User"]))
 
         return row
 
@@ -503,25 +443,25 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         # Compute mode for Project and Schedd columns in the Users table
         if agg == "Users":
-            projects = self.clean(data["ProjectName"])
+            projects = data["ProjectNames"]
             if len(projects) > 0:
-                row["Most Used Project"] = max(set(projects), key=projects.count)
+                row["Most Used Project"] = max(projects.items(), key=(lambda key: projects[key]))
             else:
                 row["Most Used Project"] = "UNKNOWN"
 
-            schedds = self.clean(data["ScheddName"])
+            schedds = data["ScheddNames"]
             if len(schedds) > 0:
-                row["Most Used Schedd"] = max(set(schedds), key=schedds.count)
+                row["Most Used Schedd"] = max(schedds.items(), key=(lambda key: schedds[key]))
             else:
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
-            row["Num Users"] = len(set(data["User"]))  
+            row["Num Users"] = len(data["Users"])
 
-        return row 
+        return row
 
     def scan_and_filter(self, es_index, start_ts, end_ts, **kwargs):
         filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-        
+
         query = self.get_query(
             index=es_index,
             start_ts=start_ts,
