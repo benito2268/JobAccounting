@@ -213,12 +213,12 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         self.reduce_data(i, output, total)
 
-        set_cols = {}
-        set_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
+        dict_cols = {}
+        dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
 
-        for col in set_cols:
-            output[col] = (output.get(col) or set()).add(set_cols[col])
-            total[col] = (total.get(col) or set()).add(set_cols[col])
+        for col in dict_cols:
+            output[col] = (output.get(col) or {})[dict_cols[col]] = 1
+            total[col] = (total.get(col) or {})[dict_cols[col]] = 1
 
     def site_filter(self, data, doc):
 
@@ -274,8 +274,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if not is_short:
             list_cols["LongJobTimes"] = i.get("CommittedTime")
 
-        set_cols = {}
-        set_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
+        dict_cols = {}
+        dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
 
         for col in sum_cols:
             o[col] = (o.get(col) or 0) + sum_cols[col]
@@ -286,9 +286,9 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         for col in list_cols:
             o[col].append(list_cols[col])
             t[col].append(list_cols[col])
-        for col in set_cols:
-            o[col] = (o.get(col) or set()).add(set_cols[col])
-            t[col] = (t.get(col) or set()).add(set_cols[col])
+        for col in dict_cols:
+            o[col] = (o.get(col) or {})[dict_cols[col]] = 1
+            t[col] = (t.get(col) or {})[dict_cols[col]] = 1
 
     def get_filters(self):
         # Add all filter methods to a list
@@ -331,7 +331,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = data["MaxMemoryUsage"]
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
-        row["Num Users"] = len(data["Users"])
+        row["Num Users"]        = len(data["Users"])
 
         if row["Num Uniq Job Ids"] > 0:
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
