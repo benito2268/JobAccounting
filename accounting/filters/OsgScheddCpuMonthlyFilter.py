@@ -473,13 +473,13 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             start_ts=start_ts,
             end_ts=end_ts,
         )
+        query["scroll"] = "3m"
+        query["size"] = 500
 
         # Use the scan() helper function, which automatically scrolls results. Nice!
         for doc in elasticsearch.helpers.scan(
                 client=self.client,
                 query=query.pop("body"),
-                scroll="10m",
-                size=500,
                 **query,
                 ):
 
