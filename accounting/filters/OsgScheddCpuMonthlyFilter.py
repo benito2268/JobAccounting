@@ -2,6 +2,7 @@ import logging
 import htcondor
 import statistics as stats
 from pathlib import Path
+from collections import defaultdict
 from .BaseFilter import BaseFilter
 
 
