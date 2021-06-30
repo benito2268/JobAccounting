@@ -164,7 +164,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
             return
 
-        reduce_data(output, total)
+        self.reduce_data(output, total)
 
     def user_filter(self, data, doc):
 
@@ -181,7 +181,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
             return
 
-        reduce_data(output, total)
+        self.reduce_data(output, total)
 
         counter_cols = {}
         counter_cols["ScheddNames"] = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
@@ -210,7 +210,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
             return
 
-        reduce_data(output, total)
+        self.reduce_data(output, total)
 
         set_cols = {}
         set_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
