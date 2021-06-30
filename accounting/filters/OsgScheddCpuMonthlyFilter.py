@@ -217,8 +217,10 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
 
         for col in dict_cols:
-            output[col] = (output.get(col) or {})[dict_cols[col]] = 1
-            total[col] = (total.get(col) or {})[dict_cols[col]] = 1
+            output[col] = output.get(col) or {}
+            output[col][dict_cols[col]] = 1
+            total[col] = total.get(col) or {}
+            total[col][dict_cols[col]] = 1
 
     def site_filter(self, data, doc):
 
@@ -287,8 +289,10 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             o[col].append(list_cols[col])
             t[col].append(list_cols[col])
         for col in dict_cols:
-            o[col] = (o.get(col) or {})[dict_cols[col]] = 1
-            t[col] = (t.get(col) or {})[dict_cols[col]] = 1
+            o[col] = o.get(col) or {}
+            o[col][dict_cols[col]] = 1
+            t[col] = t.get(col) or {}
+            t[col][dict_cols[col]] = 1
 
     def get_filters(self):
         # Add all filter methods to a list
