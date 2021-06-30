@@ -313,15 +313,6 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             [columns.pop(key) for key in rm_columns]
         return columns
 
-    def merge_filtered_data(self, data, agg):
-        rows = super().merge_filtered_data(data, agg)
-        if agg == "Site":
-            columns_sorted = list(rows[0])
-            columns_sorted[columns_sorted.index("All CPU Hours")] = "Final Exec Att CPU Hours"
-            rows[0] = tuple(columns_sorted)
-        return rows
-
-
     def compute_site_custom_columns(self, data, agg, agg_name):
 
         # Output dictionary
@@ -484,3 +475,54 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
                 filtr(filtered_data, doc)
 
         return filtered_data
+
+    def merge_filtered_data(self, data, agg):
+        # Takes filtered data and an aggregation level (e.g. Users, Schedds,
+        # Projects) and returns a list of tuples, with the first item
+        # containing a tuple of column names in the order that matches
+        # the following tuples of values
+
+        # Get the dict of columns
+        columns = self.add_custom_columns(agg)
+
+        # Make the 0th column the aggregation level
+        # e.g. agg on "Users"   -> "User" column
+        #      agg on "Schedds" -> "Schedd" column
+        columns[0] = agg.rstrip("s")
+
+        # Get the names of the columns in order
+        columns_sorted = [col for (n, col) in sorted(columns.items())]
+
+        # Loop over aggregated data and store computed data in rows
+        rows = []
+        for agg_name, d in data[agg].items():
+            row = {}
+
+            # It's possible to have no job data stored
+            # if the dict was initialized but then job data was skipped
+            if len(d["Jobs"]) == 0:
+                continue
+
+            # Put the name for this aggregation
+            # (e.g. user name, schedd name, project name)
+            # as the value for the 0th column
+            row[columns[0]] = agg_name
+
+            # Compute any custom columns
+            row.update(self.compute_custom_columns(d, agg, agg_name))
+
+            # Store a tuple of all column data in order
+            rows.append(tuple(row[col] for col in columns_sorted))
+
+        # Sort rows by All CPU Hours
+        rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All CPU Hours")))
+
+        # Prepend the header row
+        rows.insert(0, tuple(columns_sorted))
+
+        if agg == "Site":
+            columns_sorted = list(rows[0])
+            columns_sorted[columns_sorted.index("All CPU Hours")] = "Final Exec Att CPU Hours"
+            rows[0] = tuple(columns_sorted)
+
+        return rows
