@@ -3,6 +3,7 @@ import htcondor
 import statistics as stats
 from pathlib import Path
 from collections import defaultdict
+from operator import itemgetter
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers
 from .BaseFilter import BaseFilter
