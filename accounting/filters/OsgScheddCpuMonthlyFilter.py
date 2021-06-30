@@ -338,6 +338,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             row["% Short Jobs"] = 0
 
         # Compute time percentiles and stats
+        data["LongJobTimes"] = self.clean(data["LongJobTimes"])
         n = len(data["LongJobTimes"])
         if n > 0:
             data["LongJobTimes"].sort()
