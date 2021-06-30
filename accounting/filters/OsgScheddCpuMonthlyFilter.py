@@ -121,9 +121,9 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * i.get("RequestCpus", 1))
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * i.get("RequestCpus", 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - i.get("CommittedTime", 0)) * i.get("RequestCpus", 1))
-        sum_cols["NumShadowStarts"] = int(is_hasshadow) * i.get("NumShadowStarts", 0)
-        sum_cols["NumJobStarts"] = int(is_hasshadow) * i.get("NumJobStarts", 0)
-        sum_cols["NumBadJobStarts"] = int(is_hasshadow) * max(i.get("NumJobStarts", 0) - 1, 0)
+        sum_cols["NumShadowStarts"] = int(has_shadow) * i.get("NumShadowStarts", 0)
+        sum_cols["NumJobStarts"] = int(has_shadow) * i.get("NumJobStarts", 0)
+        sum_cols["NumBadJobStarts"] = int(has_shadow) * max(i.get("NumJobStarts", 0) - 1, 0)
         sum_cols["BytesSent"] = int(is_exec) * i.get("BytesSent", 0)
         sum_cols["BytesRecvd"] = int(is_exec) * i.get("BytesRecvd", 0)
 
