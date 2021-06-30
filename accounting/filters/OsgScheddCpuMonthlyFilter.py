@@ -270,7 +270,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         list_cols = {}
         list_cols["MemoryUsage"] = i.get("MemoryUsage")
         list_cols["LongJobTimes"] = None
-        if not is_short and not is_removed and has_shadow:
+        if not is_short:
             list_cols["LongJobTimes"] = i.get("CommittedTime")
 
         set_cols = {}
