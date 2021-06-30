@@ -503,7 +503,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
             # It's possible to have no job data stored
             # if the dict was initialized but then job data was skipped
-            if d["Jobs"] in (0, []):
+            if d.get("Jobs", 0) == 0:
                 continue
 
             # Put the name for this aggregation
