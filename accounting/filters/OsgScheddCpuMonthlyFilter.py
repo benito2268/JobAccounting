@@ -36,7 +36,7 @@ DEFAULT_COLUMNS = {
     191: "Max MB Recv",
 
     200: "Max Rqst Mem MB",
-    210: "Med Used Mem MB",
+    #210: "Med Used Mem MB",
     220: "Max Used Mem MB",
     230: "Max Rqst Cpus",
 
@@ -136,7 +136,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
 
         list_cols = {}
-        list_cols["MemoryUsage"] = i.get("MemoryUsage")
+        #list_cols["MemoryUsage"] = i.get("MemoryUsage")
         list_cols["LongJobTimes"] = None
         if not is_short and not is_removed and has_shadow:
             list_cols["LongJobTimes"] = i.get("CommittedTime")
@@ -145,8 +145,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             o[col] = (o.get(col) or 0) + sum_cols[col]
             t[col] = (t.get(col) or 0) + sum_cols[col]
         for col in max_cols:
-            o[col] = max((o.get(col) or 0), max_cols[col])
-            t[col] = max((t.get(col) or 0), max_cols[col])
+            o[col] = max([(o.get(col) or 0), max_cols[col]])
+            t[col] = max([(t.get(col) or 0), max_cols[col]])
         for col in list_cols:
             o[col].append(list_cols[col])
             t[col].append(list_cols[col])
@@ -271,7 +271,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
 
         list_cols = {}
-        list_cols["MemoryUsage"] = i.get("MemoryUsage")
+        #list_cols["MemoryUsage"] = i.get("MemoryUsage")
         list_cols["LongJobTimes"] = None
         if not is_short:
             list_cols["LongJobTimes"] = i.get("CommittedTime")
@@ -283,8 +283,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             o[col] = (o.get(col) or 0) + sum_cols[col]
             t[col] = (t.get(col) or 0) + sum_cols[col]
         for col in max_cols:
-            o[col] = max((o.get(col) or 0), max_cols[col])
-            t[col] = max((t.get(col) or 0), max_cols[col])
+            o[col] = max([(o.get(col) or 0), max_cols[col]])
+            t[col] = max([(t.get(col) or 0), max_cols[col]])
         for col in list_cols:
             o[col].append(list_cols[col])
             t[col].append(list_cols[col])
@@ -332,7 +332,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Max MB Recv"]      = data["MaxBytesRecvd"] / 1e6
         row["Num Short Jobs"]   = data["ShortJobs"]
         row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
-        row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
+        #row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = data["MaxMemoryUsage"]
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
         row["Num Users"]        = len(data["Users"])
@@ -385,7 +385,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         row["Num Short Jobs"]   = data["ShortJobs"]
         row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
-        row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
+        #row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = data["MaxMemoryUsage"]
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
         row["Num Exec Atts"]    = data["NumJobStarts"]
@@ -478,6 +478,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         for doc in elasticsearch.helpers.scan(
                 client=self.client,
                 query=query.pop("body"),
+                scroll="10m",
+                size=500,
                 **query,
                 ):
 
