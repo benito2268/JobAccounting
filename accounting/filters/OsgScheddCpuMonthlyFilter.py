@@ -378,10 +378,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Num DAG Node Jobs"] = data["DAGNodeJobs"]
         row["Num Rm'd Jobs"]    = data["RmJobs"]
         row["Num Jobs w/>1 Exec Att"] = data["MultiExecJobs"]
-        row["Avg MB Sent"]      = (data["BytesSent"] / data["RunJobs"]) / 1e6
-        row["Max MB Sent"]      = data["MaxBytesSent"] / 1e6
-        row["Avg MB Recv"]      = (data["BytesRecvd"] / data["RunJobs"]) / 1e6
-        row["Max MB Recv"]      = data["MaxBytesRecvd"] / 1e6
+
         row["Num Short Jobs"]   = data["ShortJobs"]
         row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
@@ -392,6 +389,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Num Local Univ Jobs"] = data["LocalJobs"]
         row["Num Sched Univ Jobs"] = data["SchedulerJobs"]
 
+        if data["RunJobs"] > 0:
+            row["Avg MB Sent"] = (data["BytesSent"] / data["RunJobs"]) / 1e6
+            row["Max MB Sent"] = data["MaxBytesSent"] / 1e6
+            row["Avg MB Recv"] = (data["BytesRecvd"] / data["RunJobs"]) / 1e6
+            row["Max MB Recv"] = data["MaxBytesRecvd"] / 1e6
+        else:
+            row["Avg MB Sent"] = row["Max MB Sent"] = row["Avg MB Recv"] = row["Max MB Recv"] = 0
+        
         # Compute derivative columns
         if row["All CPU Hours"] > 0:
             row["% Good CPU Hours"] = 100 * row["Good CPU Hours"] / row["All CPU Hours"]
