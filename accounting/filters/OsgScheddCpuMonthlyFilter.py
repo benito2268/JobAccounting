@@ -132,8 +132,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         max_cols["MaxBytesSent"] = i.get("BytesSent", 0)
         max_cols["MaxBytesRecvd"] = i.get("BytesRecvd", 0)
         max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
-        sum_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
-        sum_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
+        max_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
+        max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
 
         list_cols = {}
         #list_cols["MemoryUsage"] = i.get("MemoryUsage")
@@ -267,8 +267,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         max_cols["MaxBytesSent"] = i.get("BytesSent", 0)
         max_cols["MaxBytesRecvd"] = i.get("BytesRecvd", 0)
         max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
-        sum_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
-        sum_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
+        max_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
+        max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
 
         list_cols = {}
         #list_cols["MemoryUsage"] = i.get("MemoryUsage")
@@ -472,9 +472,9 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             index=es_index,
             start_ts=start_ts,
             end_ts=end_ts,
+            scroll="3m",
+            size=1000,
         )
-        query["scroll"] = "3m"
-        query["size"] = 500
 
         # Use the scan() helper function, which automatically scrolls results. Nice!
         for doc in elasticsearch.helpers.scan(
