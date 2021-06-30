@@ -442,13 +442,13 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if agg == "Users":
             projects = data["ProjectNames"]
             if len(projects) > 0:
-                row["Most Used Project"] = max(projects.items(), key=(lambda key: projects[key]))
+                row["Most Used Project"] = max(projects.items(), key=itemgetter(1))[0]
             else:
                 row["Most Used Project"] = "UNKNOWN"
 
             schedds = data["ScheddNames"]
             if len(schedds) > 0:
-                row["Most Used Schedd"] = max(schedds.items(), key=(lambda key: schedds[key]))
+                row["Most Used Schedd"] = max(schedds.items(), key=itemgetter(1))[0]
             else:
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
