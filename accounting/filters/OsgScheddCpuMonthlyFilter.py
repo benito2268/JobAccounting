@@ -145,7 +145,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             t[col] = (t.get(col) or 0) + sum_cols[col]
         for col in max_cols:
             o[col] = max((o.get(col) or 0), max_cols[col])
-            t[col] = max((t.get(col) or 0) + max_cols[col])
+            t[col] = max((t.get(col) or 0), max_cols[col])
         for col in list_cols:
             o[col].append(list_cols[col])
             t[col].append(list_cols[col])
@@ -281,7 +281,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             t[col] = (t.get(col) or 0) + sum_cols[col]
         for col in max_cols:
             o[col] = max((o.get(col) or 0), max_cols[col])
-            t[col] = max((t.get(col) or 0) + max_cols[col])
+            t[col] = max((t.get(col) or 0), max_cols[col])
         for col in list_cols:
             o[col].append(list_cols[col])
             t[col].append(list_cols[col])
