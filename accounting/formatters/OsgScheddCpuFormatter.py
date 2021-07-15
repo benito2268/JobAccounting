@@ -50,6 +50,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "25% Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "Med Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "75% Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
+            "95% Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "Max Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "Mean Hrs":   lambda x: f"<td>{hhmm(x)}</td>",
             "Std Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
