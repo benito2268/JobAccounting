@@ -12,11 +12,10 @@ DEFAULT_COLUMNS = {
     45: "% Ckpt Able",
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
+    70: "% Jobs w/>1 Exec Att",
     
-    70: "Shadw Starts / Job Id",
-    80: "Exec Atts / Shadw Start",
-
-    90: "% Jobs w/>1 Exec Att",
+    80: "Shadw Starts / Job Id",
+    90: "Exec Atts / Shadw Start",
 
     110: "Min Hrs",
     120: "25% Hrs",

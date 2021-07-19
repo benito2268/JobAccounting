@@ -12,13 +12,12 @@ DEFAULT_COLUMNS = {
 
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
+    70: "% Jobs w/>1 Exec Att",
+    80: "% Jobs w/1+ Holds",
     
-    70: "Shadw Starts / Job Id",
-    80: "Exec Atts / Shadw Start",
-    85: "Holds / Job Id",
-
-    90: "% Jobs w/>1 Exec Att",
-    95: "% Jobs w/1+ Holds",
+    85: "Shadw Starts / Job Id",
+    90: "Exec Atts / Shadw Start",
+    95: "Holds / Job Id",
 
     110: "Min Hrs",
     120: "25% Hrs",

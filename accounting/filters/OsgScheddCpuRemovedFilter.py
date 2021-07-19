@@ -10,11 +10,12 @@ DEFAULT_COLUMNS = {
     20: "Num Uniq Job Ids",
     30: "CPU Hours / Exec Att",
 
+    40: "% Jobs w/1+ Holds",
     50: "% Jobs w/o Shadw",
     60: "Shadw Starts / Job Id",
     70: "Exec Atts / Shadw Start",
     75: "Holds / Job Id",
-    76: "% Jobs w/1+ Holds",
+
     80: "Avg MB Sent",
     81: "Max MB Sent",
     90: "Avg MB Recv",
