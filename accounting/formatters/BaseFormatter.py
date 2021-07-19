@@ -56,9 +56,9 @@ DEFAULT_STYLES = {
 
 DEFAULT_LEGEND = OrderedDict()
 DEFAULT_LEGEND["All CPU Hours"]    = "Total CPU hours for all execution attempts, including preemption and removal"
+DEFAULT_LEGEND["Num Uniq Job Ids"] = "Number of unique job ids across all execution attempts"
 DEFAULT_LEGEND["% Good CPU Hours"] = "Good CPU Hours per All CPU Hours, as a percentage"
 DEFAULT_LEGEND["Good CPU Hours"]   = "Total CPU hours for execution attempts that ran to completion"
-DEFAULT_LEGEND["Num Uniq Job Ids"] = "Number of unique job ids across all execution attempts"
 DEFAULT_LEGEND["Max Rqst Mem MB"]  = "Maximum memory requested across all submitted jobs in MB"
 DEFAULT_LEGEND["Max Used Mem MB"]  = "Maximum measured memory usage across all submitted jobs' last execution attempts in MB"
 DEFAULT_LEGEND["Max Rqst Cpus"]    = "Maximum number of CPUs requested across all submitted jobs"
@@ -112,7 +112,20 @@ class BaseFormatter:
             "header": header,
             "rows": rows,
         }
+        self.rm_cols(data)
         return data
+
+    def rm_cols(self, data, cols={}):
+        if len(cols) == 0:
+            return
+        idxs = []
+        for i in range(len(data["header"])-1, -1, -1):
+            if data["header"][i] in cols:
+                idxs.append(i)
+                data["header"].pop(i)
+        for row in data["rows"]:
+            for i in idxs:
+                row.pop(i)
 
     def format_rows(self,
                     header,
