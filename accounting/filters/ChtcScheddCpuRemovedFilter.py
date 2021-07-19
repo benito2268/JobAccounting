@@ -7,8 +7,9 @@ from .BaseFilter import BaseFilter
 
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
+    20: "Num Uniq Job Ids",
     30: "CPU Hours / Exec Att",
-    40: "Num Uniq Job Ids",
+
     50: "% Jobs w/o Shadw",
     60: "Shadw Starts / Job Id",
     70: "Exec Atts / Shadw Start",

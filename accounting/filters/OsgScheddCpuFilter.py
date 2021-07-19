@@ -7,8 +7,9 @@ from .BaseFilter import BaseFilter
 
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
-    20: "% Good CPU Hours",
-    40: "Num Uniq Job Ids",
+    20: "Num Uniq Job Ids",
+    30: "% Good CPU Hours",
+
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     
@@ -327,7 +328,7 @@ class OsgScheddCpuFilter(BaseFilter):
             columns[5] = "Num Users"
         if agg == "Site":
             columns[5] = "Num Users"
-            rm_columns = [20,50,70,80,85,90,95,300,305,310,320,325,330,340,350,355,370,380]
+            rm_columns = [30,50,70,80,85,90,95,300,305,310,320,325,330,340,350,355,370,380]
             [columns.pop(key) for key in rm_columns]
         return columns
             

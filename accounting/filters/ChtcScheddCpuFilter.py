@@ -6,8 +6,9 @@ from .BaseFilter import BaseFilter
 
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
-    20: "% Good CPU Hours",
-    40: "Num Uniq Job Ids",
+    20: "Num Uniq Job Ids",
+    30: "% Good CPU Hours",
+
     45: "% Ckpt Able",
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
@@ -300,7 +301,7 @@ class ChtcScheddCpuFilter(BaseFilter):
             columns[5] = "Num Users"
         if agg == "Site":
             columns[5] = "Num Users"
-            rm_columns = [20,45,50,70,80,90,300,305,310,320,330,340,350,370,380,390]
+            rm_columns = [30,45,50,70,80,90,300,305,310,320,330,340,350,370,380,390]
             [columns.pop(key) for key in rm_columns]
         return columns
             
