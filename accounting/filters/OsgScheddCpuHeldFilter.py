@@ -60,6 +60,7 @@ DEFAULT_COLUMNS = {
 
     30: "Most Common Hold Reason",
     31: "% Holds Most Comm Reas",
+    35: "Holds / Job Id",
 
     40: "% Good CPU Hours",
     50: "% Rm'd Jobs",
@@ -68,7 +69,6 @@ DEFAULT_COLUMNS = {
     
     85: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
-    95: "Holds / Job Id",
 
     1110: "Min Hrs",
     1120: "25% Hrs",
