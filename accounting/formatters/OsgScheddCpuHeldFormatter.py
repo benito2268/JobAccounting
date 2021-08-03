@@ -76,6 +76,7 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
 
     def format_rows(self, header, rows, custom_fmts={}, default_text_fmt=None, default_numeric_fmt=None):
         custom_fmts = {
+            "Most Common Hold Reason": lambda x: f'<td class="text">{break_camel(x)}</td>',
             "Min Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "25% Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "Med Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
@@ -88,9 +89,10 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
             "Shadw Starts / Job Id":    lambda x: f"<td>{float(x):.2f}</td>",
             "Exec Atts / Shadw Start":  lambda x: f"<td>{float(x):.3f}</td>",
             "Holds / Job Id":           lambda x: f"<td>{float(x):.2f}</td>",
-            "% Rm'd Jobs":          lambda x: f"<td>{float(x):.1f}</td>",
-            "% Short Jobs":         lambda x: f"<td>{float(x):.1f}</td>",
-            "% Jobs w/>1 Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
+            "% Holds Most Comm Reas": lambda x: f"<td>{float(x):.1f}</td>",
+            "% Rm'd Jobs":            lambda x: f"<td>{float(x):.1f}</td>",
+            "% Short Jobs":           lambda x: f"<td>{float(x):.1f}</td>",
+            "% Jobs w/>1 Exec Att":   lambda x: f"<td>{float(x):.1f}</td>",
         }
         return super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
     

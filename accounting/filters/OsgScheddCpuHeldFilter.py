@@ -57,8 +57,11 @@ HOLD_REASONS = [
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
     20: "Num Uniq Job Ids",
-    30: "% Good CPU Hours",
 
+    30: "Most Common Hold Reason",
+    31: "% Holds Most Comm Reas",
+
+    40: "% Good CPU Hours",
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
@@ -66,8 +69,6 @@ DEFAULT_COLUMNS = {
     85: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
     95: "Holds / Job Id",
-
-    100: "Most Common Hold Reason",
 
     1110: "Min Hrs",
     1120: "25% Hrs",
@@ -460,6 +461,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
 
         row["Most Common Hold Reason"] = max(num_holds_by_reason, key=lambda reason: num_holds_by_reason[reason])
+        row["% Holds Most Comm Reas"] = 100 * num_holds_by_reason[row["Most Common Hold Reason"]] / row["Num Job Holds"]
         for reason in HOLD_REASONS:
             row[f"Num Holds for {reason}"] = num_holds_by_reason[reason]
 
