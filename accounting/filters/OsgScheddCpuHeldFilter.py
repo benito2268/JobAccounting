@@ -122,7 +122,7 @@ DEFAULT_FILTER_ATTRS = [
 ]
 
 for i, reason in enumerate(HOLD_REASONS):
-    DEFAULT_COLUMNS[101 + i] = f"Num Holds for {reason}"
+    DEFAULT_COLUMNS[101 + i] = f"% Holds for {reason}"
 
 class OsgScheddCpuHeldFilter(BaseFilter):
     name = "OSG schedd held job history"
@@ -463,7 +463,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         row["Most Common Hold Reason"] = max(num_holds_by_reason, key=lambda reason: num_holds_by_reason[reason])
         row["% Holds Most Comm Reas"] = 100 * num_holds_by_reason[row["Most Common Hold Reason"]] / row["Num Job Holds"]
         for reason in HOLD_REASONS:
-            row[f"Num Holds for {reason}"] = num_holds_by_reason[reason]
+            row[f"% Holds for {reason}"] = 100 * num_holds_by_reason[reason] / row["Num Job Holds"]
 
         # Compute derivative columns
         if row["All CPU Hours"] > 0:

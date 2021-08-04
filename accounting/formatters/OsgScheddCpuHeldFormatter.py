@@ -4,6 +4,55 @@ from collections import OrderedDict
 from string import ascii_uppercase
 
 
+HOLD_REASONS = [
+    "Unspecified",
+    "UserRequest",
+    "GlobusGramError",
+    "JobPolicy",
+    "CorruptedCredential",
+    "JobPolicyUndefined",
+    "FailedToCreateProcess",
+    "UnableToOpenOutput",
+    "UnableToOpenInput",
+    "UnableToOpenOutputStream",
+    "UnableToOpenInputStream",
+    "InvalidTransferAck",
+    "DownloadFileError",
+    "UploadFileError",
+    "IwdError",
+    "SubmittedOnHold",
+    "SpoolingInput",
+    "JobShadowMismatch",
+    "InvalidTransferGoAhead",
+    "HookPrepareJobFailure",
+    "MissedDeferredExecutionTime",
+    "StartdHeldJob",
+    "UnableToInitUserLog",
+    "FailedToAccessUserAccount",
+    "NoCompatibleShadow",
+    "InvalidCronSettings",
+    "SystemPolicy",
+    "SystemPolicyUndefined",
+    "GlexecChownSandboxToUser",
+    "PrivsepChownSandboxToUser",
+    "GlexecChownSandboxToCondor",
+    "PrivsepChownSandboxToCondor",
+    "MaxTransferInputSizeExceeded",
+    "MaxTransferOutputSizeExceeded",
+    "JobOutOfResources",
+    "InvalidDockerImage",
+    "FailedToCheckpoint",
+    "EC2UserError",
+    "EC2InternalError",
+    "EC2AdminError",
+    "EC2ConnectionProblem",
+    "EC2ServerError",
+    "EC2InstancePotentiallyLostError",
+    "PreScriptFailed",
+    "PostScriptFailed",
+    "SingularityTestFailed",
+]
+
 def hhmm(hours):
     # Convert float hours to HH:MM
     h = int(hours)
@@ -63,9 +112,9 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
             "Num Jobs w/>1 Exec Att",
             "Num Short Jobs",
         }
-        num_holds_icols = [i for i, header in enumerate(data["header"]) if header[:9] == "Num Holds"]
+        num_holds_icols = [i for i, header in enumerate(data["header"]) if header[:11] == "% Holds for"]
         for i in num_holds_icols:
-            if int(data["rows"][0][i]) == 0:
+            if float(data["rows"][0][i]) < 0.0000001:
                 cols.add(data["header"][i])
             else:
                 data["header"][i] = break_camel(data["header"][i])
@@ -94,6 +143,8 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
             "% Short Jobs":           lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/>1 Exec Att":   lambda x: f"<td>{float(x):.1f}</td>",
         }
+        for reason in HOLD_REASONS:
+            custom_fmts[break_camel(f"% Holds for {reason}")] = lambda x: f"<td>{float(x):.1f}</td>"
         return super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
     
     def get_legend(self):
