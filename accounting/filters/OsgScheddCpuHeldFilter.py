@@ -176,9 +176,9 @@ class OsgScheddCpuHeldFilter(BaseFilter):
             ads = list(ads)
             if len(ads) == 0:
                 logging.warning(f'Could not find Schedd ClassAd for Machine == "{schedd}"')
-                logging.warning(f"Assuming jobs from {schedd} are in OS pool")
-                self.schedd_collector_host_map[schedd] = self.collector_host
-                return self.collector_host
+                logging.warning(f"Assuming jobs from {schedd} are not in OS pool")
+                self.schedd_collector_host_map[schedd] = "UNKNOWN"
+                return "UNKNOWN"
             if len(ads) > 1:
                 logging.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
 
