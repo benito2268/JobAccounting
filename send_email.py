@@ -4,7 +4,9 @@ import os; os.environ["CONDOR_CONFIG"] = "/dev/null"  # squelch warning
 import sys
 from datetime import timedelta
 import accounting
+from accounting.push_totals_to_es import push_totals_to_es
 import json
+import traceback
 
 #settings = {
 #    "es_index": "osg-schedd-*",
@@ -31,8 +33,13 @@ html = formatter.get_html()
 with open("last_html.html", "w") as f:
     f.write(html)
 
-accounting.send_email(
-    subject=formatter.get_subject(**vars(args)),
-    html=html,
-    table_files=table_files,
-    **vars(args))
+try:
+    accounting.send_email(
+        subject=formatter.get_subject(**vars(args)),
+        html=html,
+        table_files=table_files,
+        **vars(args))
+except Exception:
+    traceback.print_exc()
+
+push_totals_to_es(table_files, "daily_totals", **vars(args))
