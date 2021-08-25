@@ -65,9 +65,6 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         # Filter out jobs that were not removed
         if i.get("JobStatus", 4) != 3:
             return
-        
-        if i.get("NumJobCompletions") > 0:
-            return
 
         # Get list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
@@ -121,9 +118,6 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         if i.get("JobStatus", 4) != 3:
             return
          
-        if i.get("NumJobCompletions") > 0:
-            return
-
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["ScheddName"]
@@ -181,9 +175,6 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         if i.get("JobStatus",4) != 3:
             return
         
-        if i.get("NumJobCompletions")>0:
-            return
-
         # Filter out jobs that did not run in the OS pool
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
