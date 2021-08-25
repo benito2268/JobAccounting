@@ -108,7 +108,6 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
             "Num Shadw Starts",
             "Num Job Holds",
             "Num Rm'd Jobs",
-            "Num DAG Node Jobs",
             "Num Jobs w/>1 Exec Att",
             "Num Short Jobs",
         }
