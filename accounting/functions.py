@@ -123,7 +123,7 @@ def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr,
             try:
                 smtp = smtplib.SMTP(mailserver)
                 result = smtp.sendmail(from_addr, recipient, msg.as_string())
-                smtp.quit
+                smtp.quit()
             except Exception:
                 if result is not None:
                     logging.error(f"Got result: {result}")
