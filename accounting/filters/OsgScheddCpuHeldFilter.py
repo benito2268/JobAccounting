@@ -52,6 +52,7 @@ HOLD_REASONS = [
     "PreScriptFailed",
     "PostScriptFailed",
     "SingularityTestFailed",
+    "JobDurationExceeded",
 ]
 
 DEFAULT_COLUMNS = {
@@ -375,6 +376,8 @@ class OsgScheddCpuHeldFilter(BaseFilter):
             if reasons is None:
                 continue
             for reason in reasons:
+                if reason not in num_holds_by_reason:
+                    num_holds_by_reason[reason] = 0
                 num_holds_by_reason[reason] += reasons[reason]
 
         # Compute goodput and total CPU hours columns
