@@ -51,6 +51,7 @@ HOLD_REASONS = [
     "PreScriptFailed",
     "PostScriptFailed",
     "SingularityTestFailed",
+    "JobDurationExceeded",
 ]
 
 def hhmm(hours):
