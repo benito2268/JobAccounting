@@ -52,7 +52,7 @@ DEFAULT_FILTER_ATTRS = [
 
 class ChtcScheddCpuRemovedFilter(BaseFilter):
     name = "CHTC schedd removed job history"
-    
+
     def schedd_filter(self, data, doc):
 
         # Get input dict
@@ -61,7 +61,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this schedd
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         o = data["Schedds"][schedd]
-       
+
         # Filter out jobs that were not removed
         if i.get("JobStatus", 4) != 3:
             return
@@ -113,11 +113,11 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this user
         user = i.get("User", "UNKNOWN") or "UNKNOWN"
         o = data["Users"][user]
-        
+
         # Filter out jobs that were not removed
         if i.get("JobStatus", 4) != 3:
             return
-         
+
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["ScheddName"]
@@ -127,7 +127,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
-        
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
@@ -170,11 +170,11 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         # Get output dict for this project
         project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
         o = data["Projects"][project]
-    
+
         # Filter out jobs that were not removed
         if i.get("JobStatus",4) != 3:
             return
-        
+
         # Filter out jobs that did not run in the OS pool
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
@@ -183,7 +183,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
-        
+
         # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
             o["_NumDAGNodes"].append(1)
@@ -236,7 +236,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         if agg == "Projects":
             columns[5] = "Num Users"
         return columns
-            
+
     def compute_custom_columns(self, data, agg, agg_name):
         # Output dictionary
         row = {}
@@ -311,7 +311,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Avg MB Recv"]      = stats.mean(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
         row["Max MB Recv"]      = max(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
-        
+
         row["Num DAG Node Jobs"] = sum(data["_NumDAGNodes"])
         row["Max Rqst Mem MB"]  = max(self.clean(data['RequestMemory'], allow_empty_list=False))
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))

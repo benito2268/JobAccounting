@@ -8,7 +8,7 @@ import elasticsearch.helpers
 
 class BaseFilter:
     name = "job history"
-    
+
     def __init__(self, skip_init=False, **kwargs):
         if skip_init:
             return
@@ -117,19 +117,19 @@ class BaseFilter:
             self.user_filter,
         ]
         return filters
-    
+
     def scan_and_filter(self, es_index, start_ts, end_ts, **kwargs):
         # Returns a 3-level dictionary that contains data gathered from
         # Elasticsearch and filtered through whatever methods have been
         # defined in self.get_filters()
-        
+
         # Create a data structure for storing filtered data:
         # 3-level defaultdict -> list
         # First level - Aggregation level (e.g. Schedd, User, Project)
         # Second level - Aggregation name (e.g. value of ScheddName, UserName, ProjectName)
         # Third level - Field name to be aggregated (e.g. RemoteWallClockTime, RequestCpus)
         filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-        
+
         query = self.get_query(
             index=es_index,
             start_ts=start_ts,
@@ -199,7 +199,7 @@ class BaseFilter:
 
         # Output dictionary
         row = {}
-        
+
         # Compute goodput and total CPU hours columns
         goodput_cpu_time = []
         total_cpu_time = []
@@ -225,12 +225,12 @@ class BaseFilter:
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
         row["Max MB Sent"]      = max(self.clean(data["BytesSent"], allow_empty_list=False)) / 1e6
         row["Max MB Recv"]      = max(self.clean(data["BytesRecvd"], allow_empty_list=False)) / 1e6
-        
+
         if row["All CPU Hours"] > 0:
             row["% Good CPU Hours"] = 100 * row["Good CPU Hours"] / row["All CPU Hours"]
         else:
             row["% Good CPU Hours"] = 0
-        
+
         return row
 
     def merge_filtered_data(self, data, agg):

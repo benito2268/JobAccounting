@@ -73,7 +73,7 @@ class ChtcScheddCpuRemovedFormatter(BaseFormatter):
         }
         rows = super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
         return rows
-    
+
     def get_legend(self):
         custom_items = OrderedDict()
         custom_items["CPU Hours / Exec Att"] = "Average CPU Hours used in a non-final execution attempt"

@@ -15,7 +15,7 @@ DEFAULT_COLUMNS = {
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
-    
+
     80: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
 
@@ -104,7 +104,7 @@ class ChtcScheddGpuFilter(BaseFilter):
             }
         }
         return query
-    
+
     def schedd_filter(self, data, doc):
 
         # Get input dict
@@ -178,7 +178,7 @@ class ChtcScheddGpuFilter(BaseFilter):
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
-        
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
@@ -276,7 +276,7 @@ class ChtcScheddGpuFilter(BaseFilter):
         for attr in filter_attrs:
             o[attr].append(i.get(attr, None))
 
-    
+
     def site_filter(self, data, doc):
 
         # Get input dict
@@ -327,7 +327,7 @@ class ChtcScheddGpuFilter(BaseFilter):
             rm_columns = [30,35,45,50,70,80,90,180,181,190,191,300,303,305,307,310,320,330,340,350,390]
             [columns.pop(key) for key in rm_columns]
         return columns
-            
+
     def merge_filtered_data(self, data, agg):
         rows = super().merge_filtered_data(data, agg)
         if agg == "Site":
@@ -496,9 +496,9 @@ class ChtcScheddGpuFilter(BaseFilter):
             else:
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
-            row["Num Users"] = len(set(data["User"]))  
+            row["Num Users"] = len(set(data["User"]))
 
-        return row 
+        return row
 
 
     def compute_site_custom_columns(self, data, agg, agg_name):

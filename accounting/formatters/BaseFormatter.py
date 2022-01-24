@@ -179,7 +179,7 @@ class BaseFormatter:
                         rows[i][j] = default_text_fmt(value)
 
         return rows
-    
+
     def get_table_html(self, table_file, report_period, start_ts, end_ts, **kwargs):
         table_data = self.load_table(table_file)
         rows = self.format_rows(table_data["header"], table_data["rows"])
@@ -188,7 +188,7 @@ class BaseFormatter:
         for i, row in enumerate(rows):
             tr_class = ["even", "odd"][i % 2]
             rows_html.append(f'<tr class="{tr_class}">{"".join(row)}</tr>')
-            
+
         newline = "\n  "
         html = f"""
 <h1>{self.get_table_title(table_file, report_period, start_ts, end_ts)}</h1>
@@ -224,7 +224,7 @@ class BaseFormatter:
 </p>
 """
         return html
-    
+
     def get_html(self):
         newline = "\n"
         html = f"""
