@@ -1,5 +1,6 @@
 import logging
 import htcondor
+import pickle
 import statistics as stats
 from pathlib import Path
 from collections import defaultdict
@@ -57,38 +58,67 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
     name = "OSG schedd job history"
 
     def __init__(self, **kwargs):
-        self.collector_host = "flock.opensciencegrid.org"
+        self.collector_hosts = {"cm-1.ospool.osg-htc.org", "cm-2.ospool.osg-htc.org", "flock.opensciencegrid.org"}
+        self.schedd_collector_host_map_pickle = Path("ospool-host-map.pkl")
         self.schedd_collector_host_map = {}
+        if self.schedd_collector_host_map_pickle.exists():
+            try:
+                self.schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
+            except IOError:
+                pass
         super().__init__(**kwargs)
 
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,
         # unless result previously cached
         if schedd not in self.schedd_collector_host_map:
+            self.schedd_collector_host_map[schedd] = set()
 
-            collector = htcondor.Collector(self.collector_host)
-            ads = collector.query(
-                htcondor.AdTypes.Schedd,
-                constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
-                projection=["CollectorHost"],
-            )
-            ads = list(ads)
-            if len(ads) == 0:
-                logging.warning(f'Could not find Schedd ClassAd for Machine == "{schedd}"')
-                logging.warning(f"Assuming jobs from {schedd} are not in OS pool")
-                self.schedd_collector_host_map[schedd] = "localhost"
-                return self.schedd_collector_host_map[schedd]
-            if len(ads) > 1:
-                logging.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
+            for collector_host in self.collector_hosts:
+                collector = htcondor.Collector(collector_host)
+                ads = collector.query(
+                    htcondor.AdTypes.Schedd,
+                    constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
+                    projection=["CollectorHost"],
+                )
+                ads = list(ads)
+                if len(ads) == 0:
+                    continue
+                if len(ads) > 1:
+                    logging.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
 
-            # Cache the CollectorHost in the map
-            if "CollectorHost" in ads[0]:
-                self.schedd_collector_host_map[schedd] = ads[0]["CollectorHost"].split(':')[0]
+                # Cache the CollectorHost in the map
+                if "CollectorHost" in ads[0]:
+                    collector_hosts = set()
+                    for collector_host in ads[0]["CollectorHost"].split(","):
+                        collector_hosts.add(collector_host.strip().split(":")[0])
+                    if collector_hosts:
+                        self.schedd_collector_host_map[schedd] = collector_hosts
+                        break
             else:
-                logging.warning(f"CollectorHost not found in Schedd ClassAd for {schedd}")
-                self.schedd_collector_host_map[schedd] = "UNKNOWN"
+                logging.warning(f"Did not find Machine == {schedd} in collectors")
+
+            # Update the pickle
+            if len(self.schedd_collector_host_map[schedd]) > 0:
+                # Don't store any unknown schedds
+                fixed_host_map = self.schedd_collector_host_map.copy()
+                for k, v in fixed_host_map.items():
+                    if len(v) == 0:
+                        del fixed_host_map[k]
+                with open(self.schedd_collector_host_map_pickle, "wb") as f:
+                    pickle.dump(fixed_host_map, f)
 
         return self.schedd_collector_host_map[schedd]
+
+    def is_ospool_job(self, ad):
+        remote_pool = set()
+        if "LastRemotePool" in ad and ad["LastRemotePool"]:
+            remote_pool.add(ad["LastRemotePool"])
+        else:
+            schedd = ad.get("ScheddName", "UNKNOWN") or "UNKNOWN"
+            if schedd != "UNKNOWN":
+                remote_pool = self.schedd_collector_host(schedd)
+        return bool(remote_pool & self.collector_hosts)
 
     def reduce_data(self, i, o, t):
 
@@ -162,7 +192,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         total = data["Schedds"]["TOTAL"]
 
         # Filter out jobs that did not run in the OS pool
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+        if not self.is_ospool_job(i):
             return
 
         self.reduce_data(i, output, total)
@@ -178,8 +208,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         total = data["Users"]["TOTAL"]
 
         # Filter out jobs that did not run in the OS pool
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+        if not self.is_ospool_job(i):
             return
 
         self.reduce_data(i, output, total)
@@ -207,8 +236,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         total = data["Projects"]["TOTAL"]
 
         # Filter out jobs that did not run in the OS pool
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+        if not self.is_ospool_job(i):
             return
 
         self.reduce_data(i, output, total)
@@ -236,8 +264,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             return
 
         # Filter out jobs that did not run in the OS pool
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+        if not self.is_ospool_job(i):
             return
 
         # Get output dict for this site
@@ -400,7 +427,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             row["Max MB Recv"] = data["MaxBytesRecvd"] / 1e6
         else:
             row["Avg MB Sent"] = row["Max MB Sent"] = row["Avg MB Recv"] = row["Max MB Recv"] = 0
-        
+
         # Compute derivative columns
         if row["All CPU Hours"] > 0:
             row["% Good CPU Hours"] = 100 * row["Good CPU Hours"] / row["All CPU Hours"]

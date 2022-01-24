@@ -13,7 +13,7 @@ DEFAULT_COLUMNS = {
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
-    
+
     80: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
 
@@ -70,7 +70,7 @@ DEFAULT_FILTER_ATTRS = [
 
 class ChtcScheddCpuFilter(BaseFilter):
     name = "CHTC schedd job history"
-    
+
     def schedd_filter(self, data, doc):
 
         # Get input dict
@@ -146,7 +146,7 @@ class ChtcScheddCpuFilter(BaseFilter):
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
-        
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
@@ -248,7 +248,7 @@ class ChtcScheddCpuFilter(BaseFilter):
         for attr in filter_attrs:
             o[attr].append(i.get(attr, None))
 
-    
+
     def site_filter(self, data, doc):
 
         # Get input dict
@@ -303,7 +303,7 @@ class ChtcScheddCpuFilter(BaseFilter):
             rm_columns = [30,45,50,70,80,90,300,305,310,320,330,340,350,370,380,390]
             [columns.pop(key) for key in rm_columns]
         return columns
-            
+
     def merge_filtered_data(self, data, agg):
         rows = super().merge_filtered_data(data, agg)
         if agg == "Site":
@@ -367,7 +367,7 @@ class ChtcScheddCpuFilter(BaseFilter):
         row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
         row["Num Users"] = len(set(data["User"]))
-   
+
         if row["Num Uniq Job Ids"] > 0:
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
         else:
@@ -540,6 +540,6 @@ class ChtcScheddCpuFilter(BaseFilter):
             else:
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
-            row["Num Users"] = len(set(data["User"]))  
+            row["Num Users"] = len(set(data["User"]))
 
-        return row 
+        return row

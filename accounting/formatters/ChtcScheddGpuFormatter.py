@@ -80,7 +80,7 @@ class ChtcScheddGpuFormatter(BaseFormatter):
         }
         rows = super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
         return rows
-    
+
     def get_legend(self):
         custom_items = OrderedDict()
         custom_items["Num Shadw Starts"] = "Total times a condor_shadow was spawned across all submitted jobs (excluding Local and Scheduler Universe jobs)"

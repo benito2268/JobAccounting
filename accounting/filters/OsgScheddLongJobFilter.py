@@ -1,5 +1,6 @@
 import logging
 import htcondor
+import pickle
 from pathlib import Path
 from collections import defaultdict
 from elasticsearch import Elasticsearch
@@ -67,8 +68,14 @@ class OsgScheddLongJobFilter(BaseFilter):
     name = "OSG schedd long job history"
 
     def __init__(self, **kwargs):
-        self.collector_host = "flock.opensciencegrid.org"
+        self.collector_hosts = {"cm-1.ospool.osg-htc.org", "cm-2.ospool.osg-htc.org", "flock.opensciencegrid.org"}
+        self.schedd_collector_host_map_pickle = Path("ospool-host-map.pkl")
         self.schedd_collector_host_map = {}
+        if self.schedd_collector_host_map_pickle.exists():
+            try:
+                self.schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
+            except IOError:
+                pass
         super().__init__(**kwargs)
 
     def get_query(self, index, start_ts, end_ts, scroll="30s", size=1000):
@@ -110,14 +117,14 @@ class OsgScheddLongJobFilter(BaseFilter):
         # Returns a 3-level dictionary that contains data gathered from
         # Elasticsearch and filtered through whatever methods have been
         # defined in self.get_filters()
-        
+
         # Create a data structure for storing filtered data:
         # 3-level defaultdict -> list
         # First level - Aggregation level (e.g. Schedd, User, Project)
         # Second level - Aggregation name (e.g. value of ScheddName, UserName, ProjectName)
         # Third level - Field name to be aggregated (e.g. RemoteWallClockTime, RequestCpus)
         filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-        
+
         query = self.get_query(
             index=es_index,
             start_ts=start_ts,
@@ -142,30 +149,53 @@ class OsgScheddLongJobFilter(BaseFilter):
         # Query Schedd ad in Collector for its CollectorHost,
         # unless result previously cached
         if schedd not in self.schedd_collector_host_map:
+            self.schedd_collector_host_map[schedd] = set()
 
-            collector = htcondor.Collector(self.collector_host)
-            ads = collector.query(
-                htcondor.AdTypes.Schedd,
-                constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
-                projection=["CollectorHost"],
-            )
-            ads = list(ads)
-            if len(ads) == 0:
-                logging.warning(f'Could not find Schedd ClassAd for Machine == "{schedd}"')
-                logging.warning(f"Assuming jobs from {schedd} are not in OS pool")
-                self.schedd_collector_host_map[schedd] = "UNKNOWN"
-                return "UNKNOWN"
-            if len(ads) > 1:
-                logging.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
+            for collector_host in self.collector_hosts:
+                collector = htcondor.Collector(collector_host)
+                ads = collector.query(
+                    htcondor.AdTypes.Schedd,
+                    constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
+                    projection=["CollectorHost"],
+                )
+                ads = list(ads)
+                if len(ads) == 0:
+                    continue
+                if len(ads) > 1:
+                    logging.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
 
-            # Cache the CollectorHost in the map
-            if "CollectorHost" in ads[0]:
-                self.schedd_collector_host_map[schedd] = ads[0]["CollectorHost"].split(':')[0]
+                # Cache the CollectorHost in the map
+                if "CollectorHost" in ads[0]:
+                    collector_hosts = set()
+                    for collector_host in ads[0]["CollectorHost"].split(","):
+                        collector_hosts.add(collector_host.strip().split(":")[0])
+                    if collector_hosts:
+                        self.schedd_collector_host_map[schedd] = collector_hosts
+                        break
             else:
-                logging.warning(f"CollectorHost not found in Schedd ClassAd for {schedd}")
-                self.schedd_collector_host_map[schedd] = "UNKNOWN"
+                logging.warning(f"Did not find Machine == {schedd} in collectors")
+
+            # Update the pickle
+            if len(self.schedd_collector_host_map[schedd]) > 0:
+                # Don't store any unknown schedds
+                fixed_host_map = self.schedd_collector_host_map.copy()
+                for k, v in fixed_host_map.items():
+                    if len(v) == 0:
+                        del fixed_host_map[k]
+                with open(self.schedd_collector_host_map_pickle, "wb") as f:
+                    pickle.dump(fixed_host_map, f)
 
         return self.schedd_collector_host_map[schedd]
+
+    def is_ospool_job(self, ad):
+        remote_pool = set()
+        if "LastRemotePool" in ad and ad["LastRemotePool"]:
+            remote_pool.add(ad["LastRemotePool"])
+        else:
+            schedd = ad.get("ScheddName", "UNKNOWN") or "UNKNOWN"
+            if schedd != "UNKNOWN":
+                remote_pool = self.schedd_collector_host(schedd)
+        return bool(remote_pool & self.collector_hosts)
 
     def user_filter(self, data, doc):
 
@@ -177,8 +207,7 @@ class OsgScheddLongJobFilter(BaseFilter):
         o = data["Users"][user]
 
         # Filter out jobs that did not run in the OS pool
-        schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-        if i.get("LastRemotePool", self.schedd_collector_host(schedd)) != self.collector_host:
+        if not self.is_ospool_job(i):
             return
 
         # Skip jobs that are shorter than the longest CommittedTime
@@ -262,4 +291,4 @@ class OsgScheddLongJobFilter(BaseFilter):
 
         row["All CPU Hours"] = row["Last Wall Hrs"]
 
-        return row 
+        return row

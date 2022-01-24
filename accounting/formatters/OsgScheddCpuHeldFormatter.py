@@ -52,6 +52,7 @@ HOLD_REASONS = [
     "PostScriptFailed",
     "SingularityTestFailed",
     "JobDurationExceeded",
+    "JobExecuteExceeded",
 ]
 
 def hhmm(hours):
@@ -146,7 +147,7 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
         for reason in HOLD_REASONS:
             custom_fmts[break_camel(f"% Holds for {reason}")] = lambda x: f"<td>{float(x):.1f}</td>"
         return super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
-    
+
     def get_legend(self):
         custom_items = OrderedDict()
         custom_items["Num Shadw Starts"] = "Total times a condor_shadow was spawned across all submitted jobs (excluding Local and Scheduler Universe jobs)"
