@@ -205,9 +205,12 @@ class OsgScheddCpuHeldFilter(BaseFilter):
             if len(self.schedd_collector_host_map[schedd]) > 0:
                 # Don't store any unknown schedds
                 fixed_host_map = self.schedd_collector_host_map.copy()
+                delete_hosts = []
                 for k, v in fixed_host_map.items():
                     if len(v) == 0:
-                        del fixed_host_map[k]
+                        delete_hosts.append(k)
+                for k in delete_hosts:
+                    del fixed_host_map[k]
                 with open(self.schedd_collector_host_map_pickle, "wb") as f:
                     pickle.dump(fixed_host_map, f)
 
