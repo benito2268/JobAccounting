@@ -70,6 +70,34 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
                 pass
         super().__init__(**kwargs)
 
+    def get_query(self, index, start_ts, end_ts, scroll="30s", size=1000):
+        # Returns dict matching Elasticsearch.search() kwargs
+        # (Dict has same structure as the REST API query language)
+
+        query = {
+            "index": index,
+            "scroll": scroll,
+            "size": size,
+            "body": {
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"range": {
+                                "RecordTime": {
+                                   "gte": start_ts,
+                                    "lt": end_ts,
+                                }
+                            }},
+                            {"term": {
+                                "JobStatus": 3
+                            }}
+                        ]
+                    }
+                }
+            }
+        }
+        return query
+
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,
         # unless result previously cached
