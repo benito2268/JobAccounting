@@ -95,7 +95,7 @@ def parse_args(args_in=sys.argv[1:]):
     )
     parser.add_argument(
         "--from_addr",
-        default=os.environ.get("FROM_ADDR", "accounting@chtc.wisc.edu"),
+        default=os.environ.get("FROM_ADDR", "accounting@accounting.chtc.wisc.edu"),
         help="From: email address (default: %(default)s)",
     )
     parser.add_argument(
