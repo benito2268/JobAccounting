@@ -1,0 +1,11 @@
+*.sh
+*.err
+*.out
+*.html
+*.csv
+*.txt
+*.json
+*~
+*.old
+lastlog*
+__pycache__
