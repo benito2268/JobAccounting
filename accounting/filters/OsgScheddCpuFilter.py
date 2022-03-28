@@ -4,6 +4,7 @@ import pickle
 import statistics as stats
 from pathlib import Path
 from .BaseFilter import BaseFilter
+from accounting.pull_topology import get_site_map
 
 
 DEFAULT_COLUMNS = {
@@ -86,6 +87,9 @@ DEFAULT_FILTER_ATTRS = [
     "ActivationDuration",
     "ActivationSetupDuration",
 ]
+
+
+SITE_MAP = get_site_map()
 
 
 class OsgScheddCpuFilter(BaseFilter):
@@ -326,7 +330,11 @@ class OsgScheddCpuFilter(BaseFilter):
             return
 
         # Get output dict for this site
-        site = i.get("MachineAttrGLIDEIN_ResourceName0", "UNKNOWN") or "UNKNOWN"
+        site = i.get("MachineAttrGLIDEIN_ResourceName0")
+        if (site is None) or (not site):
+            site = "Unknown (resource name missing)"
+        else:
+            site = SITE_MAP.get(site, f"Unmapped resource: {site}")
         o = data["Site"][site]
 
         # Add custom attrs to the list of attrs

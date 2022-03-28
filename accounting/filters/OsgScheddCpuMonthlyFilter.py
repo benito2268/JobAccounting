@@ -8,6 +8,7 @@ from operator import itemgetter
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers
 from .BaseFilter import BaseFilter
+from accounting.pull_topology import get_site_map
 
 
 DEFAULT_COLUMNS = {
@@ -52,6 +53,9 @@ DEFAULT_COLUMNS = {
     370: "Num Local Univ Jobs",
     380: "Num Sched Univ Jobs",
 }
+
+
+SITE_MAP = get_site_map()
 
 
 class OsgScheddCpuMonthlyFilter(BaseFilter):
@@ -271,7 +275,11 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             return
 
         # Get output dict for this site
-        site = i.get("MachineAttrGLIDEIN_ResourceName0", "UNKNOWN") or "UNKNOWN"
+        site = i.get("MachineAttrGLIDEIN_ResourceName0")
+        if (site is None) or (not site):
+            site = "Unknown (resource name missing)"
+        else:
+            site = SITE_MAP.get(site, f"Unmapped resource: {site}")
         o = data["Site"][site]
         t = data["Site"]["TOTAL"]
 
