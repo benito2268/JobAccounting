@@ -9,3 +9,4 @@
 *.old
 lastlog*
 __pycache__
+*.pkl
