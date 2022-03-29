@@ -1,4 +1,3 @@
-import logging
 import csv
 from collections import OrderedDict, defaultdict
 from datetime import datetime, timedelta

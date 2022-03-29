@@ -14,6 +14,7 @@ class BaseFilter:
             return
         self.client = self.connect(**kwargs)
         self.data = self.scan_and_filter(**kwargs)
+        self.logger = logging.getLogger("accounting.filter")
 
     def connect(self, es_host, es_user, es_pass, es_use_https, es_ca_certs, **kwargs):
         # Returns Elasticsearch client
@@ -23,7 +24,7 @@ class BaseFilter:
             [es_host, es_port] = es_host.split(":")
             es_port = int(es_port)
         elif ":" in es_host:
-            logging.error(f"Ambiguous hostname:port in given host: {es_host}")
+            self.logger.error(f"Ambiguous hostname:port in given host: {es_host}")
             sys.exit(1)
         else:
             es_port = 9200
@@ -36,20 +37,20 @@ class BaseFilter:
         if es_user is None and es_pass is None:
             pass
         elif (es_user is None) != (es_pass is None):
-            logging.warning("Only one of es_user and es_pass have been defined")
-            logging.warning("Connecting to Elasticsearch anonymously")
+            self.logger.warning("Only one of es_user and es_pass have been defined")
+            self.logger.warning("Connecting to Elasticsearch anonymously")
         else:
             es_client["http_auth"] = (es_user, es_pass)
 
         # Only use HTTPS if CA certs are given or if certifi is available
         if es_use_https:
             if es_ca_certs is not None:
-                logging.info(f"Using CA from {es_ca_certs}")
+                self.logger.info(f"Using CA from {es_ca_certs}")
                 es_client["ca_certs"] = es_ca_certs
             elif importlib.util.find_spec("certifi") is not None:
-                logging.info("Using CA from certifi library")
+                self.logger.info("Using CA from certifi library")
             else:
-                logging.error("Using HTTPS with Elasticsearch requires that either es_ca_certs be provided or certifi library be installed")
+                self.logger.error("Using HTTPS with Elasticsearch requires that either es_ca_certs be provided or certifi library be installed")
                 sys.exit(1)
             es_client["use_ssl"] = True
             es_client["verify_certs"] = True

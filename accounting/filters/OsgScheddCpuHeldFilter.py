@@ -1,4 +1,4 @@
-import logging
+
 import htcondor
 import pickle
 import statistics as stats
@@ -190,7 +190,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
                 if len(ads) == 0:
                     continue
                 if len(ads) > 1:
-                    logging.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
+                    self.logger.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
 
                 # Cache the CollectorHost in the map
                 if "CollectorHost" in ads[0]:
@@ -203,7 +203,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
                         self.schedd_collector_host_map[schedd] = schedd_collector_hosts
                         break
             else:
-                logging.warning(f"Did not find Machine == {schedd} in collectors")
+                self.logger.warning(f"Did not find Machine == {schedd} in collectors")
 
         return self.schedd_collector_host_map[schedd]
 

@@ -1,4 +1,3 @@
-import logging
 import statistics as stats
 from pathlib import Path
 from .BaseFilter import BaseFilter
