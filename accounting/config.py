@@ -1,10 +1,10 @@
 import os
 import sys
 import argparse
-import logging
 from .functions import get_timestamps
 import accounting.filters as _filters
 import accounting.formatters as _formatters
+from pathlib import Path
 
 FILTERS = [x for x in dir(_filters) if x[0] != "_"]
 FORMATTERS = [x for x in dir(_formatters) if x[0] != "_"]
@@ -13,6 +13,24 @@ FORMATTERS = [x for x in dir(_formatters) if x[0] != "_"]
 def parse_args(args_in=sys.argv[1:]):
     parser = argparse.ArgumentParser()
 
+    parser.add_argument(
+        "--debug",
+        default=False,
+        action="store_true",
+        help="Log debug messages",
+    )
+    parser.add_argument(
+        "--quiet",
+        default=False,
+        action="store_true",
+        help="Do not print log messages",
+    )
+    parser.add_argument(
+        "--log_file",
+        default=None,
+        type=Path,
+        help="Set an optional log file",
+    )
     parser.add_argument(
         "--filter",
         default=os.environ.get("FILTER", "BaseFilter"),
@@ -135,12 +153,12 @@ def parse_args(args_in=sys.argv[1:]):
     try:
         args.filter = getattr(_filters, args.filter)
     except AttributeError:
-        logging.error(f"{args.filter} is not a valid filter")
+        print(f"ERROR: {args.filter} is not a valid filter", file=sys.stderr)
         fail = True
     try:       
         args.formatter = getattr(_formatters, args.formatter)
     except AttributeError:
-        logging.error(f"{args.formatter} is not a valid formatter")
+        print(f"ERROR: {args.formatter} is not a valid formatter", file=sys.stderr)
         fail = True
     if fail:
         sys.exit(1)

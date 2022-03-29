@@ -88,8 +88,10 @@ def write_csv(table, filter_name, table_name, start_ts, report_period, csv_dir, 
 
 
 def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr, html, table_files, **kwargs):
+    logger = logging.getLogger("accounting.send_email")
     if len(to_addrs) == 0:
-        logging.error("No recipients in the To: field, not sending email")
+        logger.error("No recipients in the To: field, not sending email")
+        print("ERROR: No recipients in the To: field, not sending email", file=sys.stderr)
         return
 
     msg = MIMEMultipart()
@@ -120,15 +122,25 @@ def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr,
         result = None
         for mx in dns.resolver.query(domain, "MX"):
             mailserver = str(mx).split()[1][:-1]
+
             try:
+                logger.debug(f"Connecting to mailserver {mailserver}")
                 smtp = smtplib.SMTP(mailserver)
-                result = smtp.sendmail(from_addr, recipient, msg.as_string())
-                smtp.quit()
             except Exception:
-                if result is not None:
-                    logging.error(f"Got result: {result}")
-                logging.exception(f"Could not send to {recipient} using {mailserver}")
-            else:
-                sent = True
+                logger.error(f"Could not connect to {mailserver}")
+                continue
+
+            try:
+                logger.debug(f"Sending email to {recipient}")
+                result = smtp.sendmail(from_addr, recipient, msg.as_string())
+                if len(result) > 0:
+                    logger.error(f"Could not send email to {recipient} using {mailserver}:\n{result}")
+                else:
+                    sent = True
+            except Exception as e:
+                logger.exception(f"Could not send to {recipient} using {mailserver}")
+            finally:
+                smtp.quit()
+
             if sent:
                 break
