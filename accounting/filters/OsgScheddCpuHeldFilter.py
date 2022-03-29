@@ -192,27 +192,16 @@ class OsgScheddCpuHeldFilter(BaseFilter):
 
                 # Cache the CollectorHost in the map
                 if "CollectorHost" in ads[0]:
-                    collector_hosts = set()
-                    for collector_host in ads[0]["CollectorHost"].split(","):
-                        collector_hosts.add(collector_host.strip().split(":")[0])
-                    if collector_hosts:
-                        self.schedd_collector_host_map[schedd] = collector_hosts
+                    schedd_collector_hosts = set()
+                    for schedd_collector_host in ads[0]["CollectorHost"].split(","):
+                        schedd_collector_host = schedd_collector_host.strip().split(":")[0]
+                        if schedd_collector_host:
+                            schedd_collector_hosts.add(schedd_collector_host)
+                    if schedd_collector_hosts:
+                        self.schedd_collector_host_map[schedd] = schedd_collector_hosts
                         break
             else:
                 logging.warning(f"Did not find Machine == {schedd} in collectors")
-
-            # Update the pickle
-            if len(self.schedd_collector_host_map[schedd]) > 0:
-                # Don't store any unknown schedds
-                fixed_host_map = self.schedd_collector_host_map.copy()
-                delete_hosts = []
-                for k, v in fixed_host_map.items():
-                    if len(v) == 0:
-                        delete_hosts.append(k)
-                for k in delete_hosts:
-                    del fixed_host_map[k]
-                with open(self.schedd_collector_host_map_pickle, "wb") as f:
-                    pickle.dump(fixed_host_map, f)
 
         return self.schedd_collector_host_map[schedd]
 
