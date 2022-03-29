@@ -2,6 +2,7 @@ import logging
 import htcondor
 import pickle
 import statistics as stats
+from datetime import date
 from pathlib import Path
 from .BaseFilter import BaseFilter
 from accounting.pull_topology import get_site_map
@@ -104,13 +105,18 @@ class OsgScheddCpuFilter(BaseFilter):
                 self.schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
             except IOError:
                 pass
+        self.schedd_collector_host_map_checked = set(self.schedd_collector_host_map)
+        # Recheck and update the collector map every Monday during the daily report
+        if kwargs.get("report_period") == "daily" and date.today().weekday() == 0:
+            self.schedd_collector_host_map_checked = set()
         super().__init__(**kwargs)
 
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,
-        # unless result previously cached
-        if schedd not in self.schedd_collector_host_map:
+        # unless result previously cached or it's Monday
+        if schedd not in self.schedd_collector_host_map_checked:
             self.schedd_collector_host_map[schedd] = set()
+            self.schedd_collector_host_map_checked.add(schedd)
 
             for collector_host in self.collector_hosts:
                 collector = htcondor.Collector(collector_host)
@@ -127,27 +133,29 @@ class OsgScheddCpuFilter(BaseFilter):
 
                 # Cache the CollectorHost in the map
                 if "CollectorHost" in ads[0]:
-                    collector_hosts = set()
-                    for collector_host in ads[0]["CollectorHost"].split(","):
-                        collector_hosts.add(collector_host.strip().split(":")[0])
-                    if collector_hosts:
-                        self.schedd_collector_host_map[schedd] = collector_hosts
+                    schedd_collector_hosts = set()
+                    for schedd_collector_host in ads[0]["CollectorHost"].split(","):
+                        schedd_collector_host = schedd_collector_host.strip().split(":")[0]
+                        if schedd_collector_host:
+                            schedd_collector_hosts.add(schedd_collector_host)
+                    if schedd_collector_hosts:
+                        self.schedd_collector_host_map[schedd] = schedd_collector_hosts
                         break
             else:
                 logging.warning(f"Did not find Machine == {schedd} in collectors")
 
             # Update the pickle
-            if len(self.schedd_collector_host_map[schedd]) > 0:
-                # Don't store any unknown schedds
-                fixed_host_map = self.schedd_collector_host_map.copy()
-                delete_hosts = []
-                for k, v in fixed_host_map.items():
-                    if len(v) == 0:
-                        delete_hosts.append(k)
-                for k in delete_hosts:
-                    del fixed_host_map[k]
+            if len(schedd_collector_hosts) > 0:
+                old_schedd_collector_host_map = {}
+                if self.schedd_collector_host_map_pickle.exists():
+                    try:
+                        old_schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
+                        old_schedd_collector_host_map[schedd] = collector_hosts
+                    except IOError:
+                        pass
+                old_schedd_collector_host_map[schedd] = schedd_collector_hosts
                 with open(self.schedd_collector_host_map_pickle, "wb") as f:
-                    pickle.dump(fixed_host_map, f)
+                    pickle.dump(old_schedd_collector_host_map, f)
 
         return self.schedd_collector_host_map[schedd]
 
