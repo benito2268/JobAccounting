@@ -119,6 +119,8 @@ class OsgScheddCpuFilter(BaseFilter):
             self.schedd_collector_host_map_checked.add(schedd)
 
             for collector_host in self.collector_hosts:
+                if collector_host in {"flock.opensciencegrid.org"}:
+                    continue
                 collector = htcondor.Collector(collector_host)
                 ads = collector.query(
                     htcondor.AdTypes.Schedd,
