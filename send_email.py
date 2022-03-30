@@ -3,6 +3,8 @@
 import os; os.environ["CONDOR_CONFIG"] = "/dev/null"  # squelch warning
 import sys
 from datetime import timedelta
+import time
+import elasticsearch
 import accounting
 from accounting.push_totals_to_es import push_totals_to_es
 import json
@@ -31,9 +33,19 @@ if not args.quiet:
     logger.addHandler(sh)
 
 
-logger.info(f"Filtering data using {args.filter.__name__}")
-filtr = args.filter(**vars(args))
-raw_data = filtr.get_filtered_data()
+for tries in range(3):
+    try:
+        logger.info(f"Filtering data using {args.filter.__name__}")
+        filtr = args.filter(**vars(args))
+        raw_data = filtr.get_filtered_data()
+    except elasticsearch.exceptions.ConnectionTimeout:
+        logger.info(f"Elasticsearch connection timed out, trying again (try {tries+1})")
+        time.sleep(4**(tries+1))
+        continue
+    break
+else:
+    logger.error(f"Could not connect to Elasticsearch")
+    sys.exit(1)
 
 last_data_file = Path(f"last_data_{args.filter.__name__}.json")
 logger.debug(f"Dumping data to {last_data_file}")
@@ -75,4 +87,9 @@ except Exception:
         print_exc(file=sys.stderr)
 
 logger.info("Pushing daily totals to Elasticsearch")
-push_totals_to_es(table_files, "daily_totals", **vars(args))
+try:
+    push_totals_to_es(table_files, "daily_totals", **vars(args))
+except Exception as e:
+    logger.error("Could not push daily totals to Elasticsearch")
+    if args.debug:
+        logger.exception("Error follows")

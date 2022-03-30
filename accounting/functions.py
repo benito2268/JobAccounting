@@ -5,6 +5,7 @@ import logging
 import csv
 import smtplib
 import dns.resolver
+import time
 from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text  import MIMEText
@@ -120,27 +121,48 @@ def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr,
         domain = recipient.split("@")[1]
         sent = False
         result = None
-        for mx in dns.resolver.query(domain, "MX"):
-            mailserver = str(mx).split()[1][:-1]
+        tries = 0
+        sleeptime = 0
+        while tries < 3 and sleeptime < 600:
+            for mxi, mx in enumerate(dns.resolver.query(domain, "MX")):
+                mailserver = str(mx).split()[1][:-1]
 
-            try:
-                logger.debug(f"Connecting to mailserver {mailserver}")
-                smtp = smtplib.SMTP(mailserver)
-            except Exception:
-                logger.error(f"Could not connect to {mailserver}")
-                continue
+                try:
+                    logger.debug(f"Connecting to mailserver {mailserver}")
+                    smtp = smtplib.SMTP(mailserver)
+                except Exception:
+                    logger.error(f"Could not connect to {mailserver}")
+                    continue
 
-            try:
-                logger.debug(f"Sending email to {recipient}")
-                result = smtp.sendmail(from_addr, recipient, msg.as_string())
-                if len(result) > 0:
-                    logger.error(f"Could not send email to {recipient} using {mailserver}:\n{result}")
+                try:
+                    logger.debug(f"Sending email to {recipient}")
+                    result = smtp.sendmail(from_addr, recipient, msg.as_string())
+                    if len(result) > 0:
+                        logger.error(f"Could not send email to {recipient} using {mailserver}:\n{result}")
+                    else:
+                        sent = True
+                except Exception as e:
+                    logger.exception(f"Could not send to {recipient} using {mailserver}")
+                finally:
+                    try:
+                        smtp.quit()
+                    except smtplib.SMTPServerDisconnected:
+                        pass
+
+                if sent:
+                    break
                 else:
-                    sent = True
-            except Exception as e:
-                logger.exception(f"Could not send to {recipient} using {mailserver}")
-            finally:
-                smtp.quit()
+                    sleeptime = int(min(30 * 1.5**mxi, 600))
+                    logger.info(f"Sleeping for {sleeptime} seconds before trying next server")
+                    time.sleep(sleeptime)
 
             if sent:
                 break
+            else:
+                sleeptime = int(min(30 * 1.5**tries * 1.5**mxi, 600))
+                logger.info(f"Sleeping for {sleeptime} seconds before retrying servers")
+                time.sleep(sleeptime)
+                tries += 1
+
+        else:
+            logger.error(f"Failed to send email after {tries} loops")
