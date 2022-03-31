@@ -10,11 +10,11 @@ class BaseFilter:
     name = "job history"
 
     def __init__(self, skip_init=False, **kwargs):
+        self.logger = logging.getLogger("accounting.filter")
         if skip_init:
             return
         self.client = self.connect(**kwargs)
         self.data = self.scan_and_filter(**kwargs)
-        self.logger = logging.getLogger("accounting.filter")
 
     def connect(self, es_host, es_user, es_pass, es_use_https, es_ca_certs, **kwargs):
         # Returns Elasticsearch client
