@@ -115,6 +115,7 @@ class OsgScheddCpuFilter(BaseFilter):
         # Query Schedd ad in Collector for its CollectorHost,
         # unless result previously cached or it's Monday
         if schedd not in self.schedd_collector_host_map_checked:
+            self.logger.debug(f"Schedd {schedd} not found/needs updating in cached collector host map, querying collector")
             self.schedd_collector_host_map[schedd] = set()
             self.schedd_collector_host_map_checked.add(schedd)
 
@@ -148,11 +149,12 @@ class OsgScheddCpuFilter(BaseFilter):
 
             # Update the pickle
             if len(schedd_collector_hosts) > 0:
+                self.logger.debug(f"Updating collector host pickle for {schedd} with {schedd_collector_hosts}")
                 old_schedd_collector_host_map = {}
                 if self.schedd_collector_host_map_pickle.exists():
                     try:
                         old_schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
-                        old_schedd_collector_host_map[schedd] = collector_hosts
+                        old_schedd_collector_host_map[schedd] = schedd_collector_hosts
                     except IOError:
                         pass
                 old_schedd_collector_host_map[schedd] = schedd_collector_hosts
