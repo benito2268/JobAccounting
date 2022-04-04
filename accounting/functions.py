@@ -10,6 +10,7 @@ from pathlib import Path
 from email.mime.multipart import MIMEMultipart
 from email.mime.text  import MIMEText
 from email.mime.base import MIMEBase
+from email.utils import formatdate
 from email import encoders
 
 
@@ -105,6 +106,8 @@ def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr,
     if reply_to_addr is not None:
         msg["Reply-To"] = reply_to_addr
     msg["Subject"] = subject
+    msg["Message-ID"] = f"<{subject}-{time.time()}-{from_addr}>".replace(" ", "-").casefold()
+    msg["Date"] = formatdate(localtime=True)
 
     msg.attach(MIMEText(html, "html"))
     
