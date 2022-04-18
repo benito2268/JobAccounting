@@ -118,6 +118,7 @@ class OsgScheddCpuFilter(BaseFilter):
             self.logger.debug(f"Schedd {schedd} not found/needs updating in cached collector host map, querying collector")
             self.schedd_collector_host_map[schedd] = set()
             self.schedd_collector_host_map_checked.add(schedd)
+            new_hosts = False
 
             for collector_host in self.collector_hosts:
                 if collector_host in {"flock.opensciencegrid.org"}:
@@ -141,6 +142,7 @@ class OsgScheddCpuFilter(BaseFilter):
                         schedd_collector_host = schedd_collector_host.strip().split(":")[0]
                         if schedd_collector_host:
                             schedd_collector_hosts.add(schedd_collector_host)
+                            new_hosts = True
                     if schedd_collector_hosts:
                         self.schedd_collector_host_map[schedd] = schedd_collector_hosts
                         break
@@ -148,7 +150,7 @@ class OsgScheddCpuFilter(BaseFilter):
                 self.logger.warning(f"Did not find Machine == {schedd} in collectors")
 
             # Update the pickle
-            if len(schedd_collector_hosts) > 0:
+            if new_hosts and len(schedd_collector_hosts) > 0:
                 self.logger.debug(f"Updating collector host pickle for {schedd} with {schedd_collector_hosts}")
                 old_schedd_collector_host_map = {}
                 if self.schedd_collector_host_map_pickle.exists():
