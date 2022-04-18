@@ -3,6 +3,9 @@ import pickle
 from pathlib import Path
 
 CUSTOM_MAPPING = {
+    "osg-login2.pace.gatech.edu": {"osg-login2.pace.gatech.edu"},
+    "ce1.opensciencegrid.org": {"cm-2.ospool.osg-htc.org", "cm-1.ospool.osg-htc.org"},
+    "scosg16.jlab.org": {"scicollector.jlab.org", "osg-jlab-1.t2.ucsd.edu"},
     "scosgdev16.jlab.org": {"scicollector.jlab.org", "osg-jlab-1.t2.ucsd.edu"},
     "submit6.chtc.wisc.edu": {"htcondor-cm-path.osg.chtc.io"},
     "login-el7.xenon.ci-connect.net": {"cm-2.ospool.osg-htc.org", "cm-1.ospool.osg-htc.org"},
