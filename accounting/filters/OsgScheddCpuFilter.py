@@ -80,10 +80,8 @@ DEFAULT_FILTER_ATTRS = [
     "EnteredCurrentStatus",
     "BytesSent",
     "BytesRecvd",
-    "TransferInputFilesCount",
-    "TransferOutputFilesCount",
-    "TransferInputFilesTotalCount",
-    "TransferOutputFilesTotalCount",
+    "TransferInputStats",
+    "TransferOutputStats",
     "SingularityImage",
     "ActivationDuration",
     "ActivationSetupDuration",
@@ -583,22 +581,23 @@ class OsgScheddCpuFilter(BaseFilter):
 
         # Only do file counts computations
         # on jobs that have either file count attrs
-        # Transfer[Input|Output]FilesCount or
-        # Transfer[Input|Output]FilesTotalCount
+        #    "TransferInputStats",
+        #    "TransferOutputStats",
         input_files_total_count = []
         output_files_total_count = []
         num_exec_attempts_with_file_counts = []
-        for (job_starts, i_filesA, i_filesB, o_filesA, o_filesB) in zip(
+        for (job_starts, i_filestats, o_filestats) in zip(
                 data["NumJobStarts"],
-                data["TransferInputFilesCount"],
-                data["TransferInputFilesTotalCount"],
-                data["TransferOutputFilesCount"],
-                data["TransferOutputFilesTotalCount"]):
-            i_files = i_filesA or i_filesB
-            o_files = o_filesA or o_filesB
+                data["TransferInputStats"],
+                data["TransferOutputStats"]):
+            i_files, o_files = None, None
+            if i_filestats is not None:
+                i_files = i_filestats.get("CedarFilesCountTotal", 0)
+            if o_filestats is not None:
+                o_files = o_filestats.get("CedarFilesCountTotal", 0)
             input_files_total_count.append(i_files)
             output_files_total_count.append(o_files)
-            if (i_files is not None) and (o_files is not None):
+            if (i_filestats is not None) and (o_filestats is not None):
                 num_exec_attempts_with_file_counts.append(job_starts)
             else:
                 num_exec_attempts_with_file_counts.append(None)
