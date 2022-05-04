@@ -502,7 +502,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             start_ts=start_ts,
             end_ts=end_ts,
             scroll="3m",
-            size=1000,
+            size=5000,
         )
 
         # Use the scan() helper function, which automatically scrolls results. Nice!

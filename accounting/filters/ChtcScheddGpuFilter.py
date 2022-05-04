@@ -75,7 +75,7 @@ DEFAULT_FILTER_ATTRS = [
 class ChtcScheddGpuFilter(BaseFilter):
     name = "CHTC GPU schedd job history"
 
-    def get_query(self, index, start_ts, end_ts, scroll="30s", size=1000):
+    def get_query(self, index, start_ts, end_ts, scroll="5s", size=500):
         # Returns dict matching Elasticsearch.search() kwargs
         # (Dict has same structure as the REST API query language)
 
