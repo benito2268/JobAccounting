@@ -61,8 +61,6 @@ DEFAULT_LEGEND["Good CPU Hours"]   = "Total CPU hours for execution attempts tha
 DEFAULT_LEGEND["Max Rqst Mem MB"]  = "Maximum memory requested across all submitted jobs in MB"
 DEFAULT_LEGEND["Max Used Mem MB"]  = "Maximum measured memory usage across all submitted jobs' last execution attempts in MB"
 DEFAULT_LEGEND["Max Rqst Cpus"]    = "Maximum number of CPUs requested across all submitted jobs"
-DEFAULT_LEGEND["Max MB Sent"]      = "Maximum MB sent to a job sandbox from a submit point"
-DEFAULT_LEGEND["Max MB Recv"]      = "Maximum MB sent to a submit point from a job sandbox"
 
 
 class BaseFormatter:

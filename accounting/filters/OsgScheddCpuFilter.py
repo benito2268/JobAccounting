@@ -18,6 +18,7 @@ DEFAULT_COLUMNS = {
     70: "% Jobs w/>1 Exec Att",
     80: "% Jobs w/1+ Holds",
     82: "% Jobs using S'ty",
+    83: "Total Files Xferd",
 
     85: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
@@ -35,11 +36,11 @@ DEFAULT_COLUMNS = {
     160: "Mean Hrs",
     170: "Std Hrs",
 
-    180: "Input Files Xferd / Exec Att",
-    181: "Input MB Xferd / Exec Att",
+    180: "Input Files / Exec Att",
+    181: "Input MB / Exec Att",
     182: "Input MB / File",
-    190: "Output Files Xferd / Exec Att",
-    191: "Output MB Xferd / Exec Att",
+    190: "Output Files / Job",
+    191: "Output MB / Job",
     192: "Output MB / File",
 
     200: "Max Rqst Mem MB",
@@ -386,7 +387,7 @@ class OsgScheddCpuFilter(BaseFilter):
             columns[5] = "Num Users"
         if agg == "Site":
             columns[5] = "Num Users"
-            rm_columns = [30,50,70,80,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380]
+            rm_columns = [30,50,70,80,83,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380]
             [columns.pop(key) for key in rm_columns]
         return columns
 
@@ -579,28 +580,77 @@ class OsgScheddCpuFilter(BaseFilter):
         long_times_sorted = self.clean(long_times_sorted)
         long_times_sorted.sort()
 
-        # Only do file counts computations
-        # on jobs that have either file count attrs
-        #    "TransferInputStats",
-        #    "TransferOutputStats",
+        # File transfer stats
         input_files_total_count = []
+        input_files_total_bytes = []
+        input_files_total_job_starts = []
         output_files_total_count = []
-        num_exec_attempts_with_file_counts = []
-        for (job_starts, i_filestats, o_filestats) in zip(
+        output_files_total_bytes = []
+        output_files_total_job_stops = []
+        for (
+                job_status,
+                job_universe,
+                job_starts,
+                input_stats,
+                input_cedar_bytes,
+                output_stats,
+                output_cedar_bytes,
+            ) in zip(
+                data["JobStatus"],
+                data["JobUniverse"],
                 data["NumJobStarts"],
                 data["TransferInputStats"],
-                data["TransferOutputStats"]):
-            i_files, o_files = None, None
-            if i_filestats is not None:
-                i_files = i_filestats.get("CedarFilesCountTotal", 0)
-            if o_filestats is not None:
-                o_files = o_filestats.get("CedarFilesCountTotal", 0)
-            input_files_total_count.append(i_files)
-            output_files_total_count.append(o_files)
-            if (i_filestats is not None) and (o_filestats is not None):
-                num_exec_attempts_with_file_counts.append(job_starts)
+                data["BytesRecvd"],
+                data["TransferOutputStats"],
+                data["BytesSent"],
+            ):
+
+            if job_universe in {7, 12}:
+                input_files_total_count.append(None)
+                input_files_total_job_starts.append(None)
+                output_files_total_count.append(None)
+                output_files_total_job_stops.append(None)
+                continue
+
+            input_files_count = 0
+            input_files_bytes = 0
+            if input_stats is None:
+                input_files_total_count.append(None)
+                input_files_total_job_starts.append(None)
             else:
-                num_exec_attempts_with_file_counts.append(None)
+                got_cedar_bytes = False
+                for attr in input_stats:
+                    if attr.casefold().endswith("FilesCountTotal".casefold()):
+                        input_files_count += input_stats[attr]
+                    elif attr.casefold().endswith("SizeBytesTotal".casefold()):
+                        input_files_bytes += input_stats[attr]
+                        if attr.casefold() == "CedarSizeBytesTotal".casefold():
+                            got_cedar_bytes = True
+                if not got_cedar_bytes:
+                    input_files_bytes += input_cedar_bytes
+                input_files_total_count.append(input_files_count)
+                input_files_total_bytes.append(input_files_bytes)
+                input_files_total_job_starts.append(job_starts)
+
+            output_files_count = 0
+            output_files_bytes = 0
+            if output_stats is None:
+                output_files_total_count.append(None)
+                output_files_total_job_stops.append(None)
+            else:
+                got_cedar_bytes = False
+                for attr in output_stats:
+                    if attr.casefold().endswith("FilesCountTotal".casefold()):
+                        output_files_count += output_stats[attr]
+                    elif attr.casefold().endswith("SizeBytesTotal".casefold()):
+                        output_files_bytes += output_stats[attr]
+                        if attr.casefold() == "CedarSizeBytesTotal".casefold():
+                            got_cedar_bytes = True
+                if not got_cedar_bytes:
+                    output_files_bytes += output_cedar_bytes
+                output_files_total_count.append(output_files_count)
+                output_files_total_bytes.append(output_files_bytes)
+                output_files_total_job_stops.append(1)
 
         # Activation metrics added in 9.4.1
         # Added to the OSG Connect access points at 1640100600
@@ -671,36 +721,39 @@ class OsgScheddCpuFilter(BaseFilter):
         else:
             row["CPU Hours / Bad Exec Att"] = 0
 
-        input_mb = 0
-        output_mb = 0
-        if sum(self.clean(num_exec_attempts)) > 0:
-            exec_att     = sum(self.clean(num_exec_attempts))
-            input_mb     = sum(self.clean(data["BytesRecvd"])) / 1e6
-            output_mb    = sum(self.clean(data["BytesSent"]))  / 1e6
-            row["Input MB Xferd / Exec Att"] = input_mb / exec_att
-            row["Output MB Xferd / Exec Att"] = output_mb / exec_att
-        else:
-            row["Input MB Xferd / Exec Att"] = 0
-            row["Output MB Xferd / Exec Att"] = 0
-        if sum(self.clean(num_exec_attempts_with_file_counts)) > 0:
-            exec_att     = sum(self.clean(num_exec_attempts_with_file_counts))
-            input_files  = sum(self.clean(input_files_total_count))
-            output_files = sum(self.clean(output_files_total_count))
-            row["Input Files Xferd / Exec Att"] = input_files / exec_att
-            row["Output Files Xferd / Exec Att"] = output_files / exec_att
+        # File transfer stats
+        if any(input_files_total_job_starts):
+            exec_atts = sum(self.clean(input_files_total_job_starts))
+            input_files = sum(self.clean(input_files_total_count))
+            input_mb = sum(self.clean(input_files_total_bytes)) / 1e6
+
+            row["Total Input Files"] = input_files
+            if exec_atts > 0:
+                row["Input Files / Exec Att"] = input_files / exec_atts
+                row["Input MB / Exec Att"] = input_mb / exec_atts
             if input_files > 0:
                 row["Input MB / File"] = input_mb / input_files
-            else:
-                row["Input MB / File"] = 0
+                row["Total Files Xferd"] = row.get("Total Files Xferd", 0) + input_files
+
+        if any(output_files_total_job_stops):
+            exec_ends = sum(self.clean(output_files_total_job_stops))
+            output_files = sum(self.clean(output_files_total_count))
+            output_mb = sum(self.clean(output_files_total_bytes)) / 1e6
+
+            row["Total Ouptut Files"] = output_files
+            if exec_ends > 0:
+                row["Output Files / Job"] = output_files / exec_ends
+                row["Output MB / Job"] = output_mb / exec_ends
             if output_files > 0:
                 row["Output MB / File"] = output_mb / output_files
-            else:
-                row["Output MB / File"] = 0
-        else:
-            row["Input Files Xferd / Exec Att"] = -999
-            row["Input MB / File"] = -999
-            row["Output Files Xferd / Exec Att"] = -999
-            row["Output MB / File"] = -999
+                row["Total Files Xferd"] = row.get("Total Files Xferd", 0) + output_files
+
+        # Insert missing value if any missing
+        for key in ["Total Files Xferd", "Total Input Files", "Total Output Files",
+                    "Input Files / Exec Att", "Output Files / Job",
+                    "Input MB / Exec Att", "Output MB / Job",
+                    "Input MB / File", "Output MB / File"]:
+            row[key] = row.get(key, -999)
 
         # Compute activation time stats
         row["Mean Actv Hrs"] = ""
