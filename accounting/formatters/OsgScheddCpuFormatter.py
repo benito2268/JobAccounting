@@ -120,7 +120,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
 
         custom_items["Output Files / Job"] = "Number of files transferred back to the access point (and other output locations) per (completed) job"
         custom_items["Output MB / Job"] = "Average size (in MB) of output sandboxes"
-        custom_items["Output MB / File"] "Average size of file in output sandboxes"
+        custom_items["Output MB / File"] = "Average size of file in output sandboxes"
 
         custom_items["Med Used Mem MB"]  = "Median measured memory usage across all submitted jobs' last execution attempts in MB"
 
