@@ -74,6 +74,13 @@ class ChtcScheddCpuFormatter(BaseFormatter):
             "% Rm'd Jobs":          lambda x: f"<td>{float(x):.1f}</td>",
             "% Short Jobs":         lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/>1 Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
+            "% Jobs w/1+ Holds":    lambda x: f"<td>{float(x):.1f}</td>",
+            "Input Files / Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
+            "Input MB / Exec Att":    lambda x: f"<td>{float(x):.1f}</td>",
+            "Input MB / File":        lambda x: f"<td>{float(x):.1f}</td>",
+            "Output Files / Job":     lambda x: f"<td>{float(x):.1f}</td>",
+            "Output MB / Job":        lambda x: f"<td>{float(x):.1f}</td>",
+            "Output MB / File":       lambda x: f"<td>{float(x):.1f}</td>",
         }
         rows = super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
         return rows
@@ -91,14 +98,25 @@ class ChtcScheddCpuFormatter(BaseFormatter):
         custom_items["% Rm'd Jobs"] = "Percent of Num Uniq Job Ids that were removed"
         custom_items["% Short Jobs"] = "Percent of Num Uniq Job Ids that were short jobs"
         custom_items["% Jobs w/>1 Exec Att"] = "Percent of Num Uniq Job Ids that had more than one execution attempt"
+        custom_items["% Jobs w/1+ Holds"] = "Percent of Num Uniq Job Ids that had one or more jobs go on hold"
+        custom_items["Total Files Xferd"] = "Total files transferred (input and output) across all transfer protocols and execution attempts"
 
         custom_items["Shadw Starts / Job Id"]   = "Num Shadw Starts per Num Uniq Job Ids"
         custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
+        custom_items["Holds / Job Id"] = "Num Job Holds per Num Uniq Job Ids"
+
+        custom_items["Mean Actv Hrs"] = "Mean slot activation time (in hours)"
+        custom_items["Mean Setup Secs"] = "Mean slot activation setup time (in seconds)"
 
         custom_items["Min/25%/Median/75%/Max/Mean/Std Hrs"] = "Final execution wallclock hours that a non-short job (Min-Max) or jobs (Mean/Std) ran for (excluding Short jobs, excluding Local and Scheduler Universe jobs)"
 
-        custom_items["Avg MB Sent"] = "Mean MB sent to a job sandbox from a submit point"
-        custom_items["Avg MB Recv"] = "Mean MB sent to a submit point from a job sandbox"
+        custom_items["Input Files / Exec Att"] = "Number of files (all protocols) sent as part of the input sandbox per job start"
+        custom_items["Input MB / Exec Att"] = "Average size (in MB) of input sandboxes"
+        custom_items["Input MB / File"] = "Average size of file in input sandboxes"
+
+        custom_items["Output Files / Job"] = "Number of files transferred back to the access point (and other output locations) per (completed) job"
+        custom_items["Output MB / Job"] = "Average size (in MB) of output sandboxes"
+        custom_items["Output MB / File"] = "Average size of file in output sandboxes"
 
         custom_items["Med Used Mem MB"]  = "Median measured memory usage across all submitted jobs' last execution attempts in MB"
 
