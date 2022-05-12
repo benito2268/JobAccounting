@@ -37,11 +37,11 @@ DEFAULT_COLUMNS = {
     170: "Std Hrs",
 
     180: "Input Files / Exec Att",
-    181: "Input MB / Exec Att",
-    182: "Input MB / File",
+#    181: "Input MB / Exec Att",
+#    182: "Input MB / File",
     190: "Output Files / Job",
-    191: "Output MB / Job",
-    192: "Output MB / File",
+#    191: "Output MB / Job",
+#    192: "Output MB / File",
 
     200: "Max Rqst Mem MB",
     210: "Med Used Mem MB",
@@ -388,7 +388,7 @@ class OsgScheddCpuFilter(BaseFilter):
         if agg == "Site":
             columns[5] = "Num Users"
             rm_columns = [30,50,70,80,83,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380]
-            [columns.pop(key) for key in rm_columns]
+            [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
     def merge_filtered_data(self, data, agg):

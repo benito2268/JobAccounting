@@ -86,10 +86,11 @@ except Exception:
         print_tb(file=sys.stderr)
         print_exc(file=sys.stderr)
 
-logger.info("Pushing daily totals to Elasticsearch")
-try:
-    push_totals_to_es(table_files, "daily_totals", **vars(args))
-except Exception as e:
-    logger.error("Could not push daily totals to Elasticsearch")
-    if args.debug:
-        logger.exception("Error follows")
+if args.report_period in ["daily", "weekly", "monthly"]:
+    logger.info("Pushing daily totals to Elasticsearch")
+    try:
+        push_totals_to_es(table_files, "daily_totals", **vars(args))
+    except Exception as e:
+        logger.error("Could not push daily totals to Elasticsearch")
+        if args.debug:
+            logger.exception("Error follows")
