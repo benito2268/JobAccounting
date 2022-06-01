@@ -161,7 +161,8 @@ class ChtcScheddCpuFilter(BaseFilter):
                 univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime"))))
+                #i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
+                i.get("RemoteWallClockTime") != i.get("CommittedTime", 0)
             ):
             o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0)))))
             o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
@@ -225,7 +226,8 @@ class ChtcScheddCpuFilter(BaseFilter):
                 univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime"))))
+                #i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
+                i.get("RemoteWallClockTime") != i.get("CommittedTime", 0)
             ):
             o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0)))))
             o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
@@ -280,7 +282,8 @@ class ChtcScheddCpuFilter(BaseFilter):
                 data["_BadWallClockTime"],
                 data["RemoteWallClockTime"],
                 data["RequestCpus"]):
-            goodput_time = last_wallclock_time or committed_time
+            #goodput_time = last_wallclock_time or committed_time
+            goodput_time = committed_time
             if None in [goodput_time, cpus]:
                 goodput_cpu_time.append(None)
             else:
@@ -312,7 +315,8 @@ class ChtcScheddCpuFilter(BaseFilter):
                 data["CommittedTime"],
                 data["RecordTime"],
                 data["JobCurrentStartDate"]):
-            goodput_time = last_wallclock_time or committed_time
+            #goodput_time = last_wallclock_time or committed_time
+            goodput_time = committed_time
             if (goodput_time is not None) and (goodput_time > 0):
                 is_short_job.append(goodput_time < 60)
             elif None in (record_date, start_date):
@@ -331,7 +335,8 @@ class ChtcScheddCpuFilter(BaseFilter):
                 data["CommittedTime"],
                 data["_NoShadow"],
                 data["JobStatus"]):
-            goodput_time = last_wallclock_time or committed_time
+            #goodput_time = last_wallclock_time or committed_time
+            goodput_time = committed_time
             if (is_short == False) and (no_shadow == False) and (job_status != 3):
                 long_times_sorted.append(goodput_time)
         long_times_sorted = self.clean(long_times_sorted)
