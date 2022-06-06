@@ -86,7 +86,7 @@ except Exception:
         print_tb(file=sys.stderr)
         print_exc(file=sys.stderr)
 
-if args.report_period in ["daily", "weekly", "monthly"]:
+if args.report_period in ["daily", "weekly", "monthly"] and not args.do_not_upload:
     logger.info("Pushing daily totals to Elasticsearch")
     try:
         push_totals_to_es(table_files, "daily_totals", **vars(args))

@@ -7,21 +7,26 @@ from collections import defaultdict
 from operator import itemgetter
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers
+from functools import lru_cache
 from .BaseFilter import BaseFilter
 from accounting.pull_topology import get_site_map
 
 
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
-    20: "% Good CPU Hours",
-    40: "Num Uniq Job Ids",
+    20: "Num Uniq Job Ids",
+    30: "% Good CPU Hours",
+
+#    45: "% Ckpt Able",
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
+    70: "% Jobs w/>1 Exec Att",
+    80: "% Jobs w/1+ Holds",
+    83: "Total Files Xferd",
 
-    70: "Shadw Starts / Job Id",
-    80: "Exec Atts / Shadw Start",
-
-    90: "% Jobs w/>1 Exec Att",
+    85: "Shadw Starts / Job Id",
+    90: "Exec Atts / Shadw Start",
+    95: "Holds / Job Id",
 
     110: "Min Hrs",
     120: "25% Hrs",
@@ -32,10 +37,12 @@ DEFAULT_COLUMNS = {
     160: "Mean Hrs",
     170: "Std Hrs",
 
-    180: "Avg MB Sent",
-    181: "Max MB Sent",
-    190: "Avg MB Recv",
-    191: "Max MB Recv",
+    180: "Input Files / Exec Att",
+#    181: "Input MB / Exec Att",
+#    182: "Input MB / File",
+    190: "Output Files / Job",
+#    191: "Output MB / Job",
+#    192: "Output MB / File",
 
     200: "Max Rqst Mem MB",
     #210: "Med Used Mem MB",
@@ -46,12 +53,15 @@ DEFAULT_COLUMNS = {
     305: "CPU Hours / Bad Exec Att",
     310: "Num Exec Atts",
     320: "Num Shadw Starts",
+    325: "Num Job Holds",
     330: "Num Rm'd Jobs",
     340: "Num DAG Node Jobs",
     350: "Num Jobs w/>1 Exec Att",
+    355: "Num Jobs w/1+ Holds",
     360: "Num Short Jobs",
     370: "Num Local Univ Jobs",
     380: "Num Sched Univ Jobs",
+#    390: "Num Ckpt Able Jobs",
 }
 
 
@@ -76,6 +86,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Query Schedd ad in Collector for its CollectorHost,
         # unless result previously cached
         if schedd not in self.schedd_collector_host_map:
+            self.logger.debug(f"Schedd {schedd} not found in cached collector host map, querying collector")
             self.schedd_collector_host_map[schedd] = set()
 
             for collector_host in self.collector_hosts:
@@ -108,15 +119,17 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         return self.schedd_collector_host_map[schedd]
 
-    def is_ospool_job(self, ad):
+    @lru_cache(maxsize=250)
+    def is_ospool_job(self, schedd_name, last_remote_pool):
         remote_pool = set()
-        if "LastRemotePool" in ad and ad["LastRemotePool"]:
-            remote_pool.add(ad["LastRemotePool"])
-        else:
-            schedd = ad.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-            if schedd != "UNKNOWN":
-                remote_pool = self.schedd_collector_host(schedd)
-        return bool(remote_pool & self.collector_hosts)
+        if last_remote_pool is not None:
+            if last_remote_pool.strip():
+                return last_remote_pool in self.collector_hosts
+        if schedd_name is not None:
+            if schedd_name.strip():
+                remote_pools = self.schedd_collector_host(schedd_name)
+                return bool(remote_pools & self.collector_hosts)
+        return False
 
     def reduce_data(self, i, o, t):
 
@@ -127,15 +140,31 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         is_dagnode = i.get("DAGNodeName") is not None and i.get("JobUniverse", 5) != 12
         is_exec = i.get("NumJobStarts", 0) >= 1
         is_multiexec = i.get("NumJobStarts", 0) > 1
+        has_holds = i.get("NumHolds", 0) > 0
         is_short = False
+        goodput_time = 0
         if has_shadow and not is_removed:
-            if i.get("CommittedTime", 0) > 0 and i.get("CommittedTime", 60) < 60:
+            goodput_time = i.get("LastRemoteWallClockTime", i.get("CommittedTime", 0))
+            if goodput_time > 0 and goodput_time < 60:
                 is_short = True
             elif None in [i.get("RecordTime"), i.get("JobCurrentStartDate")]:
-                if i.get("CommittedTime") == 0:
+                if goodput_time == 0:
                     is_short = True
             elif i.get("RecordTime") - i.get("JobCurrentStartDate") < 60:
                 is_short = True
+        elif not is_removed:
+            goodput_time = i.get("LastRemoteWallClockTime", i.get("CommittedTime", 0))
+        input_files = 0
+        output_files = 0
+        if has_shadow:
+            input_file_stats = i.get("TransferInputStats", {})
+            output_file_stats = i.get("TransferOutputStats", {})
+            for key, value in input_file_stats.items():
+                if key.casefold().endswith("FilesCountTotal".casefold()):
+                    input_files += value
+            for key, value in output_file_stats.items():
+                if key.casefold().endswith("FilesCountTotal".casefold()):
+                    output_files += value
 
         sum_cols = {}
         sum_cols["Jobs"] = 1
@@ -146,19 +175,24 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["DAGNodeJobs"] = int(is_dagnode)
         sum_cols["MultiExecJobs"] = int(is_multiexec)
         sum_cols["ShortJobs"] = int(is_short)
+        sum_cols["ShadowJobs"] = int(has_shadow)
 
-        sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * i.get("RequestCpus", 1))
+        sum_cols["GoodCpuTime"] = (goodput_time * i.get("RequestCpus", 1))
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * i.get("RequestCpus", 1))
-        sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - i.get("CommittedTime", 0)) * i.get("RequestCpus", 1))
+        sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * i.get("RequestCpus", 1))
         sum_cols["NumShadowStarts"] = int(has_shadow) * i.get("NumShadowStarts", 0)
         sum_cols["NumJobStarts"] = int(has_shadow) * i.get("NumJobStarts", 0)
         sum_cols["NumBadJobStarts"] = int(has_shadow) * max(i.get("NumJobStarts", 0) - 1, 0)
-        sum_cols["BytesSent"] = int(is_exec) * i.get("BytesSent", 0)
-        sum_cols["BytesRecvd"] = int(is_exec) * i.get("BytesRecvd", 0)
+        sum_cols["HeldJobs"] = int(has_holds)
+        sum_cols["NumJobHolds"] = i.get("NumHolds", 0)
+        if input_files > 0:
+            sum_cols["InputFiles"] = input_files
+        if output_files > 0:
+            sum_cols["OutputFiles"] = output_files
+        if input_files > 0 or output_files > 0:
+            sum_cols["TotalFiles"] = input_files + output_files
 
         max_cols = {}
-        max_cols["MaxBytesSent"] = i.get("BytesSent", 0)
-        max_cols["MaxBytesRecvd"] = i.get("BytesRecvd", 0)
         max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
         max_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
         max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
@@ -167,7 +201,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         #list_cols["MemoryUsage"] = i.get("MemoryUsage")
         list_cols["LongJobTimes"] = None
         if not is_short and not is_removed and has_shadow:
-            list_cols["LongJobTimes"] = i.get("CommittedTime")
+            list_cols["LongJobTimes"] = goodput_time
 
         for col in sum_cols:
             o[col] = (o.get(col) or 0) + sum_cols[col]
@@ -184,14 +218,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Get input dict
         i = doc["_source"]
 
+        # Filter out jobs that did not run in the OS pool
+        if not self.is_ospool_job(i.get("ScheddName"), i.get("LastRemotePool")):
+            return
+
         # Get output dict for this schedd
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         output = data["Schedds"][schedd]
         total = data["Schedds"]["TOTAL"]
-
-        # Filter out jobs that did not run in the OS pool
-        if not self.is_ospool_job(i):
-            return
 
         self.reduce_data(i, output, total)
 
@@ -200,14 +234,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Get input dict
         i = doc["_source"]
 
+        # Filter out jobs that did not run in the OS pool
+        if not self.is_ospool_job(i.get("ScheddName"), i.get("LastRemotePool")):
+            return
+
         # Get output dict for this user
         user = i.get("User", "UNKNOWN") or "UNKNOWN"
         output = data["Users"][user]
         total = data["Users"]["TOTAL"]
-
-        # Filter out jobs that did not run in the OS pool
-        if not self.is_ospool_job(i):
-            return
 
         self.reduce_data(i, output, total)
 
@@ -228,14 +262,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Get input dict
         i = doc["_source"]
 
+        # Filter out jobs that did not run in the OS pool
+        if not self.is_ospool_job(i.get("ScheddName"), i.get("LastRemotePool")):
+            return
+
         # Get output dict for this project
         project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
         output = data["Projects"][project]
         total = data["Projects"]["TOTAL"]
-
-        # Filter out jobs that did not run in the OS pool
-        if not self.is_ospool_job(i):
-            return
 
         self.reduce_data(i, output, total)
 
@@ -253,16 +287,16 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Get input dict
         i = doc["_source"]
 
+        # Filter out jobs that did not run in the OS pool
+        if not self.is_ospool_job(i.get("ScheddName"), i.get("LastRemotePool")):
+            return
+
         # Filter out jobs that were removed
         if i.get("JobStatus", 4) == 3:
             return
 
         # Filter out scheduler and local universe jobs
         if i.get("JobUniverse") in [7, 12]:
-            return
-
-        # Filter out jobs that did not run in the OS pool
-        if not self.is_ospool_job(i):
             return
 
         # Get output dict for this site
@@ -289,12 +323,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["ShortJobs"] = int(is_short)
 
         sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * i.get("RequestCpus", 1))
-        sum_cols["BytesSent"] = i.get("BytesSent", 0)
-        sum_cols["BytesRecvd"] = i.get("BytesRecvd", 0)
 
         max_cols = {}
-        max_cols["MaxBytesSent"] = i.get("BytesSent", 0)
-        max_cols["MaxBytesRecvd"] = i.get("BytesRecvd", 0)
         max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
         max_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
         max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
@@ -343,7 +373,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             columns[5] = "Num Users"
         if agg == "Site":
             columns[5] = "Num Users"
-            rm_columns = [20,50,70,80,90,300,305,310,320,330,340,350,370,380]
+            rm_columns = [30,50,70,80,83,85,90,95,180,190,300,305,310,320,325,330,340,350,355,370,380]
             [columns.pop(key) for key in rm_columns]
         return columns
 
@@ -355,10 +385,6 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Compute columns
         row["All CPU Hours"]    = data["GoodCpuTime"] / 3600
         row["Num Uniq Job Ids"] = data["Jobs"]
-        row["Avg MB Sent"]      = (data["BytesSent"] / data["Jobs"]) / 1e6
-        row["Max MB Sent"]      = data["MaxBytesSent"] / 1e6
-        row["Avg MB Recv"]      = (data["BytesRecvd"] / data["Jobs"]) / 1e6
-        row["Max MB Recv"]      = data["MaxBytesRecvd"] / 1e6
         row["Num Short Jobs"]   = data["ShortJobs"]
         row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
         #row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
@@ -405,12 +431,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row = {}
 
         # Compute columns
-        row["All CPU Hours"]    = data["CpuTime"] / 3600
-        row["Good CPU Hours"]   = data["GoodCpuTime"] / 3600
-        row["Num Uniq Job Ids"] = data["Jobs"]
+        row["All CPU Hours"]     = data["CpuTime"] / 3600
+        row["Num Uniq Job Ids"]  = data["Jobs"]
+        row["Good CPU Hours"]    = data["GoodCpuTime"] / 3600
         row["Num DAG Node Jobs"] = data["DAGNodeJobs"]
-        row["Num Rm'd Jobs"]    = data["RmJobs"]
+        row["Num Rm'd Jobs"]     = data["RmJobs"]
         row["Num Jobs w/>1 Exec Att"] = data["MultiExecJobs"]
+        row["Num Jobs w/1+ Holds"] = data["HeldJobs"]
+        row["Total Files Xferd"] = data.get("TotalFiles", "")
 
         row["Num Short Jobs"]   = data["ShortJobs"]
         row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
@@ -419,16 +447,18 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
         row["Num Exec Atts"]    = data["NumJobStarts"]
         row["Num Shadw Starts"] = data["NumShadowStarts"]
+        row["Num Job Holds"]    = data["NumJobHolds"]
         row["Num Local Univ Jobs"] = data["LocalJobs"]
         row["Num Sched Univ Jobs"] = data["SchedulerJobs"]
 
-        if data["RunJobs"] > 0:
-            row["Avg MB Sent"] = (data["BytesSent"] / data["RunJobs"]) / 1e6
-            row["Max MB Sent"] = data["MaxBytesSent"] / 1e6
-            row["Avg MB Recv"] = (data["BytesRecvd"] / data["RunJobs"]) / 1e6
-            row["Max MB Recv"] = data["MaxBytesRecvd"] / 1e6
+        if data["NumJobStarts"] > 0 and data.get("InputFiles") is not None:
+            row["Input Files / Exec Att"] = data["InputFiles"] / data["NumJobStarts"]
         else:
-            row["Avg MB Sent"] = row["Max MB Sent"] = row["Avg MB Recv"] = row["Max MB Recv"] = 0
+            row["Input Files / Exec Att"] = ""
+        if data["ShadowJobs"] > 0 and data.get("OutputFiles") is not None:
+            row["Output Files / Job"] = data["OutputFiles"] / data["ShadowJobs"]
+        else:
+            row["Output Files / Job"] = ""
 
         # Compute derivative columns
         if row["All CPU Hours"] > 0:
@@ -440,6 +470,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             row["% Rm'd Jobs"] = 100 * row["Num Rm'd Jobs"] / row["Num Uniq Job Ids"]
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
             row["% Jobs w/>1 Exec Att"] = 100 * row["Num Jobs w/>1 Exec Att"] / row["Num Uniq Job Ids"]
+            row["% Jobs w/1+ Holds"] = 100 * row["Num Jobs w/1+ Holds"] / row["Num Uniq Job Ids"]
+            row["Holds / Job Id"] = row["Num Job Holds"] / row["Num Uniq Job Ids"]
         else:
             row["Shadw Starts / Job Id"] = 0
             row["% Rm'd Jobs"] = 0
@@ -501,8 +533,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             index=es_index,
             start_ts=start_ts,
             end_ts=end_ts,
-            scroll="3m",
-            size=5000,
+            scroll="10s",
+            size=600,
         )
 
         # Use the scan() helper function, which automatically scrolls results. Nice!

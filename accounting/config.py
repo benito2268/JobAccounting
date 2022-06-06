@@ -32,6 +32,12 @@ def parse_args(args_in=sys.argv[1:]):
         help="Set an optional log file",
     )
     parser.add_argument(
+        "--do_not_upload",
+        default=False,
+        action="store_true",
+        help="Do not store output in ES",
+    )
+    parser.add_argument(
         "--filter",
         default=os.environ.get("FILTER", "BaseFilter"),
         help=f"Filter class, one of [{', '.join(FILTERS)}] (default: %(default)s)",
@@ -155,7 +161,7 @@ def parse_args(args_in=sys.argv[1:]):
     except AttributeError:
         print(f"ERROR: {args.filter} is not a valid filter", file=sys.stderr)
         fail = True
-    try:       
+    try:
         args.formatter = getattr(_formatters, args.formatter)
     except AttributeError:
         print(f"ERROR: {args.formatter} is not a valid formatter", file=sys.stderr)
