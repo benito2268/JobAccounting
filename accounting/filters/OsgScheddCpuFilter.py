@@ -13,6 +13,7 @@ DEFAULT_COLUMNS = {
     20: "Num Uniq Job Ids",
     30: "% Good CPU Hours",
 
+    45: "% Ckpt Able",
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
@@ -60,7 +61,8 @@ DEFAULT_COLUMNS = {
     360: "Num Short Jobs",
     370: "Num Local Univ Jobs",
     380: "Num Sched Univ Jobs",
-    390: "Num S'ty Jobs",
+    390: "Num Ckpt Able Jobs",
+    400: "Num S'ty Jobs",
 }
 
 
@@ -205,6 +207,15 @@ class OsgScheddCpuFilter(BaseFilter):
         o["_NumLocalUnivJobs"].append(univ == 12)
         o["_NoShadow"].append(univ in [7, 12])
 
+        # Count number of checkpointable jobs
+        if univ == 5 and (
+                i.get("SuccessCheckpointExitBySignal", False) or
+                i.get("SuccessCheckpointExitCode") is not None
+            ):
+            o["_NumCkptJobs"].append(1)
+        else:
+            o["_NumCkptJobs"].append(0)
+
         # Compute badput fields
         if (
                 univ not in [7, 12] and
@@ -253,6 +264,15 @@ class OsgScheddCpuFilter(BaseFilter):
         o["_NumSchedulerUnivJobs"].append(univ == 7)
         o["_NumLocalUnivJobs"].append(univ == 12)
         o["_NoShadow"].append(univ in [7, 12])
+
+        # Count number of checkpointable jobs
+        if univ == 5 and (
+                i.get("SuccessCheckpointExitBySignal", False) or
+                i.get("SuccessCheckpointExitCode") is not None
+            ):
+            o["_NumCkptJobs"].append(1)
+        else:
+            o["_NumCkptJobs"].append(0)
 
         # Compute badput fields
         if (
@@ -306,6 +326,15 @@ class OsgScheddCpuFilter(BaseFilter):
         o["_NumSchedulerUnivJobs"].append(univ == 7)
         o["_NumLocalUnivJobs"].append(univ == 12)
         o["_NoShadow"].append(univ in [7, 12])
+
+        # Count number of checkpointable jobs
+        if univ == 5 and (
+                i.get("SuccessCheckpointExitBySignal", False) or
+                i.get("SuccessCheckpointExitCode") is not None
+            ):
+            o["_NumCkptJobs"].append(1)
+        else:
+            o["_NumCkptJobs"].append(0)
 
         # Compute badput fields
         if (
@@ -387,7 +416,7 @@ class OsgScheddCpuFilter(BaseFilter):
             columns[5] = "Num Users"
         if agg == "Site":
             columns[5] = "Num Users"
-            rm_columns = [30,50,70,80,83,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380]
+            rm_columns = [30,45,50,70,80,83,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
             [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
@@ -689,6 +718,7 @@ class OsgScheddCpuFilter(BaseFilter):
         row["Num Shadw Starts"] = sum(self.clean(num_shadow_starts))
         row["Num Local Univ Jobs"] = sum(data["_NumLocalUnivJobs"])
         row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
+        row["Num Ckpt Able Jobs"]  = sum(data["_NumCkptJobs"])
         row["Num S'ty Jobs"]       = len(self.clean(data["SingularityImage"]))
 
         # Compute derivative columns
@@ -703,6 +733,7 @@ class OsgScheddCpuFilter(BaseFilter):
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
             row["% Jobs w/>1 Exec Att"] = 100 * row["Num Jobs w/>1 Exec Att"] / row["Num Uniq Job Ids"]
             row["% Jobs w/1+ Holds"] = 100 * row["Num Jobs w/1+ Holds"] / row["Num Uniq Job Ids"]
+            row["% Ckpt Able"] = 100 * row["Num Ckpt Able Jobs"] / row["Num Uniq Job Ids"]
             row["% Jobs using S'ty"] = 100 * row["Num S'ty Jobs"] / row["Num Uniq Job Ids"]
         else:
             row["Shadw Starts / Job Id"] = 0
