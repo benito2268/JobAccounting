@@ -79,6 +79,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "% Short Jobs":         lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/>1 Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/1+ Holds":    lambda x: f"<td>{float(x):.1f}</td>",
+            "% Ckpt Able":          lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs using S'ty":    lambda x: f"<td>{float(x):.1f}</td>",
             "Input Files / Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
             "Input MB / Exec Att":    lambda x: f"<td>{float(x):.1f}</td>",
@@ -97,12 +98,14 @@ class OsgScheddCpuFormatter(BaseFormatter):
         custom_items["Num Rm'd Jobs"]    = "Number of jobs that were removed from the queue instead of allowing to complete"
         custom_items["Num Short Jobs"]   = "Number of execution attempts that completed in less than 60 seconds"
         custom_items["Num Jobs w/>1 Exec Att"] = "Number of unique jobs that were executed more than once"
+        custom_items["Num Ckpt Able Jobs"] = "Number of unique jobs that may be using user-level checkpointing"
 
         custom_items["% Rm'd Jobs"] = "Percent of Num Uniq Job Ids that were removed"
         custom_items["% Short Jobs"] = "Percent of Num Uniq Job Ids that were short jobs"
         custom_items["% Jobs w/>1 Exec Att"] = "Percent of Num Uniq Job Ids that had more than one execution attempt"
         custom_items["% Jobs w/1+ Holds"] = "Percent of Num Uniq Job Ids that had one or more jobs go on hold"
         custom_items["% Jobs using S'ty"] = "Percent of Num Uniq Job Ids that are using a Singularity image"
+        custom_items["% Ckpt Able"] = "Percent of Num Uniq Job Ids that may be using user-level checkpointing"
         custom_items["Total Files Xferd"] = "Total files transferred (input and output) across all transfer protocols and execution attempts"
 
         custom_items["Shadw Starts / Job Id"]   = "Num Shadw Starts per Num Uniq Job Ids"
