@@ -17,6 +17,7 @@ MANUAL_MAPPINGS = {
     "IN2P3-CC": "IN2P3",
     "NIKHEF-ELPROD": "Nikhef",
     "ISI_ImageTest": "University of Southern California",
+    "WISC-PATH-EP": "University of Wisconsin",
 }
 
 
