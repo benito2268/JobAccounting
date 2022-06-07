@@ -66,18 +66,18 @@ def update_topology_pickle(topology_pickle):
     tmpfile.rename(topology_pickle)
 
 
-def get_site_map(topology_pickle=TOPOLOGY_PICKLE):
+def get_site_map(topology_pickle=TOPOLOGY_PICKLE, force_update=False):
     """Returns a recently updated resource to site map"""
 
-    # Update site map if older than a week
+    # Update site map if older than a day
     try:
-        if time.time() - topology_pickle.stat().st_mtime > 7*24*3600:
+        if (time.time() - topology_pickle.stat().st_mtime > 23*3600) or force_update:
             update_topology_pickle(topology_pickle)
+        return pickle.load(topology_pickle.open("rb"))
     except FileNotFoundError:
         update_topology_pickle(topology_pickle)
-
     return pickle.load(topology_pickle.open("rb"))
 
 
 if __name__ == "__main__":
-    print(get_site_map())
+    print(get_site_map(force_update=True))
