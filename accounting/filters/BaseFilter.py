@@ -131,10 +131,14 @@ class BaseFilter:
         # Third level - Field name to be aggregated (e.g. RemoteWallClockTime, RequestCpus)
         filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
+        # Set the scroll time based on how long the reporting period is... 4 secs per day
+        scroll_seconds = 5 * (int((end_ts - start_ts) / (3600 * 24)) + 1)
+
         query = self.get_query(
             index=es_index,
             start_ts=start_ts,
             end_ts=end_ts,
+            scroll=f"{scroll_seconds}s",
         )
 
         # Use the scan() helper function, which automatically scrolls results. Nice!
