@@ -79,6 +79,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "% Short Jobs":         lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/>1 Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/1+ Holds":    lambda x: f"<td>{float(x):.1f}</td>",
+            "% Jobs Over Rqst Disk": lambda x: f"<td>{float(x):.1f}</td>",
             "% Ckpt Able":          lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs using S'ty":    lambda x: f"<td>{float(x):.1f}</td>",
             "Input Files / Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
@@ -87,7 +88,8 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "Output Files / Job":     lambda x: f"<td>{float(x):.1f}</td>",
             "Output MB / Job":        lambda x: f"<td>{float(x):.1f}</td>",
             "Output MB / File":       lambda x: f"<td>{float(x):.1f}</td>",
-
+            "Max Rqst Disk GB":       lambda x: f"<td>{float(x):.1f}</td>",
+            "Max Used Disk GB":       lambda x: f"<td>{float(x):.1f}</td>",
         }
         return super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
 
@@ -98,12 +100,14 @@ class OsgScheddCpuFormatter(BaseFormatter):
         custom_items["Num Rm'd Jobs"]    = "Number of jobs that were removed from the queue instead of allowing to complete"
         custom_items["Num Short Jobs"]   = "Number of execution attempts that completed in less than 60 seconds"
         custom_items["Num Jobs w/>1 Exec Att"] = "Number of unique jobs that were executed more than once"
+        custom_items["Num Jobs Over Rqst Disk"] = "Number of unique jobs that went over their requested disk space"
         custom_items["Num Ckpt Able Jobs"] = "Number of unique jobs that may be using user-level checkpointing"
 
         custom_items["% Rm'd Jobs"] = "Percent of Num Uniq Job Ids that were removed"
         custom_items["% Short Jobs"] = "Percent of Num Uniq Job Ids that were short jobs"
         custom_items["% Jobs w/>1 Exec Att"] = "Percent of Num Uniq Job Ids that had more than one execution attempt"
         custom_items["% Jobs w/1+ Holds"] = "Percent of Num Uniq Job Ids that had one or more jobs go on hold"
+        custom_items["% Jobs Over Rqst Disk"] = "Percent of Num Uniq Job Ids that went over their requested disk space"
         custom_items["% Jobs using S'ty"] = "Percent of Num Uniq Job Ids that are using a Singularity image"
         custom_items["% Ckpt Able"] = "Percent of Num Uniq Job Ids that may be using user-level checkpointing"
         custom_items["Total Files Xferd"] = "Total files transferred (input and output) across all transfer protocols and execution attempts"
@@ -126,6 +130,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
         custom_items["Output MB / File"] = "Average size of file in output sandboxes"
 
         custom_items["Med Used Mem MB"]  = "Median measured memory usage across all submitted jobs' last execution attempts in MB"
+        custom_items["Max Rqst/Used Disk GB"] = "Maximum requested/used disk space across all submittted jobs' last execution attempts in GB"
 
         custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
         custom_items["Num Local Univ Jobs"] = "Number of jobs that used local universe"

@@ -18,6 +18,7 @@ DEFAULT_COLUMNS = {
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
     80: "% Jobs w/1+ Holds",
+    81: "% Jobs Over Rqst Disk",
     82: "% Jobs using S'ty",
     83: "Total Files Xferd",
 
@@ -47,6 +48,8 @@ DEFAULT_COLUMNS = {
     200: "Max Rqst Mem MB",
     210: "Med Used Mem MB",
     220: "Max Used Mem MB",
+    225: "Max Rqst Disk GB",
+    227: "Max Used Disk GB",
     230: "Max Rqst Cpus",
 
     300: "Good CPU Hours",
@@ -58,6 +61,7 @@ DEFAULT_COLUMNS = {
     340: "Num DAG Node Jobs",
     350: "Num Jobs w/>1 Exec Att",
     355: "Num Jobs w/1+ Holds",
+    357: "Num Jobs Over Rqst Disk",
     360: "Num Short Jobs",
     370: "Num Local Univ Jobs",
     380: "Num Sched Univ Jobs",
@@ -71,10 +75,12 @@ DEFAULT_FILTER_ATTRS = [
     "CommittedTime",
     "RequestCpus",
     "RequestMemory",
+    "RequestDisk",
     "RecordTime",
     "JobStartDate",
     "JobCurrentStartDate",
     "MemoryUsage",
+    "DiskUsage",
     "NumJobStarts",
     "NumShadowStarts",
     "NumHolds",
@@ -492,19 +498,25 @@ class OsgScheddCpuFilter(BaseFilter):
         # Compute columns
         row["All CPU Hours"]    = sum(self.clean(goodput_cpu_time)) / 3600
         row["Num Uniq Job Ids"] = sum(data['_NumJobs'])
+        row["Num Jobs Over Rqst Disk"] = sum([(usage or 0) > (request or 1)
+            for (usage, request) in zip(data["DiskUsage"], data["RequestDisk"])])
         row["Num Short Jobs"]   = sum(self.clean(is_short_job))
         row["Max Rqst Mem MB"]  = max(self.clean(data['RequestMemory'], allow_empty_list=False))
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
+        row["Max Rqst Disk GB"] = max(self.clean(data["RequestDisk"], allow_empty_list=False)) / (1000*1000)
+        row["Max Used Disk GB"] = max(self.clean(data["DiskUsage"], allow_empty_list=False)) / (1000*1000)
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
         row["Num Users"]        = len(set(data["User"]))
         row["Num S'ty Jobs"]    = len(self.clean(data["SingularityImage"]))
 
         if row["Num Uniq Job Ids"] > 0:
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
+            row["% Jobs Over Rqst Disk"] = 100 * row["Num Jobs Over Rqst Disk"] / row["Num Uniq Job Ids"]
             row["% Jobs using S'ty"] = 100 * row["Num S'ty Jobs"] / row["Num Uniq Job Ids"]
         else:
             row["% Short Jobs"] = 0
+            row["% Jobs Over Rqst Disk"] = 0
             row["% Jobs using S'ty"] = 0
 
         # Compute activation time stats
@@ -708,11 +720,15 @@ class OsgScheddCpuFilter(BaseFilter):
         row["Num Rm'd Jobs"]    = sum([status == 3 for status in data["JobStatus"]])
         row["Num Job Holds"]    = sum(self.clean(data["NumHolds"]))
         row["Num Jobs w/1+ Holds"] = sum([holds > 0 for holds in self.clean(data["NumHolds"])])
+        row["Num Jobs Over Rqst Disk"] = sum([(usage or 0) > (request or 1)
+            for (usage, request) in zip(data["DiskUsage"], data["RequestDisk"])])
         row["Num Jobs w/>1 Exec Att"] = sum([starts > 1 for starts in self.clean(data["NumJobStarts"])])
         row["Num Short Jobs"]   = sum(self.clean(is_short_job))
         row["Max Rqst Mem MB"]  = max(self.clean(data['RequestMemory'], allow_empty_list=False))
         row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = max(self.clean(data["MemoryUsage"], allow_empty_list=False))
+        row["Max Rqst Disk GB"] = max(self.clean(data["RequestDisk"], allow_empty_list=False)) / (1000*1000)
+        row["Max Used Disk GB"] = max(self.clean(data["DiskUsage"], allow_empty_list=False)) / (1000*1000)
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
         row["Num Exec Atts"]    = sum(self.clean(num_exec_attempts))
         row["Num Shadw Starts"] = sum(self.clean(num_shadow_starts))
@@ -733,6 +749,7 @@ class OsgScheddCpuFilter(BaseFilter):
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
             row["% Jobs w/>1 Exec Att"] = 100 * row["Num Jobs w/>1 Exec Att"] / row["Num Uniq Job Ids"]
             row["% Jobs w/1+ Holds"] = 100 * row["Num Jobs w/1+ Holds"] / row["Num Uniq Job Ids"]
+            row["% Jobs Over Rqst Disk"] = 100 * row["Num Jobs Over Rqst Disk"] / row["Num Uniq Job Ids"]
             row["% Ckpt Able"] = 100 * row["Num Ckpt Able Jobs"] / row["Num Uniq Job Ids"]
             row["% Jobs using S'ty"] = 100 * row["Num S'ty Jobs"] / row["Num Uniq Job Ids"]
         else:
@@ -742,6 +759,7 @@ class OsgScheddCpuFilter(BaseFilter):
             row["% Short Jobs"] = 0
             row["% Jobs w/>1 Exec Att"] = 0
             row["% Jobs w/1+ Holds"] = 0
+            row["% Jobs Over Rqst Disk"] = 0
             row["% Jobs using S'ty"] = 0
         if row["Num Shadw Starts"] > 0:
             row["Exec Atts / Shadw Start"] = row["Num Exec Atts"] / row["Num Shadw Starts"]
