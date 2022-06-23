@@ -11,6 +11,7 @@ CUSTOM_MAPPING = {
     "login-el7.xenon.ci-connect.net": {"cm-2.ospool.osg-htc.org", "cm-1.ospool.osg-htc.org"},
     "login.collab.ci-connect.net": {"cm-2.ospool.osg-htc.org", "cm-1.ospool.osg-htc.org"},
     "uclhc-2.ps.uci.edu": {"uclhc-2.ps.uci.edu"},
+    "osgsub01.sdcc.bnl.gov": {"scicollector.jlab.org", "osg-jlab-1.t2.ucsd.edu"},
 }
 
 
