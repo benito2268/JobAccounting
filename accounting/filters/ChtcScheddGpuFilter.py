@@ -293,6 +293,10 @@ class ChtcScheddGpuFilter(BaseFilter):
         # Get output dict for this site
         site = i.get("LastRemoteHost", "UNKNOWN") or "UNKNOWN"
         site = site.split("@")[-1]
+        if "wisc.edu" not in site.casefold():
+            schedd = i.get("ScheddName", "UNKNOWN")
+            site = f"OSG via {schedd}"
+
         o = data["Site"][site]
 
         # Add custom attrs to the list of attrs
@@ -518,7 +522,7 @@ class ChtcScheddGpuFilter(BaseFilter):
                 goodput_gpu_time.append(None)
             else:
                 goodput_cpu_time.append(goodput_time * cpus)
-                goodput_gpu_time.append(goodput_time * cpus)
+                goodput_gpu_time.append(goodput_time * gpus)
 
         # Short jobs are jobs that ran for < 1 minute
         is_short_job = []
