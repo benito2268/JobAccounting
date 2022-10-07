@@ -54,6 +54,7 @@ DEFAULT_FILTER_ATTRS = [
     "NumHolds",
     "RequestCpus",
     "CPUsUsage",
+    "CpusUsage",
     "RequestGpus",
     "RequestMemory",
     "MemoryUsage",
@@ -251,6 +252,10 @@ class OsgScheddLongJobFilter(BaseFilter):
         return rows
 
     def compute_custom_columns(self, data, agg, agg_name):
+        cpus_usage = data["CPUsUsage"][0]
+        if cpus_usage is None:
+            cpus_usage = data["CpusUsage"][0]
+
         # Output dictionary
         row = {}
         row["Project"] = data["ProjectName"]
@@ -258,8 +263,12 @@ class OsgScheddLongJobFilter(BaseFilter):
         row["Last Wall Hrs"] = data["CommittedTime"][0] / 3600
         row["Total Wall Hrs"] = data["RemoteWallClockTime"][0] / 3600
         row["Potent CPU Hrs"] = data["RequestCpus"][0] * row["Last Wall Hrs"]
-        row["Actual CPU Hrs"] = data["CPUsUsage"][0] * row["Last Wall Hrs"]
-        row["% CPU Eff"] = 100 * data["CPUsUsage"][0] / data["RequestCpus"][0]
+        try:
+            row["Actual CPU Hrs"] = cpus_usage * row["Last Wall Hrs"]
+            row["% CPU Eff"] = 100 * cpus_usage / data["RequestCpus"][0]
+        except TypeError:
+            row["Actual CPU Hrs"] = "n/a"
+            row["% CPU Eff"] = "n/a"
 
         row["Job Id"] = data["GlobalJobId"][0].split("#")[1]
         row["Access Point"] = data["ScheddName"][0]
