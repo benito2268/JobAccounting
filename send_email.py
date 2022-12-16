@@ -47,10 +47,11 @@ else:
     logger.error(f"Could not connect to Elasticsearch")
     sys.exit(1)
 
-last_data_file = Path(f"last_data_{args.filter.__name__}.json")
-logger.debug(f"Dumping data to {last_data_file}")
-with last_data_file.open("w") as f:
-    json.dump(raw_data, f, indent=2)
+if args.report_period == "daily":
+    last_data_file = Path(f"last_data_{args.filter.__name__}.json")
+    logger.debug(f"Dumping data to {last_data_file}")
+    with last_data_file.open("w") as f:
+        json.dump(raw_data, f, indent=2)
 
 table_names = list(raw_data.keys())
 logger.debug(f"Got {len(table_names)} tables: {', '.join(table_names)}")
