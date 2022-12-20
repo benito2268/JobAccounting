@@ -89,7 +89,7 @@ def write_csv(table, filter_name, table_name, start_ts, report_period, csv_dir, 
     return filepath
 
 
-def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr, html, table_files, **kwargs):
+def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr, html, table_files=[], **kwargs):
     logger = logging.getLogger("accounting.send_email")
     if len(to_addrs) == 0:
         logger.error("No recipients in the To: field, not sending email")
