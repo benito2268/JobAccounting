@@ -66,7 +66,7 @@ class BaseFilter:
         if scroll is None:
             scroll_seconds = 30 + int(5 * (((end_ts - start_ts) / (3600 * 24)) - 1)**0.5)
             scroll = f"{int(scroll_seconds)}s"
-            self.logger.info(f"No explicit scroll time set, using {scroll}.")
+            self.logger.debug(f"No explicit scroll time set, using {scroll}.")
 
         query = {
             "index": index,
@@ -144,7 +144,7 @@ class BaseFilter:
         indices = list(self.client.indices.get_alias(index=es_index).keys())
         indices.sort(reverse=True)
         indices.insert(0, indices.pop())  # make sure the first index gets checked first
-        self.logger.info(f"Querying at most {len(indices)} indices matching {es_index}.")
+        self.logger.debug(f"Querying at most {len(indices)} indices matching {es_index}.")
         got_initial_data = False  # only stop after we've seen data
 
         for index in indices:
