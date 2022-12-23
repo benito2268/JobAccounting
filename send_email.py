@@ -50,7 +50,7 @@ else:
 if args.report_period == "daily":
     last_data_file = Path(f"last_data_{args.filter.__name__}.pickle")
     logger.debug(f"Dumping data to {last_data_file}")
-    with last_data_file.open("w") as f:
+    with last_data_file.open("wb") as f:
         pickle.dump(raw_data, f, pickle.HIGHEST_PROTOCOL)
 
 table_names = list(raw_data.keys())

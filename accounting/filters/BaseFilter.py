@@ -1,6 +1,7 @@
 import logging
 import statistics as stats
 from collections import defaultdict
+from functools import partial
 from operator import itemgetter
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers
@@ -138,7 +139,7 @@ class BaseFilter:
         # First level - Aggregation level (e.g. Schedd, User, Project)
         # Second level - Aggregation name (e.g. value of ScheddName, UserName, ProjectName)
         # Third level - Field name to be aggregated (e.g. RemoteWallClockTime, RequestCpus)
-        filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        filtered_data = defaultdict(partial(defaultdict, partial(defaultdict, list)))
 
         # Get list of indices so we can use one at a time
         indices = list(self.client.indices.get_alias(index=es_index).keys())
