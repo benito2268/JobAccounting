@@ -23,11 +23,17 @@ def get_subject(args):
 
 
 def log_tail(logfile, n=10):
+    if logfile is None:
+        return "No log file found."
     lines = deque(maxlen=n)
-    with open(logfile, "r") as f:
-        for line in f:
-            lines.append(line.rstrip())
-    return "\n".join(lines)
+    try:
+        with open(logfile, "r") as f:
+            for line in f:
+                lines.append(line.rstrip())
+    except Exception:
+        return f"Error reading log file {logfile}."
+    else:
+        return "\n".join(lines)
 
 
 if __name__ == "__main__":
