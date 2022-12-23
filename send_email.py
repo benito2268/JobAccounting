@@ -7,7 +7,7 @@ import time
 import elasticsearch
 import accounting
 from accounting.push_totals_to_es import push_totals_to_es
-import json
+import pickle
 from traceback import print_exc, print_tb
 import logging, logging.handlers
 from pathlib import Path
@@ -48,10 +48,10 @@ else:
     sys.exit(1)
 
 if args.report_period == "daily":
-    last_data_file = Path(f"last_data_{args.filter.__name__}.json")
+    last_data_file = Path(f"last_data_{args.filter.__name__}.pickle")
     logger.debug(f"Dumping data to {last_data_file}")
     with last_data_file.open("w") as f:
-        json.dump(raw_data, f, indent=2)
+        pickle.dump(raw_data, f, pickle.HIGHEST_PROTOCOL)
 
 table_names = list(raw_data.keys())
 logger.debug(f"Got {len(table_names)} tables: {', '.join(table_names)}")
