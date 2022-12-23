@@ -57,14 +57,23 @@ class BaseFilter:
 
         return Elasticsearch([es_client])
 
-    def get_query(self, index, start_ts, end_ts, scroll="10s", size=500):
+    def get_query(self, index, start_ts, end_ts, scroll=None, size=500):
         # Returns dict matching Elasticsearch.search() kwargs
         # (Dict has same structure as the REST API query language)
+
+        # Set the scroll time based on how long the reporting period is.
+        # Using 30s + 5s * sqrt(days-1)
+        if scroll is None:
+            scroll_seconds = 30 + int(5 * (((end_ts - start_ts) / (3600 * 24)) - 1)**0.5)
+            scroll = f"{int(scroll_seconds)}s"
+            self.logger.info(f"No explicit scroll time set, using {scroll}.")
 
         query = {
             "index": index,
             "scroll": scroll,
             "size": size,
+            "sort": ["_doc"],
+            "track_scores": False,
             "body": {
                 "query": {
                     "range": {
@@ -119,7 +128,7 @@ class BaseFilter:
         ]
         return filters
 
-    def scan_and_filter(self, es_index, start_ts, end_ts, **kwargs):
+    def scan_and_filter(self, es_index, start_ts, end_ts, build_totals=True, **kwargs):
         # Returns a 3-level dictionary that contains data gathered from
         # Elasticsearch and filtered through whatever methods have been
         # defined in self.get_filters()
@@ -131,35 +140,50 @@ class BaseFilter:
         # Third level - Field name to be aggregated (e.g. RemoteWallClockTime, RequestCpus)
         filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
 
-        # Set the scroll time based on how long the reporting period is... 4 secs per day
-        scroll_seconds = 5 * (int((end_ts - start_ts) / (3600 * 24)) + 1)
+        # Get list of indices so we can use one at a time
+        indices = list(self.client.indices.get_alias(index=es_index).keys())
+        indices.sort(reverse=True)
+        indices.insert(0, indices.pop())  # make sure the first index gets checked first
+        self.logger.info(f"Querying at most {len(indices)} indices matching {es_index}.")
+        got_initial_data = False  # only stop after we've seen data
 
-        query = self.get_query(
-            index=es_index,
-            start_ts=start_ts,
-            end_ts=end_ts,
-            scroll=f"{scroll_seconds}s",
-        )
+        for index in indices:
 
-        # Use the scan() helper function, which automatically scrolls results. Nice!
-        for doc in elasticsearch.helpers.scan(
-                client=self.client,
-                query=query.pop("body"),
-                **query,
-                ):
+            query = self.get_query(
+                index=index,
+                start_ts=start_ts,
+                end_ts=end_ts,
+            )
 
-            # Send the doc through the various filters,
-            # which mutate filtered_data in place
-            for filtr in self.get_filters():
-                filtr(filtered_data, doc)
+            # Use the scan() helper function, which automatically scrolls results. Nice!
+            self.logger.debug(f"Querying {index}.")
+            got_index_data = False
+            for doc in elasticsearch.helpers.scan(
+                    client=self.client,
+                    query=query.pop("body"),
+                    **query,
+                    ):
+                got_initial_data = True
+                got_index_data = True
+
+                # Send the doc through the various filters,
+                # which mutate filtered_data in place
+                for filtr in self.get_filters():
+                    filtr(filtered_data, doc)
+
+            # Break early if not finding more results
+            if got_initial_data and not got_index_data:
+                self.logger.debug(f"Exiting scan early since no docs were found")
+                break
 
         # Build totals
-        for agg in filtered_data.keys():
-            total = defaultdict(list)
-            for agg_name in filtered_data[agg].keys():
-                for field, data in filtered_data[agg][agg_name].items():
-                    total[field] += data
-            filtered_data[agg]["TOTAL"] = total
+        if build_totals:
+            for agg in filtered_data.keys():
+                total = defaultdict(list)
+                for agg_name in filtered_data[agg].keys():
+                    for field, data in filtered_data[agg][agg_name].items():
+                        total[field] += data
+                filtered_data[agg]["TOTAL"] = total
 
         return filtered_data
 

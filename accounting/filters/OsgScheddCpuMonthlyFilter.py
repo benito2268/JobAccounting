@@ -527,29 +527,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         return row
 
     def scan_and_filter(self, es_index, start_ts, end_ts, **kwargs):
-        filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-
-        query = self.get_query(
-            index=es_index,
-            start_ts=start_ts,
-            end_ts=end_ts,
-            scroll="10s",
-            size=600,
-        )
-
-        # Use the scan() helper function, which automatically scrolls results. Nice!
-        for doc in elasticsearch.helpers.scan(
-                client=self.client,
-                query=query.pop("body"),
-                **query,
-                ):
-
-            # Send the doc through the various filters,
-            # which mutate filtered_data in place
-            for filtr in self.get_filters():
-                filtr(filtered_data, doc)
-
-        return filtered_data
+        return super().scan_and_filter(es_index, start_ts, end_ts, build_totals=False, **kwargs)
 
     def merge_filtered_data(self, data, agg):
         # Takes filtered data and an aggregation level (e.g. Users, Schedds,

@@ -52,14 +52,12 @@ DEFAULT_FILTER_ATTRS = [
 class ChtcScheddCpuRemovedFilter(BaseFilter):
     name = "CHTC schedd removed job history"
 
-    def get_query(self, index, start_ts, end_ts, scroll="5s", size=500):
+    def get_query(self, index, start_ts, end_ts, **kwargs):
         # Returns dict matching Elasticsearch.search() kwargs
         # (Dict has same structure as the REST API query language)
+        query = super().get_query(index, start_ts, end_ts, **kwargs)
 
-        query = {
-            "index": index,
-            "scroll": scroll,
-            "size": size,
+        query.update({
             "body": {
                 "query": {
                     "bool": {
@@ -80,7 +78,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
                     }
                 }
             }
-        }
+        })
         return query
 
     def schedd_filter(self, data, doc):

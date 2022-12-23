@@ -79,14 +79,12 @@ class OsgScheddLongJobFilter(BaseFilter):
                 pass
         super().__init__(**kwargs)
 
-    def get_query(self, index, start_ts, end_ts, scroll="5s", size=500):
+    def get_query(self, index, start_ts, end_ts, **kwargs):
         # Returns dict matching Elasticsearch.search() kwargs
         # (Dict has same structure as the REST API query language)
+        query = super().get_query(index, start_ts, end_ts, **kwargs)
 
-        query = {
-            "index": index,
-            "scroll": scroll,
-            "size": size,
+        query.update({
             "body": {
                 "query": {
                     "bool": {
@@ -111,40 +109,11 @@ class OsgScheddLongJobFilter(BaseFilter):
                     }
                 }
             }
-        }
+        })
         return query
 
     def scan_and_filter(self, es_index, start_ts, end_ts, **kwargs):
-        # Returns a 3-level dictionary that contains data gathered from
-        # Elasticsearch and filtered through whatever methods have been
-        # defined in self.get_filters()
-
-        # Create a data structure for storing filtered data:
-        # 3-level defaultdict -> list
-        # First level - Aggregation level (e.g. Schedd, User, Project)
-        # Second level - Aggregation name (e.g. value of ScheddName, UserName, ProjectName)
-        # Third level - Field name to be aggregated (e.g. RemoteWallClockTime, RequestCpus)
-        filtered_data = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-
-        query = self.get_query(
-            index=es_index,
-            start_ts=start_ts,
-            end_ts=end_ts,
-        )
-
-        # Use the scan() helper function, which automatically scrolls results. Nice!
-        for doc in elasticsearch.helpers.scan(
-                client=self.client,
-                query=query.pop("body"),
-                **query,
-                ):
-
-            # Send the doc through the various filters,
-            # which mutate filtered_data in place
-            for filtr in self.get_filters():
-                filtr(filtered_data, doc)
-
-        return filtered_data
+        return super().scan_and_filter(es_index, start_ts, end_ts, build_totals=False, **kwargs)
 
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,
