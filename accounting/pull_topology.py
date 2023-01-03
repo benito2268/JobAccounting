@@ -18,6 +18,8 @@ MANUAL_MAPPINGS = {
     "NIKHEF-ELPROD": "Nikhef",
     "ISI_ImageTest": "University of Southern California",
     "WISC-PATH-EP": "University of Wisconsin",
+    "GP-ARGO-doane-backfill": "Great Plains Network",
+    "GP-ARGO-cameron-backfill": "Great Plains Network",
 }
 
 
