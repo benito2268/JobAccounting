@@ -360,7 +360,7 @@ class OsgScheddCpuFilter(BaseFilter):
             o[attr].append(i.get(attr, None))
 
 
-    def site_filter(self, data, doc):
+    def facility_filter(self, data, doc):
 
         # Get input dict
         i = doc["_source"]
@@ -377,13 +377,14 @@ class OsgScheddCpuFilter(BaseFilter):
         if i.get("JobUniverse") in [7, 12]:
             return
 
-        # Get output dict for this site
+        # Get output dict for this facility
         site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
         if (site is None) or (not site):
-            site = "Unknown (resource name missing)"
+            facility = "Unknown (resource name missing)"
         else:
-            site = SITE_MAP.get(site, f"Unmapped resource: {site}")
-        o = data["Site"][site]
+            facility = SITE_MAP.get(site, f"Unmapped resource: {site}")
+        o = data["Facility"][facility]
+        o["_Sites"].append(site)
 
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
@@ -408,7 +409,7 @@ class OsgScheddCpuFilter(BaseFilter):
             self.schedd_filter,
             self.user_filter,
             self.project_filter,
-            self.site_filter,
+            self.facility_filter,
         ]
         return filters
 
@@ -420,7 +421,8 @@ class OsgScheddCpuFilter(BaseFilter):
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
-        if agg == "Site":
+        if agg == "Facility":
+            columns[4] = "Num Sites"
             columns[5] = "Num Users"
             rm_columns = [30,45,50,70,80,83,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
             [columns.pop(key) for key in rm_columns if key in columns]
@@ -428,14 +430,14 @@ class OsgScheddCpuFilter(BaseFilter):
 
     def merge_filtered_data(self, data, agg):
         rows = super().merge_filtered_data(data, agg)
-        if agg == "Site":
+        if agg == "Facility":
             columns_sorted = list(rows[0])
             columns_sorted[columns_sorted.index("All CPU Hours")] = "Final Exec Att CPU Hours"
             rows[0] = tuple(columns_sorted)
         return rows
 
 
-    def compute_site_custom_columns(self, data, agg, agg_name):
+    def compute_facility_custom_columns(self, data, agg, agg_name):
 
         # Output dictionary
         row = {}
@@ -549,12 +551,15 @@ class OsgScheddCpuFilter(BaseFilter):
         # Compute mode for Project and Schedd columns in the Users table
         row["Num Users"] = len(set(data["User"]))
 
+        # Compute number of unique Sites
+        row["Num Sites"] = len(set(data["_Sites"]))
+
         return row
 
     def compute_custom_columns(self, data, agg, agg_name):
 
-        if agg == "Site":
-            row = self.compute_site_custom_columns(data, agg, agg_name)
+        if agg == "Facility":
+            row = self.compute_facility_custom_columns(data, agg, agg_name)
             return row
 
         # Output dictionary

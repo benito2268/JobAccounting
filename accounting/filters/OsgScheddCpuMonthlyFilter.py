@@ -282,7 +282,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             total[col] = total.get(col) or {}
             total[col][dict_cols[col]] = 1
 
-    def site_filter(self, data, doc):
+    def facility_filter(self, data, doc):
 
         # Get input dict
         i = doc["_source"]
@@ -299,14 +299,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if i.get("JobUniverse") in [7, 12]:
             return
 
-        # Get output dict for this site
+        # Get output dict for this facility
         site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
         if (site is None) or (not site):
-            site = "Unknown (resource name missing)"
+            facility = "Unknown (resource name missing)"
         else:
-            site = SITE_MAP.get(site, f"Unmapped resource: {site}")
-        o = data["Site"][site]
-        t = data["Site"]["TOTAL"]
+            facility = SITE_MAP.get(site, f"Unmapped resource: {site}")
+        o = data["Facility"][facility]
+        t = data["Facility"]["TOTAL"]
 
         # Reduce data
         is_short = False
@@ -337,6 +337,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         dict_cols = {}
         dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
+        dict_cols["Sites"] = site
 
         for col in sum_cols:
             o[col] = (o.get(col) or 0) + sum_cols[col]
@@ -359,7 +360,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             self.schedd_filter,
             self.user_filter,
             self.project_filter,
-            self.site_filter,
+            self.facility_filter,
         ]
         return filters
 
@@ -371,13 +372,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
-        if agg == "Site":
+        if agg == "Facility":
+            columns[4] = "Num Sites"
             columns[5] = "Num Users"
             rm_columns = [30,50,70,80,83,85,90,95,180,190,300,305,310,320,325,330,340,350,355,370,380]
             [columns.pop(key) for key in rm_columns]
         return columns
 
-    def compute_site_custom_columns(self, data, agg, agg_name):
+    def compute_facility_custom_columns(self, data, agg, agg_name):
 
         # Output dictionary
         row = {}
@@ -391,6 +393,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Max Used Mem MB"]  = data["MaxMemoryUsage"]
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
         row["Num Users"]        = len(data["Users"])
+        row["Num Sites"]        = len(data["Sites"])
 
         if row["Num Uniq Job Ids"] > 0:
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
@@ -423,8 +426,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
     def compute_custom_columns(self, data, agg, agg_name):
 
-        if agg == "Site":
-            row = self.compute_site_custom_columns(data, agg, agg_name)
+        if agg == "Facility":
+            row = self.compute_facility_custom_columns(data, agg, agg_name)
             return row
 
         # Output dictionary
@@ -573,7 +576,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Prepend the header row
         rows.insert(0, tuple(columns_sorted))
 
-        if agg == "Site":
+        if agg == "Facility":
             columns_sorted = list(rows[0])
             columns_sorted[columns_sorted.index("All CPU Hours")] = "Final Exec Att CPU Hours"
             rows[0] = tuple(columns_sorted)
