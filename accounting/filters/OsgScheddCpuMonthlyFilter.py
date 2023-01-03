@@ -300,7 +300,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             return
 
         # Get output dict for this site
-        site = i.get("MachineAttrGLIDEIN_ResourceName0")
+        site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
         if (site is None) or (not site):
             site = "Unknown (resource name missing)"
         else:
