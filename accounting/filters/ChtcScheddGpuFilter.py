@@ -275,7 +275,7 @@ class ChtcScheddGpuFilter(BaseFilter):
             o[attr].append(i.get(attr, None))
 
 
-    def site_filter(self, data, doc):
+    def machine_filter(self, data, doc):
 
         # Get input dict
         i = doc["_source"]
@@ -313,7 +313,7 @@ class ChtcScheddGpuFilter(BaseFilter):
         filters = [
             self.schedd_filter,
             self.user_filter,
-            self.site_filter,
+            self.machine_filter,
         ]
         return filters
 

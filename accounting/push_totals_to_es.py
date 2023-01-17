@@ -131,10 +131,14 @@ def push_totals_to_es(csv_files, index_name, **kwargs):
         del lengths["Schedd"]
     else:
         key = list(totals.keys())[0]
-        if key == "Site":
+        if key in ["Site", "Facility", "Institution"]:
             key = list(totals.keys())[-1]
         total = totals[key]
         del lengths[key]
+    if "Facility" in totals:
+        total["num_sites"] = totals["Facility"]["num_sites"]
+    if "Institution" in totals:
+        total["num_sites"] = totals["Institution"]["num_sites"]
     for table in lengths:
         total[f"num_{table.casefold()}s"] = lengths[table]
 
