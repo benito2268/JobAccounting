@@ -348,6 +348,8 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
                 data["_BadWallClockTime"],
                 data["RemoteWallClockTime"],
                 data["RequestCpus"]):
+            if cpus is not None:
+                cpus = max(cpus, 1)  # assume at least 1 CPU even if 0 CPUs were stored in Elasticsearch
             if None in [goodput_time, cpus]:
                 goodput_cpu_time.append(None)
             else:

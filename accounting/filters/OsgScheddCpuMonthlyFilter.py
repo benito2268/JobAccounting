@@ -177,9 +177,9 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["ShortJobs"] = int(is_short)
         sum_cols["ShadowJobs"] = int(has_shadow)
 
-        sum_cols["GoodCpuTime"] = (goodput_time * i.get("RequestCpus", 1))
-        sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * i.get("RequestCpus", 1))
-        sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * i.get("RequestCpus", 1))
+        sum_cols["GoodCpuTime"] = (goodput_time * max(i.get("RequestCpus", 1), 1))
+        sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * max(i.get("RequestCpus", 1), 1))
+        sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * max(i.get("RequestCpus", 1), 1))
         sum_cols["NumShadowStarts"] = int(has_shadow) * i.get("NumShadowStarts", 0)
         sum_cols["NumJobStarts"] = int(has_shadow) * i.get("NumJobStarts", 0)
         sum_cols["NumBadJobStarts"] = int(has_shadow) * max(i.get("NumJobStarts", 0) - 1, 0)
@@ -322,7 +322,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["Jobs"] = 1
         sum_cols["ShortJobs"] = int(is_short)
 
-        sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * i.get("RequestCpus", 1))
+        sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * max(i.get("RequestCpus", 1), 1))
 
         max_cols = {}
         max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)

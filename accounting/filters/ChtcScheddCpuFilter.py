@@ -282,6 +282,8 @@ class ChtcScheddCpuFilter(BaseFilter):
                 data["RequestCpus"]):
             #goodput_time = last_wallclock_time or committed_time
             goodput_time = committed_time
+            if cpus is not None:
+                cpus = max(cpus, 1)  # assume at least 1 CPU even if 0 CPUs were stored in Elasticsearch
             if None in [goodput_time, cpus]:
                 goodput_cpu_time.append(None)
             else:

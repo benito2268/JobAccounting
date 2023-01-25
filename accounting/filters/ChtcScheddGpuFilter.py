@@ -361,6 +361,8 @@ class ChtcScheddGpuFilter(BaseFilter):
                 data["RemoteWallClockTime"],
                 data["RequestCpus"],
                 data["RequestGpus"]):
+            if cpus is not None:
+                cpus = max(cpus, 1)  # assume at least 1 CPU even if 0 CPUs were stored in Elasticsearch
             if None in [goodput_time, cpus, gpus]:
                 goodput_cpu_time.append(None)
                 goodput_gpu_time.append(None)
@@ -515,6 +517,8 @@ class ChtcScheddGpuFilter(BaseFilter):
                 data["CommittedTime"],
                 data["RequestCpus"],
                 data["RequestGpus"]):
+            if cpus is not None:
+                cpus = max(cpus, 1)
             if None in [goodput_time, cpus, gpus]:
                 goodput_cpu_time.append(None)
                 goodput_gpu_time.append(None)

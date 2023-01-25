@@ -230,10 +230,10 @@ class OsgScheddLongJobFilter(BaseFilter):
 
         row["Last Wall Hrs"] = data["CommittedTime"][0] / 3600
         row["Total Wall Hrs"] = data["RemoteWallClockTime"][0] / 3600
-        row["Potent CPU Hrs"] = data["RequestCpus"][0] * row["Last Wall Hrs"]
+        row["Potent CPU Hrs"] = max(data["RequestCpus"][0], 1) * row["Last Wall Hrs"]
         try:
             row["Actual CPU Hrs"] = cpus_usage * row["Last Wall Hrs"]
-            row["% CPU Eff"] = 100 * cpus_usage / data["RequestCpus"][0]
+            row["% CPU Eff"] = 100 * cpus_usage / max(data["RequestCpus"][0], 1)
         except TypeError:
             row["Actual CPU Hrs"] = "n/a"
             row["% CPU Eff"] = "n/a"
