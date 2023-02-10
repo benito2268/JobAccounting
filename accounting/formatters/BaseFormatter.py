@@ -12,6 +12,7 @@ def break_chars(s):
     for char in ["@", "_", "."]:
         s = s.replace(char, f"{char}{zero_width_space}")
     s = s.replace("-", non_breaking_hyphen)
+        s = s.replace("<", "&lt;").replace(">", "&gt;")
     return s
 
 

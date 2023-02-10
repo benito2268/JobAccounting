@@ -447,6 +447,8 @@ class OsgScheddCpuFilter(BaseFilter):
         for (goodput_time, cpus) in zip(
                 data["CommittedTime"],
                 data["RequestCpus"]):
+            if cpus is not None:
+                cpus = max(cpus, 1)
             if None in [goodput_time, cpus]:
                 goodput_cpu_time.append(None)
             else:
