@@ -9,3 +9,4 @@ from .ChtcScheddGpuFilter import ChtcScheddGpuFilter
 from .OsgScheddLongJobFilter import OsgScheddLongJobFilter
 from .OsgScheddCpuRetryFilter import OsgScheddCpuRetryFilter
 from .OsgScheddJobDistroFilter import OsgScheddJobDistroFilter
+from .ChtcScheddCpuMonthlyFilter import ChtcScheddCpuMonthlyFilter
