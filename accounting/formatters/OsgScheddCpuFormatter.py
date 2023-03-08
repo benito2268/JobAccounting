@@ -111,6 +111,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
         custom_items["% Jobs using S'ty"] = "Percent of Num Uniq Job Ids that requested to run inside a Singularity image"
         custom_items["% Ckpt Able"] = "Percent of Num Uniq Job Ids that may be using user-level checkpointing"
         custom_items["Total Files Xferd"] = "Total files transferred (input and output) across all transfer protocols and execution attempts"
+        custom_items["OSDF Files Xferd"] = "Total files transferred using the OSDF (f.k.a. Stash) transfer plugin"
 
         custom_items["Shadw Starts / Job Id"]   = "Num Shadw Starts per Num Uniq Job Ids"
         custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"

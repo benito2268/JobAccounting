@@ -21,6 +21,7 @@ DEFAULT_COLUMNS = {
     81: "% Jobs Over Rqst Disk",
     82: "% Jobs using S'ty",
     83: "Total Files Xferd",
+    84: "OSDF Files Xferd",
 
     85: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
@@ -424,7 +425,7 @@ class OsgScheddCpuFilter(BaseFilter):
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
-            rm_columns = [30,45,50,70,80,83,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
+            rm_columns = [30,45,50,70,80,83,84,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
             [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
@@ -637,6 +638,8 @@ class OsgScheddCpuFilter(BaseFilter):
         output_files_total_count = []
         output_files_total_bytes = []
         output_files_total_job_stops = []
+        osdf_input_files_count = 0
+        osdf_output_files_count = 0
         for (
                 job_status,
                 job_universe,
@@ -670,6 +673,8 @@ class OsgScheddCpuFilter(BaseFilter):
             else:
                 got_cedar_bytes = False
                 for attr in input_stats:
+                    if attr.casefold() in {"stashfilescounttotal", "osdffilescounttotal"}:
+                        osdf_input_files_count += input_stats[attr]
                     if attr.casefold().endswith("FilesCountTotal".casefold()):
                         input_files_count += input_stats[attr]
                     elif attr.casefold().endswith("SizeBytesTotal".casefold()):
@@ -690,6 +695,8 @@ class OsgScheddCpuFilter(BaseFilter):
             else:
                 got_cedar_bytes = False
                 for attr in output_stats:
+                    if attr.casefold() in {"stashfilescounttotal", "osdffilescounttotal"}:
+                        osdf_output_files_count += output_stats[attr]
                     if attr.casefold().endswith("FilesCountTotal".casefold()):
                         output_files_count += output_stats[attr]
                     elif attr.casefold().endswith("SizeBytesTotal".casefold()):
@@ -780,6 +787,7 @@ class OsgScheddCpuFilter(BaseFilter):
             row["CPU Hours / Bad Exec Att"] = 0
 
         # File transfer stats
+        row["OSDF Files Xferd"] = (osdf_input_files_count + osdf_output_files_count) or ""
         if any(input_files_total_job_starts):
             exec_atts = sum(self.clean(input_files_total_job_starts))
             input_files = sum(self.clean(input_files_total_count))
