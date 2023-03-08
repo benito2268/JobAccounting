@@ -22,8 +22,10 @@ DEFAULT_COLUMNS = {
     82: "% Jobs using S'ty",
     83: "Total Files Xferd",
     84: "OSDF Files Xferd",
+    85: "% OSDF Files",
+    86: "% OSDF Bytes",
 
-    85: "Shadw Starts / Job Id",
+    88: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
     95: "Holds / Job Id",
 
@@ -425,7 +427,7 @@ class OsgScheddCpuFilter(BaseFilter):
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
-            rm_columns = [30,45,50,70,80,83,84,85,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
+            rm_columns = [30,45,50,70,80,83,84,85,86,88,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
             [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
@@ -638,8 +640,8 @@ class OsgScheddCpuFilter(BaseFilter):
         output_files_total_count = []
         output_files_total_bytes = []
         output_files_total_job_stops = []
-        osdf_input_files_count = 0
-        osdf_output_files_count = 0
+        osdf_files_count = 0
+        osdf_bytes_total = 0
         for (
                 job_status,
                 job_universe,
@@ -674,7 +676,9 @@ class OsgScheddCpuFilter(BaseFilter):
                 got_cedar_bytes = False
                 for attr in input_stats:
                     if attr.casefold() in {"stashfilescounttotal", "osdffilescounttotal"}:
-                        osdf_input_files_count += input_stats[attr]
+                        osdf_files_count += input_stats[attr]
+                    if attr.casefold() in {"stashsizebytestotal", "osdfsizebytestotal"}:
+                        osdf_bytes_total += input_stats[attr]
                     if attr.casefold().endswith("FilesCountTotal".casefold()):
                         input_files_count += input_stats[attr]
                     elif attr.casefold().endswith("SizeBytesTotal".casefold()):
@@ -696,7 +700,9 @@ class OsgScheddCpuFilter(BaseFilter):
                 got_cedar_bytes = False
                 for attr in output_stats:
                     if attr.casefold() in {"stashfilescounttotal", "osdffilescounttotal"}:
-                        osdf_output_files_count += output_stats[attr]
+                        osdf_files_count += output_stats[attr]
+                    if attr.casefold() in {"stashsizebytestotal", "osdfsizebytestotal"}:
+                        osdf_bytes_total += output_stats[attr]
                     if attr.casefold().endswith("FilesCountTotal".casefold()):
                         output_files_count += output_stats[attr]
                     elif attr.casefold().endswith("SizeBytesTotal".casefold()):
@@ -787,11 +793,15 @@ class OsgScheddCpuFilter(BaseFilter):
             row["CPU Hours / Bad Exec Att"] = 0
 
         # File transfer stats
-        row["OSDF Files Xferd"] = (osdf_input_files_count + osdf_output_files_count) or ""
+        total_files = 0
+        total_bytes = 0
         if any(input_files_total_job_starts):
             exec_atts = sum(self.clean(input_files_total_job_starts))
             input_files = sum(self.clean(input_files_total_count))
             input_mb = sum(self.clean(input_files_total_bytes)) / 1e6
+
+            total_files += input_files
+            total_bytes += input_mb * 1e6
 
             row["Total Input Files"] = input_files
             if exec_atts > 0:
@@ -806,6 +816,9 @@ class OsgScheddCpuFilter(BaseFilter):
             output_files = sum(self.clean(output_files_total_count))
             output_mb = sum(self.clean(output_files_total_bytes)) / 1e6
 
+            total_files += output_files
+            total_bytes += output_mb * 1e6
+
             row["Total Ouptut Files"] = output_files
             if exec_ends > 0:
                 row["Output Files / Job"] = output_files / exec_ends
@@ -813,6 +826,13 @@ class OsgScheddCpuFilter(BaseFilter):
             if output_files > 0:
                 row["Output MB / File"] = output_mb / output_files
                 row["Total Files Xferd"] = row.get("Total Files Xferd", 0) + output_files
+
+        row["OSDF Files Xferd"] = osdf_files_count or ""
+        if osdf_files_count > 0 and osdf_bytes_total > 0 and total_files > 0 and total_bytes > 0:
+            row["% OSDF Files"] = 100 * osdf_files_count / total_files
+            row["% OSDF Bytes"] = 100 * osdf_bytes_total / total_bytes
+        else:
+            row["% OSDF Files"] = row["% OSDF Bytes"] = ""
 
         # Insert missing value if any missing
         for key in ["Total Files Xferd", "Total Input Files", "Total Output Files",

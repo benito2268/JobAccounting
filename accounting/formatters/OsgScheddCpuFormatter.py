@@ -75,6 +75,8 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "Shadw Starts / Job Id":    lambda x: f"<td>{float(x):.2f}</td>",
             "Exec Atts / Shadw Start":  lambda x: f"<td>{float(x):.3f}</td>",
             "Holds / Job Id":           lambda x: f"<td>{float(x):.2f}</td>",
+            "% OSDF Files":         lambda x: f"<td>{float(x):.1f}</td>",
+            "% OSDF Bytes":         lambda x: f"<td>{float(x):.1f}</td>",
             "% Rm'd Jobs":          lambda x: f"<td>{float(x):.1f}</td>",
             "% Short Jobs":         lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/>1 Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
@@ -112,6 +114,8 @@ class OsgScheddCpuFormatter(BaseFormatter):
         custom_items["% Ckpt Able"] = "Percent of Num Uniq Job Ids that may be using user-level checkpointing"
         custom_items["Total Files Xferd"] = "Total files transferred (input and output) across all transfer protocols and execution attempts"
         custom_items["OSDF Files Xferd"] = "Total files transferred using the OSDF (f.k.a. Stash) transfer plugin"
+        custom_items["% OSDF Files"] = "Percent of all transferred files that were transferred using the OSDF plugin"
+        custom_items["% OSDF Bytes"] = "Percent of all transferred bytes that were transferred using the OSDF plugin"
 
         custom_items["Shadw Starts / Job Id"]   = "Num Shadw Starts per Num Uniq Job Ids"
         custom_items["Exec Atts / Shadw Start"] = "Num Exec Atts per Num Shadw Starts"
