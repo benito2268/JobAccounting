@@ -26,6 +26,12 @@ def parse_args(args_in=sys.argv[1:]):
         help="Do not print log messages",
     )
     parser.add_argument(
+        "--restart",
+        default=False,
+        action="store_true",
+        help="Try restarting from pickled data on disk",
+    )
+    parser.add_argument(
         "--log_file",
         default=None,
         type=Path,

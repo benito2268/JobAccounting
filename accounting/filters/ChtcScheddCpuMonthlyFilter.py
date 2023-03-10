@@ -4,6 +4,7 @@ from ast import literal_eval
 import elasticsearch.helpers
 from .BaseFilter import BaseFilter
 
+MAX_INT = 2**62
 
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
@@ -21,9 +22,9 @@ DEFAULT_COLUMNS = {
     90: "Exec Atts / Shadw Start",
     95: "Holds / Job Id",
 
-    #110: "Min Hrs",
-    #150: "Max Hrs",
-    #160: "Mean Hrs",
+    110: "Min Hrs",
+    150: "Max Hrs",
+    160: "Mean Hrs",
 
     180: "Input Files / Exec Att",
 #    181: "Input MB / Exec Att",
@@ -81,7 +82,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         })
         return query
 
-    def reduce_data(self, i, o, t):
+    def reduce_data(self, i, o, t, is_site=False):
 
         is_removed = i.get("JobStatus") == 3
         is_scheduler = i.get("JobUniverse") == 7
@@ -92,6 +93,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         is_multiexec = i.get("NumJobStarts", 0) > 1
         has_holds = i.get("NumHolds", 0) > 0
         is_short = False
+        is_long = False
         is_ckptable = False
         goodput_time = 0
         if has_shadow and not is_removed:
@@ -103,11 +105,13 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
                     is_short = True
             elif i.get("RecordTime") - i.get("JobCurrentStartDate") < 60:
                 is_short = True
+            else:
+                is_long = True
         elif not is_removed:
             goodput_time = int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
         input_files = 0
         output_files = 0
-        if has_shadow:
+        if has_shadow and not is_site:
             is_ckptable = ((
                     i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
                     i.get("Is_resumable", False)
@@ -123,6 +127,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
             for key, value in output_file_stats.items():
                 if key.casefold().endswith("FilesCountTotal".casefold()):
                     output_files += value
+        long_job_wallclock_time = int(is_long) * i.get("LastRemoteWallClockTime", i.get("CommittedTime", 60))
 
         sum_cols = {}
         sum_cols["Jobs"] = 1
@@ -133,9 +138,11 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["DAGNodeJobs"] = int(is_dagnode)
         sum_cols["MultiExecJobs"] = int(is_multiexec)
         sum_cols["ShortJobs"] = int(is_short)
+        sum_cols["LongJobs"] = int(is_long)
         sum_cols["ShadowJobs"] = int(has_shadow)
         sum_cols["Checkpointable"] = int(is_ckptable)
 
+        sum_cols["TotalLongJobWallClockTime"] = long_job_wallclock_time
         sum_cols["GoodCpuTime"] = (goodput_time * max(i.get("RequestCpus", 1), 1))
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * max(i.get("RequestCpus", 1), 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * max(i.get("RequestCpus", 1), 1))
@@ -152,9 +159,13 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
             sum_cols["TotalFiles"] = input_files + output_files
 
         max_cols = {}
+        max_cols["MaxLongJobWallClockTime"] = long_job_wallclock_time
         max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
         max_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
         max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
+
+        min_cols = {}
+        min_cols["MinLongJobWallClockTime"] = long_job_wallclock_time
 
         for col in sum_cols:
             o[col] = (o.get(col) or 0) + sum_cols[col]
@@ -162,6 +173,9 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         for col in max_cols:
             o[col] = max([(o.get(col) or 0), max_cols[col]])
             t[col] = max([(t.get(col) or 0), max_cols[col]])
+        for col in min_cols:
+            o[col] = min([(o.get(col) or MAX_INT), min_cols[col]])
+            t[col] = min([(t.get(col) or MAX_INT), min_cols[col]])
 
     def schedd_filter(self, data, doc):
 
@@ -263,6 +277,13 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
             row["CPU Hours / Bad Exec Att"] = (data["BadCpuTime"] / data["NumBadJobStarts"]) / 3600
         else:
             row["CPU Hours / Bad Exec Att"] = 0
+
+        if data["LongJobs"] > 0:
+            row["Min Hrs"]  = data["MinLongJobWallClockTime"] / 3600
+            row["Max Hrs"]  = data["MaxLongJobWallClockTime"] / 3600
+            row["Mean Hrs"] = (data["TotalLongJobWallClockTime"] / data["LongJobs"]) / 3600
+        else:
+            row["Min Hrs"] = row["Max Hrs"] = row["Mean Hrs"] = 0
 
         return row
 

@@ -32,26 +32,35 @@ if not args.quiet:
     sh.setLevel(logger.getEffectiveLevel())
     logger.addHandler(sh)
 
+if args.report_period != "daily" or not args.restart:
+    for tries in range(3):
+        try:
+            logger.info(f"Filtering data using {args.filter.__name__}")
+            filtr = args.filter(**vars(args))
+            raw_data = filtr.get_filtered_data()
+        except elasticsearch.exceptions.ConnectionTimeout:
+            logger.info(f"Elasticsearch connection timed out, trying again (try {tries+1})")
+            time.sleep(4**(tries+1))
+            continue
+        break
+    else:
+        logger.error(f"Could not connect to Elasticsearch")
+        sys.exit(1)
 
-for tries in range(3):
-    try:
-        logger.info(f"Filtering data using {args.filter.__name__}")
-        filtr = args.filter(**vars(args))
-        raw_data = filtr.get_filtered_data()
-    except elasticsearch.exceptions.ConnectionTimeout:
-        logger.info(f"Elasticsearch connection timed out, trying again (try {tries+1})")
-        time.sleep(4**(tries+1))
-        continue
-    break
+    if args.report_period == "daily":
+        last_data_file = Path(f"last_data_{args.filter.__name__}.pickle")
+        logger.debug(f"Dumping data to {last_data_file}")
+        with last_data_file.open("wb") as f:
+            pickle.dump(raw_data, f, pickle.HIGHEST_PROTOCOL)
+
 else:
-    logger.error(f"Could not connect to Elasticsearch")
-    sys.exit(1)
-
-if args.report_period == "daily":
     last_data_file = Path(f"last_data_{args.filter.__name__}.pickle")
-    logger.debug(f"Dumping data to {last_data_file}")
-    with last_data_file.open("wb") as f:
-        pickle.dump(raw_data, f, pickle.HIGHEST_PROTOCOL)
+    logger.debug(f"Reading data from {last_data_file}")
+    with last_data_file.open("rb") as f:
+        raw_data = pickle.load(f)
+    logger.info(f"Filtering data using {args.filter.__name__}")
+    filtr = args.filter(**vars(args), skip_init=True)
+    filtr.data = raw_data
 
 table_names = list(raw_data.keys())
 logger.debug(f"Got {len(table_names)} tables: {', '.join(table_names)}")

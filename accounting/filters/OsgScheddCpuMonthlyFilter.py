@@ -11,31 +11,32 @@ from functools import lru_cache
 from .BaseFilter import BaseFilter
 from accounting.pull_topology import get_site_map
 
+MAX_INT = 2**62
 
 DEFAULT_COLUMNS = {
     10: "All CPU Hours",
     20: "Num Uniq Job Ids",
     30: "% Good CPU Hours",
 
-#    45: "% Ckpt Able",
+    45: "% Ckpt Able",
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
     80: "% Jobs w/1+ Holds",
+    81: "% Jobs Over Rqst Disk",
+    82: "% Jobs using S'ty",
     83: "Total Files Xferd",
+    84: "OSDF Files Xferd",
+    85: "% OSDF Files",
+    86: "% OSDF Bytes",
 
-    85: "Shadw Starts / Job Id",
+    88: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
     95: "Holds / Job Id",
 
     110: "Min Hrs",
-    120: "25% Hrs",
-    130: "Med Hrs",
-    140: "75% Hrs",
-    145: "95% Hrs",
     150: "Max Hrs",
     160: "Mean Hrs",
-    170: "Std Hrs",
 
     180: "Input Files / Exec Att",
 #    181: "Input MB / Exec Att",
@@ -45,8 +46,9 @@ DEFAULT_COLUMNS = {
 #    192: "Output MB / File",
 
     200: "Max Rqst Mem MB",
-    #210: "Med Used Mem MB",
     220: "Max Used Mem MB",
+    225: "Max Rqst Disk GB",
+    227: "Max Used Disk GB",
     230: "Max Rqst Cpus",
 
     300: "Good CPU Hours",
@@ -58,10 +60,12 @@ DEFAULT_COLUMNS = {
     340: "Num DAG Node Jobs",
     350: "Num Jobs w/>1 Exec Att",
     355: "Num Jobs w/1+ Holds",
+    357: "Num Jobs Over Rqst Disk",
     360: "Num Short Jobs",
     370: "Num Local Univ Jobs",
     380: "Num Sched Univ Jobs",
-#    390: "Num Ckpt Able Jobs",
+    390: "Num Ckpt Able Jobs",
+    400: "Num S'ty Jobs",
 }
 
 
@@ -131,7 +135,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
                 return bool(remote_pools & self.collector_hosts)
         return False
 
-    def reduce_data(self, i, o, t):
+    def reduce_data(self, i, o, t, is_site=False):
 
         is_removed = i.get("JobStatus") == 3
         is_scheduler = i.get("JobUniverse") == 7
@@ -142,6 +146,13 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         is_multiexec = i.get("NumJobStarts", 0) > 1
         has_holds = i.get("NumHolds", 0) > 0
         is_short = False
+        is_long = False
+        is_singularity = i.get("SingularityImage") is not None
+        is_checkpointable = i.get("JobUniverse") == 5 and (
+            i.get("SuccessCheckpointExitBySignal", False) or
+            i.get("SuccessCheckpointExitCode") is not None
+        )
+        is_over_disk_request = i.get("DiskUsage", 0) > i.get("RequestDisk", 1)
         goodput_time = 0
         if has_shadow and not is_removed:
             goodput_time = i.get("LastRemoteWallClockTime", i.get("CommittedTime", 0))
@@ -152,19 +163,44 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
                     is_short = True
             elif i.get("RecordTime") - i.get("JobCurrentStartDate") < 60:
                 is_short = True
+            else:
+                is_long = True
         elif not is_removed:
             goodput_time = i.get("LastRemoteWallClockTime", i.get("CommittedTime", 0))
-        input_files = 0
-        output_files = 0
-        if has_shadow:
+        input_files = output_files = 0
+        input_bytes = output_bytes = 0
+        osdf_files = osdf_bytes = 0
+        if has_shadow and not is_site:
             input_file_stats = i.get("TransferInputStats", {})
             output_file_stats = i.get("TransferOutputStats", {})
+            got_cedar_input_bytes = False
+            got_cedar_output_bytes = False
             for key, value in input_file_stats.items():
+                if key.casefold() in {"stashfilescounttotal", "osdffilescounttotal"}:
+                        osdf_files += value
+                elif key.casefold() in {"stashsizebytestotal", "osdfsizebytestotal"}:
+                        osdf_bytes += value
                 if key.casefold().endswith("FilesCountTotal".casefold()):
                     input_files += value
+                elif key.casefold().endswith("SizeBytesTotal".casefold()):
+                    input_bytes += value
+                    if key.casefold() == "CedarSizeBytesTotal".casefold():
+                        got_cedar_input_bytes = True
             for key, value in output_file_stats.items():
+                if key.casefold() in {"stashfilescounttotal", "osdffilescounttotal"}:
+                        osdf_files += value
+                elif key.casefold() in {"stashsizebytestotal", "osdfsizebytestotal"}:
+                        osdf_bytes += value
                 if key.casefold().endswith("FilesCountTotal".casefold()):
                     output_files += value
+                elif key.casefold().endswith("SizeBytesTotal".casefold()):
+                    output_bytes += value
+                    if key.casefold() == "CedarSizeBytesTotal".casefold():
+                        got_cedar_output_bytes = True
+            if not (got_cedar_input_bytes or got_cedar_output_bytes):
+                input_bytes += i.get("BytesRecvd", 0)
+                output_bytes += i.get("BytesSent", 0)
+        long_job_wallclock_time = int(is_long) * i.get("LastRemoteWallClockTime", i.get("CommittedTime", 60))
 
         sum_cols = {}
         sum_cols["Jobs"] = 1
@@ -175,8 +211,13 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["DAGNodeJobs"] = int(is_dagnode)
         sum_cols["MultiExecJobs"] = int(is_multiexec)
         sum_cols["ShortJobs"] = int(is_short)
+        sum_cols["LongJobs"] = int(is_long)
         sum_cols["ShadowJobs"] = int(has_shadow)
+        sum_cols["CheckpointableJobs"] = int(is_checkpointable)
+        sum_cols["SingularityJobs"] = int(is_singularity)
+        sum_cols["OverDiskJobs"] = int(is_over_disk_request)
 
+        sum_cols["TotalLongJobWallClockTime"] = long_job_wallclock_time
         sum_cols["GoodCpuTime"] = (goodput_time * max(i.get("RequestCpus", 1), 1))
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * max(i.get("RequestCpus", 1), 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * max(i.get("RequestCpus", 1), 1))
@@ -187,21 +228,26 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["NumJobHolds"] = i.get("NumHolds", 0)
         if input_files > 0:
             sum_cols["InputFiles"] = input_files
+            sum_cols["InputBytes"] = input_bytes
         if output_files > 0:
             sum_cols["OutputFiles"] = output_files
+            sum_cols["OutputBytes"] = output_bytes
         if input_files > 0 or output_files > 0:
             sum_cols["TotalFiles"] = input_files + output_files
+            sum_cols["TotalBytes"] = input_bytes + output_bytes
+            sum_cols["OSDFFiles"] = osdf_files
+            sum_cols["OSDFBytes"] = osdf_bytes
 
         max_cols = {}
+        max_cols["MaxLongJobWallClockTime"] = long_job_wallclock_time
         max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
         max_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
+        max_cols["MaxRequestDisk"] = i.get("RequestDisk", 0)
+        max_cols["MaxDiskUsage"] = i.get("DiskUsage", 0)
         max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
 
-        list_cols = {}
-        #list_cols["MemoryUsage"] = i.get("MemoryUsage")
-        list_cols["LongJobTimes"] = None
-        if not is_short and not is_removed and has_shadow:
-            list_cols["LongJobTimes"] = goodput_time
+        min_cols = {}
+        min_cols["MinLongJobWallClockTime"] = long_job_wallclock_time
 
         for col in sum_cols:
             o[col] = (o.get(col) or 0) + sum_cols[col]
@@ -209,9 +255,9 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         for col in max_cols:
             o[col] = max([(o.get(col) or 0), max_cols[col]])
             t[col] = max([(t.get(col) or 0), max_cols[col]])
-        for col in list_cols:
-            o[col].append(list_cols[col])
-            t[col].append(list_cols[col])
+        for col in min_cols:
+            o[col] = min([(o.get(col) or MAX_INT), min_cols[col]])
+            t[col] = min([(t.get(col) or MAX_INT), min_cols[col]])
 
     def schedd_filter(self, data, doc):
 
@@ -296,7 +342,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             return
 
         # Filter out scheduler and local universe jobs
-        if i.get("JobUniverse") in [7, 12]:
+        if i.get("JobUniverse", 5) in [7, 12]:
             return
 
         # Get output dict for this institution
@@ -305,54 +351,20 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             institution = "Unknown (resource name missing)"
         else:
             institution = SITE_MAP.get(site, f"Unmapped resource: {site}")
-        o = data["Institution"][institution]
-        t = data["Institution"]["TOTAL"]
+        output = data["Institution"][institution]
+        total = data["Institution"]["TOTAL"]
 
-        # Reduce data
-        is_short = False
-        if i.get("CommittedTime", 0) > 0 and i.get("CommittedTime", 60) < 60:
-            is_short = True
-        elif None in [i.get("RecordTime"), i.get("JobCurrentStartDate")]:
-            if i.get("CommittedTime") == 0:
-                is_short = True
-        elif i.get("RecordTime") - i.get("JobCurrentStartDate") < 60:
-            is_short = True
-
-        sum_cols = {}
-        sum_cols["Jobs"] = 1
-        sum_cols["ShortJobs"] = int(is_short)
-
-        sum_cols["GoodCpuTime"] = (i.get("CommittedTime", 0) * max(i.get("RequestCpus", 1), 1))
-
-        max_cols = {}
-        max_cols["MaxRequestMemory"] = i.get("RequestMemory", 0)
-        max_cols["MaxMemoryUsage"] = i.get("MemoryUsage", 0)
-        max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
-
-        list_cols = {}
-        #list_cols["MemoryUsage"] = i.get("MemoryUsage")
-        list_cols["LongJobTimes"] = None
-        if not is_short:
-            list_cols["LongJobTimes"] = i.get("CommittedTime")
+        self.reduce_data(i, output, total)
 
         dict_cols = {}
         dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
         dict_cols["Sites"] = site
 
-        for col in sum_cols:
-            o[col] = (o.get(col) or 0) + sum_cols[col]
-            t[col] = (t.get(col) or 0) + sum_cols[col]
-        for col in max_cols:
-            o[col] = max([(o.get(col) or 0), max_cols[col]])
-            t[col] = max([(t.get(col) or 0), max_cols[col]])
-        for col in list_cols:
-            o[col].append(list_cols[col])
-            t[col].append(list_cols[col])
         for col in dict_cols:
-            o[col] = o.get(col) or {}
-            o[col][dict_cols[col]] = 1
-            t[col] = t.get(col) or {}
-            t[col][dict_cols[col]] = 1
+            output[col] = output.get(col) or {}
+            output[col][dict_cols[col]] = 1
+            total[col] = total.get(col) or {}
+            total[col][dict_cols[col]] = 1
 
     def get_filters(self):
         # Add all filter methods to a list
@@ -375,8 +387,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
-            rm_columns = [30,50,70,80,83,85,90,95,180,190,300,305,310,320,325,330,340,350,355,370,380]
-            [columns.pop(key) for key in rm_columns]
+            rm_columns = [30,45,50,70,80,83,84,85,86,88,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
+            [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
     def compute_institution_custom_columns(self, data, agg, agg_name):
@@ -387,40 +399,33 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Compute columns
         row["All CPU Hours"]    = data["GoodCpuTime"] / 3600
         row["Num Uniq Job Ids"] = data["Jobs"]
+        row["Num Jobs Over Rqst Disk"] = data["OverDiskJobs"]
         row["Num Short Jobs"]   = data["ShortJobs"]
         row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
-        #row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = data["MaxMemoryUsage"]
+        row["Max Rqst Disk GB"] = data["MaxRequestDisk"] / (1024*1024)
+        row["Max Used Disk GB"] = data["MaxDiskUsage"] / (1024*1024)
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
-        row["Num Users"]        = len(data["Users"])
-        row["Num Sites"]        = len(data["Sites"])
+        row["Num S'ty Jobs"]    = data["SingularityJobs"]
 
         if row["Num Uniq Job Ids"] > 0:
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
+            row["% Jobs Over Rqst Disk"] = 100 * row["Num Jobs Over Rqst Disk"] / row["Num Uniq Job Ids"]
+            row["% Jobs using S'ty"] = 100 * row["Num S'ty Jobs"] / row["Num Uniq Job Ids"]
         else:
             row["% Short Jobs"] = 0
+            row["% Jobs Over Rqst Disk"] = 0
+            row["% Jobs using S'ty"] = 0
 
-        # Compute time percentiles and stats
-        data["LongJobTimes"] = self.clean(data["LongJobTimes"])
-        n = len(data["LongJobTimes"])
-        if n > 0:
-            data["LongJobTimes"].sort()
+        if data["LongJobs"] > 0:
+            row["Min Hrs"]  = data["MinLongJobWallClockTime"] / 3600
+            row["Max Hrs"]  = data["MaxLongJobWallClockTime"] / 3600
+            row["Mean Hrs"] = (data["TotalLongJobWallClockTime"] / data["LongJobs"]) / 3600
+        else:
+            row["Min Hrs"] = row["Max Hrs"] = row["Mean Hrs"] = 0
 
-            row["Min Hrs"]  = data["LongJobTimes"][0] / 3600
-            row["25% Hrs"]  = data["LongJobTimes"][n//4] / 3600
-            row["Med Hrs"]  = stats.median(data["LongJobTimes"]) / 3600
-            row["75% Hrs"]  = data["LongJobTimes"][(3*n)//4] / 3600
-            row["95% Hrs"]  = data["LongJobTimes"][int(0.95*n)] / 3600
-            row["Max Hrs"]  = data["LongJobTimes"][-1] / 3600
-            row["Mean Hrs"] = stats.mean(data["LongJobTimes"]) / 3600
-        else:
-            for col in [f"{x} Hrs" for x in ["Min", "25%", "Med", "75%", "95%", "Max", "Mean"]]:
-                row[col] = 0
-        if n > 1:
-            row["Std Hrs"] = stats.stdev(data["LongJobTimes"]) / 3600
-        else:
-            # There is no variance if there is only one value
-            row["Std Hrs"] = 0
+        row["Num Users"]        = len(data["Users"])
+        row["Num Sites"]        = len(data["Sites"])
 
         return row
 
@@ -435,33 +440,45 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         # Compute columns
         row["All CPU Hours"]     = data["CpuTime"] / 3600
-        row["Num Uniq Job Ids"]  = data["Jobs"]
         row["Good CPU Hours"]    = data["GoodCpuTime"] / 3600
+        row["Num Uniq Job Ids"]  = data["Jobs"]
         row["Num DAG Node Jobs"] = data["DAGNodeJobs"]
         row["Num Rm'd Jobs"]     = data["RmJobs"]
-        row["Num Jobs w/>1 Exec Att"] = data["MultiExecJobs"]
+        row["Num Job Holds"]    = data["NumJobHolds"]
         row["Num Jobs w/1+ Holds"] = data["HeldJobs"]
-        row["Total Files Xferd"] = data.get("TotalFiles", "")
-
+        row["Num Jobs Over Rqst Disk"] = data["OverDiskJobs"]
+        row["Num Jobs w/>1 Exec Att"] = data["MultiExecJobs"]
         row["Num Short Jobs"]   = data["ShortJobs"]
         row["Max Rqst Mem MB"]  = data["MaxRequestMemory"]
-        #row["Med Used Mem MB"]  = stats.median(self.clean(data["MemoryUsage"], allow_empty_list=False))
         row["Max Used Mem MB"]  = data["MaxMemoryUsage"]
+        row["Max Rqst Disk GB"] = data["MaxRequestDisk"] / (1024*1024)
+        row["Max Used Disk GB"] = data["MaxDiskUsage"] / (1024*1024)
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
         row["Num Exec Atts"]    = data["NumJobStarts"]
         row["Num Shadw Starts"] = data["NumShadowStarts"]
-        row["Num Job Holds"]    = data["NumJobHolds"]
         row["Num Local Univ Jobs"] = data["LocalJobs"]
         row["Num Sched Univ Jobs"] = data["SchedulerJobs"]
+        row["Num Ckpt Able Jobs"]  = data["CheckpointableJobs"]
+        row["Num S'ty Jobs"]       = data["SingularityJobs"]
 
+        row["Total Files Xferd"] = data.get("TotalFiles", "")
         if data["NumJobStarts"] > 0 and data.get("InputFiles") is not None:
             row["Input Files / Exec Att"] = data["InputFiles"] / data["NumJobStarts"]
+            row["Input MB / Exec Att"] = (data["InputBytes"] / data["NumJobStarts"]) / (1024*1024)
         else:
-            row["Input Files / Exec Att"] = ""
+            row["Input Files / Exec Att"] = row["Input MB / Exec Att"] = ""
         if data["ShadowJobs"] > 0 and data.get("OutputFiles") is not None:
             row["Output Files / Job"] = data["OutputFiles"] / data["ShadowJobs"]
+            row["Output MB / Job"] = (data["OutputBytes"] / data["ShadowJobs"]) / (1024*1024)
         else:
-            row["Output Files / Job"] = ""
+            row["Output Files / Job"] = row["Output MB / Job"] = ""
+
+        row["OSDF Files Xferd"] = data.get("OSDFFiles", "") or ""
+        if data.get("OSDFFiles", 0) > 0 and data.get("TotalFiles", 0) > 0:
+            row["% OSDF Files"] = 100 * (data["OSDFFiles"] / data["TotalFiles"])
+            row["% OSDF Bytes"] = 100 * (data["OSDFBytes"] / data["TotalBytes"])
+        else:
+            row["% OSDF Files"] = row["% OSDF Bytes"] = ""
 
         # Compute derivative columns
         if row["All CPU Hours"] > 0:
@@ -470,16 +487,23 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             row["% Good CPU Hours"] = 0
         if row["Num Uniq Job Ids"] > 0:
             row["Shadw Starts / Job Id"] = row["Num Shadw Starts"] / row["Num Uniq Job Ids"]
+            row["Holds / Job Id"] = row["Num Job Holds"] / row["Num Uniq Job Ids"]
             row["% Rm'd Jobs"] = 100 * row["Num Rm'd Jobs"] / row["Num Uniq Job Ids"]
             row["% Short Jobs"] = 100 * row["Num Short Jobs"] / row["Num Uniq Job Ids"]
             row["% Jobs w/>1 Exec Att"] = 100 * row["Num Jobs w/>1 Exec Att"] / row["Num Uniq Job Ids"]
             row["% Jobs w/1+ Holds"] = 100 * row["Num Jobs w/1+ Holds"] / row["Num Uniq Job Ids"]
-            row["Holds / Job Id"] = row["Num Job Holds"] / row["Num Uniq Job Ids"]
+            row["% Jobs Over Rqst Disk"] = 100 * row["Num Jobs Over Rqst Disk"] / row["Num Uniq Job Ids"]
+            row["% Ckpt Able"] = 100 * row["Num Ckpt Able Jobs"] / row["Num Uniq Job Ids"]
+            row["% Jobs using S'ty"] = 100 * row["Num S'ty Jobs"] / row["Num Uniq Job Ids"]
         else:
             row["Shadw Starts / Job Id"] = 0
+            row["Holds / Job Id"] = 0
             row["% Rm'd Jobs"] = 0
             row["% Short Jobs"] = 0
             row["% Jobs w/>1 Exec Att"] = 0
+            row["% Jobs w/1+ Holds"] = 0
+            row["% Jobs Over Rqst Disk"] = 0
+            row["% Jobs using S'ty"] = 0
         if row["Num Shadw Starts"] > 0:
             row["Exec Atts / Shadw Start"] = row["Num Exec Atts"] / row["Num Shadw Starts"]
         else:
@@ -489,27 +513,12 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         else:
             row["CPU Hours / Bad Exec Att"] = 0
 
-        # Compute time percentiles and stats
-        data["LongJobTimes"] = self.clean(data["LongJobTimes"])
-        n = len(data["LongJobTimes"])
-        if n > 0:
-            data["LongJobTimes"].sort()
-
-            row["Min Hrs"]  = data["LongJobTimes"][0] / 3600
-            row["25% Hrs"]  = data["LongJobTimes"][n//4] / 3600
-            row["Med Hrs"]  = stats.median(data["LongJobTimes"]) / 3600
-            row["75% Hrs"]  = data["LongJobTimes"][(3*n)//4] / 3600
-            row["95% Hrs"]  = data["LongJobTimes"][int(0.95*n)] / 3600
-            row["Max Hrs"]  = data["LongJobTimes"][-1] / 3600
-            row["Mean Hrs"] = stats.mean(data["LongJobTimes"]) / 3600
+        if data["LongJobs"] > 0:
+            row["Min Hrs"]  = data["MinLongJobWallClockTime"] / 3600
+            row["Max Hrs"]  = data["MaxLongJobWallClockTime"] / 3600
+            row["Mean Hrs"] = (data["TotalLongJobWallClockTime"] / data["LongJobs"]) / 3600
         else:
-            for col in [f"{x} Hrs" for x in ["Min", "25%", "Med", "75%", "95%", "Max", "Mean"]]:
-                row[col] = 0
-        if n > 1:
-            row["Std Hrs"] = stats.stdev(data["LongJobTimes"]) / 3600
-        else:
-            # There is no variance if there is only one value
-            row["Std Hrs"] = 0
+            row["Min Hrs"] = row["Max Hrs"] = row["Mean Hrs"] = 0
 
         # Compute mode for Project and Schedd columns in the Users table
         if agg == "Users":
