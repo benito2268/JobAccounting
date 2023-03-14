@@ -8,3 +8,4 @@ from .ChtcScheddGpuFormatter import ChtcScheddGpuFormatter
 from .OsgScheddLongJobFormatter import OsgScheddLongJobFormatter
 from .OsgScheddCpuRetryFormatter import OsgScheddCpuRetryFormatter
 from .OsgScheddJobDistroFormatter import OsgScheddJobDistroFormatter
+from .ChtcScheddJobDistroFormatter import ChtcScheddJobDistroFormatter
