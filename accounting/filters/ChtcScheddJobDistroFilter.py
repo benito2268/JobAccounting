@@ -14,13 +14,31 @@ DEFAULT_FILTER_ATTRS = [
     "RequestDisk",
 ]
 
-OSG_CONNECT_APS = {
-    "login04.osgconnect.net",
-    "login05.osgconnect.net",
-    "login-test.osgconnect.net",
-    "ap2007.chtc.wisc.edu",
-    "ap7.chtc.wisc.edu",
-    "ap7.chtc.wisc.edu@ap2007.chtc.wisc.edu",
+CHTC_APS = {
+    "atlassubmit1000.chtc.wisc.edu",
+    "atlassubmit1001.chtc.wisc.edu",
+    "atlassubmit1002.chtc.wisc.edu",
+    "atlassubmit2000.chtc.wisc.edu",
+    "atlassubmit2001.chtc.wisc.edu",
+    "batlabsubmit0001.chtc.wisc.edu",
+    "cm3000.chtc.wisc.edu",
+    "cosmos0001.chtc.wisc.edu",
+    "deepdivesubmit2000.chtc.wisc.edu",
+    "jupyter0000.chtc.wisc.edu",
+    "keles-submit3000.chtc.wisc.edu",
+    "learn.chtc.wisc.edu",
+    "oconnorsubmit3000.chtc.wisc.edu",
+    "pagesubmit3000.chtc.wisc.edu",
+    "submit-1.chtc.wisc.edu",
+    "submit2.chtc.wisc.edu",
+    "submit3.chtc.wisc.edu",
+    "submit4.chtc.wisc.edu",
+    "submit5.chtc.wisc.edu",
+    "submittest0000.chtc.wisc.edu",
+    "tgrant0000.chtc.wisc.edu",
+    "tiger0000.chtc.wisc.edu",
+    "townsend-submit.chtc.wisc.edu",
+    "wrightsubmit3000.chtc.wisc.edu",
 }
 
 DISK_COLUMNS = {x: f"[{x}, {x+2})" for x in range(0, 20, 2)}
@@ -34,20 +52,8 @@ MEMORY_ROWS[8] = "[8,)"
 MEMORY_QUANTILES = list(MEMORY_ROWS.keys())
 MEMORY_QUANTILES.sort()
 
-class OsgScheddJobDistroFilter(BaseFilter):
-    name = "OSG schedd job distribution"
-
-
-    def __init__(self, **kwargs):
-        self.collector_hosts = {"cm-1.ospool.osg-htc.org", "cm-2.ospool.osg-htc.org", "flock.opensciencegrid.org"}
-        self.schedd_collector_host_map_pickle = Path("ospool-host-map.pkl")
-        self.schedd_collector_host_map = {}
-        if self.schedd_collector_host_map_pickle.exists():
-            try:
-                self.schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
-            except IOError:
-                pass
-        super().__init__(**kwargs)
+class ChtcScheddJobDistroFilter(BaseFilter):
+    name = "CHTC schedd job distribution"
 
 
     def get_query(self, index, start_ts, end_ts, **kwargs):
@@ -72,7 +78,7 @@ class OsgScheddJobDistroFilter(BaseFilter):
                                 }
                             }},
                             {"terms": {
-                                "ScheddName.keyword": list(OSG_CONNECT_APS)
+                                "ScheddName.keyword": list(CHTC_APS)
                             }},
                         ]
                     }
@@ -80,56 +86,6 @@ class OsgScheddJobDistroFilter(BaseFilter):
             }
         })
         return query
-
-
-    def schedd_collector_host(self, schedd):
-        # Query Schedd ad in Collector for its CollectorHost,
-        # unless result previously cached
-        if schedd not in self.schedd_collector_host_map:
-            self.schedd_collector_host_map[schedd] = set()
-
-            for collector_host in self.collector_hosts:
-                if collector_host in {"flock.opensciencegrid.org"}:
-                    continue
-                collector = htcondor.Collector(collector_host)
-                ads = collector.query(
-                    htcondor.AdTypes.Schedd,
-                    constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
-                    projection=["CollectorHost"],
-                )
-                ads = list(ads)
-                if len(ads) == 0:
-                    continue
-                if len(ads) > 1:
-                    self.logger.warning(f'Got multiple Schedd ClassAds for Machine == "{schedd}"')
-
-                # Cache the CollectorHost in the map
-                if "CollectorHost" in ads[0]:
-                    schedd_collector_hosts = set()
-                    for schedd_collector_host in ads[0]["CollectorHost"].split(","):
-                        schedd_collector_host = schedd_collector_host.strip().split(":")[0]
-                        if schedd_collector_host:
-                            schedd_collector_hosts.add(schedd_collector_host)
-                    if schedd_collector_hosts:
-                        self.schedd_collector_host_map[schedd] = schedd_collector_hosts
-                        break
-            else:
-                self.logger.warning(f"Did not find Machine == {schedd} in collectors")
-
-        return self.schedd_collector_host_map[schedd]
-
-
-    @lru_cache(maxsize=250)
-    def is_ospool_job(self, schedd_name, last_remote_pool):
-        remote_pool = set()
-        if last_remote_pool is not None:
-            if last_remote_pool.strip():
-                return last_remote_pool in self.collector_hosts
-        if schedd_name is not None:
-            if schedd_name.strip():
-                remote_pools = self.schedd_collector_host(schedd_name)
-                return bool(remote_pools & self.collector_hosts)
-        return False
 
 
     def scan_and_filter(self, es_index, start_ts, end_ts, build_totals=False, **kwargs):
@@ -214,10 +170,6 @@ class OsgScheddJobDistroFilter(BaseFilter):
 
         # Get output dict
         o = data["Jobs"]
-
-        # Filter out jobs that did not run in the OS pool
-        if not self.is_ospool_job(i.get("ScheddName"), i.get("LastRemotePool")):
-            return
 
         # Filter out jobs that request more than one core
         if i.get("RequestCpus", 1) > 1:
