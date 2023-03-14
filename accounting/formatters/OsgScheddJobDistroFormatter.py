@@ -65,12 +65,12 @@ class OsgScheddJobDistroFormatter:
             start_date = start.strftime("%Y-%m-%d")
             title_str = f"{report_period.capitalize()} resource request histogram for jobs completed on {start_date}"
         elif report_period in ["weekly", "monthly"]:
-            end = datetime.fromtimestamp(kwargs["end_ts"])
+            end = datetime.fromtimestamp(end_ts)
             start_date = start.strftime("%Y-%m-%d")
             end_date = end.strftime("%Y-%m-%d")
             title_str = f"Resource request histogram for jobs completed from {start_date} to {end_date}"
         else:
-            end = datetime.fromtimestamp(kwargs["end_ts"])
+            end = datetime.fromtimestamp(end_ts)
             start_date = start.strftime("%Y-%m-%d %H:%M:%S")
             end_date = end.strftime("%Y-%m-%d %H:%M:%S")
             title_str = f"Resource request histogram for jobs completed from {start_date} to {end_date}"
@@ -97,7 +97,8 @@ class OsgScheddJobDistroFormatter:
 
     def format_rows(self, header, rows):
 
-        jobs = rows[0][0]
+        jobs_note = rows[0][0]
+        single_core_jobs, total_jobs = tuple(int(x) for x in jobs_note.split("/"))
 
         # shade the cell green if close to the max
         def numeric_fmt(x):
@@ -105,7 +106,7 @@ class OsgScheddJobDistroFormatter:
             if x < 1e-12:  # hide 0s
                 return "<td></td>"
             if int(x) < 1:
-                return "<td>&lt;1</td>"
+                return "<td>0</td>"
             rgb = (100-x/2, 100, 100-x/2)
             return f'<td style="background-color: rgb({",".join([f"{v}%" for v in rgb])})">{x:.0f}</td>'
 
@@ -131,8 +132,8 @@ Memory</th>"""
 
         # Extra header row
         rows.insert(0, [
-            f"""<th style="text-align: center">{int(jobs):,d}<br>jobs</th>""",
-            f"""<th style="text-align: center" colspan="{len(rows[0])-1}">Percentage of single-core jobs.<br>Memory and disk requests in GB.</th>""",
+            f"""<th style="text-align: center"></th>""",
+            f"""<th style="text-align: center" colspan="{len(rows[0])-1}">Percentage of {single_core_jobs:,d} single-core jobs ({single_core_jobs/total_jobs:.1%} of all jobs).<br>Memory and disk requests in GB.</th>""",
             ])
 
         return rows
@@ -174,6 +175,8 @@ Memory</th>"""
 <body>
 {newline.join(self.html_tables)}
 </body>
+<p><strong>Note:</strong> Blank values denote no jobs with the corresponding resource requests,
+while values of 0 denote fewer than 1% of jobs.
 </html>
 """
         return html

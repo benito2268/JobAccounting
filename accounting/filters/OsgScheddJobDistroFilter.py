@@ -25,9 +25,14 @@ OSG_CONNECT_APS = {
 
 DISK_COLUMNS = {x: f"[{x}, {x+2})" for x in range(0, 20, 2)}
 DISK_COLUMNS[20] = "[20,)"
+DISK_QUANTILES = list(DISK_COLUMNS.keys())
+DISK_QUANTILES.sort()
+
 
 MEMORY_ROWS = {y: f"[{y}, {y+1})" for y in range(0, 8, 1)}
 MEMORY_ROWS[8] = "[8,)"
+MEMORY_QUANTILES = list(MEMORY_ROWS.keys())
+MEMORY_QUANTILES.sort()
 
 class OsgScheddJobDistroFilter(BaseFilter):
     name = "OSG schedd job distribution"
@@ -63,8 +68,11 @@ class OsgScheddJobDistroFilter(BaseFilter):
                             }},
                             {"term": {
                                 "JobUniverse": {
-                                "value": 5,
+                                    "value": 5,
                                 }
+                            }},
+                            {"terms": {
+                                "ScheddName.keyword": list(OSG_CONNECT_APS)
                             }},
                         ]
                     }
@@ -115,15 +123,17 @@ class OsgScheddJobDistroFilter(BaseFilter):
         return self.schedd_collector_host_map[schedd]
 
 
-    def is_ospool_job(self, ad):
+    @lru_cache(maxsize=250)
+    def is_ospool_job(self, schedd_name, last_remote_pool):
         remote_pool = set()
-        if "LastRemotePool" in ad and ad["LastRemotePool"]:
-            remote_pool.add(ad["LastRemotePool"])
-        else:
-            schedd = ad.get("ScheddName", "UNKNOWN") or "UNKNOWN"
-            if schedd != "UNKNOWN":
-                remote_pool = self.schedd_collector_host(schedd)
-        return bool(remote_pool & self.collector_hosts)
+        if last_remote_pool is not None:
+            if last_remote_pool.strip():
+                return last_remote_pool in self.collector_hosts
+        if schedd_name is not None:
+            if schedd_name.strip():
+                remote_pools = self.schedd_collector_host(schedd_name)
+                return bool(remote_pools & self.collector_hosts)
+        return False
 
 
     def scan_and_filter(self, es_index, start_ts, end_ts, build_totals=False, **kwargs):
@@ -132,7 +142,7 @@ class OsgScheddJobDistroFilter(BaseFilter):
         # defined in self.get_filters()
 
         # Create a data structure for storing filtered data:
-        filtered_data = {"Jobs": defaultdict(list)}
+        filtered_data = {"Jobs": {}}
 
         # Get list of indices so we can use one at a time
         indices = list(self.client.indices.get_alias(index=es_index).keys())
@@ -173,6 +183,35 @@ class OsgScheddJobDistroFilter(BaseFilter):
         return filtered_data
 
 
+    @lru_cache(maxsize=1024)
+    def quantize_disk(self, disk_kb):
+        disk_gb = int(disk_kb / (1024*1024))  # can chop off the decimal
+        if disk_gb < 0:
+            return 0
+        q = 0
+        for q_check in DISK_QUANTILES:
+            if disk_gb >= q_check:
+                q = q_check
+            else:
+                break
+        return q
+
+
+    @lru_cache(maxsize=1024)
+    def quantize_memory(self, memory_mb):
+        memory_gb = int(memory_mb / 1024)  # can chop off the decimal
+        if memory_gb < 0:
+            return 0
+        q = 0
+        for q_check in MEMORY_QUANTILES:
+            if memory_gb >= q_check:
+                q = q_check
+            else:
+                break
+        return q
+
+
+
     def job_filter(self, data, doc):
 
         # Get input dict
@@ -181,22 +220,26 @@ class OsgScheddJobDistroFilter(BaseFilter):
         # Get output dict
         o = data["Jobs"]
 
-        # Filter out jobs that did not run from an OSG Connect AP
-        ap = i.get("GlobalJobId", "UNKNOWN").split("#")[0]
-        if not (ap in OSG_CONNECT_APS):
+        # Filter out jobs that did not run in the OS pool
+        if not self.is_ospool_job(i.get("ScheddName"), i.get("LastRemotePool")):
             return
 
         # Filter out jobs that request more than one core
         if i.get("RequestCpus", 1) > 1:
+            multicore_jobs = o.get("MultiCoreJobs", 0)
+            o["MultiCoreJobs"] = multicore_jobs + 1
             return
 
-        # Filter out jobs that did not run in the OS pool
-        if not self.is_ospool_job(i):
+        histogram = o.get("Histogram", defaultdict(int))
+        disk, memory = i.get("RequestDisk"), i.get("RequestMemory")
+        if None in [disk, memory]:
             return
 
-        # Add attr values to the output dict, use None if missing
-        for attr in DEFAULT_FILTER_ATTRS:
-            o[attr].append(i.get(attr, None))
+        d, m = self.quantize_disk(disk), self.quantize_memory(memory)
+        histogram[(d, m)] += 1
+        o["Histogram"] = histogram
+        jobs = o.get("SingleCoreJobs", 0)
+        o["SingleCoreJobs"] = jobs + 1
 
 
     def get_filters(self):
@@ -209,52 +252,11 @@ class OsgScheddJobDistroFilter(BaseFilter):
 
     def compute_histogram(self, data):
 
-        disk_quantiles = list(DISK_COLUMNS.keys())
-        disk_quantiles.sort()
-
-        memory_quantiles = list(MEMORY_ROWS.keys())
-        memory_quantiles.sort()
-
-        @lru_cache(maxsize=1024)
-        def quantize_disk(disk_kb):
-            disk_gb = int(disk_kb / (1024*1024))  # can chop off the decimal
-            if disk_gb < 0:
-                return 0
-            q = 0
-            for q_check in disk_quantiles:
-                if disk_gb >= q_check:
-                    q = q_check
-                else:
-                    break
-            return q
-
-        @lru_cache(maxsize=1024)
-        def quantize_memory(memory_mb):
-            memory_gb = int(memory_mb / 1024)  # can chop off the decimal
-            if memory_gb < 0:
-                return 0
-            q = 0
-            for q_check in memory_quantiles:
-                if memory_gb >= q_check:
-                    q = q_check
-                else:
-                    break
-            return q
-
-
-        histogram = defaultdict(int)
-        jobs = 0
-        for disk, memory in zip(data["RequestDisk"], data["RequestMemory"]):
-            if None in [disk, memory]:
-                continue
-            d, m = quantize_disk(disk), quantize_memory(memory)
-            histogram[(d, m)] += 1
-            jobs += 1
-
+        histogram = data["Histogram"]
         for k, v in histogram.items():
-            histogram[k] = 100*v/jobs
+            histogram[k] = 100*v/data["SingleCoreJobs"]
 
-        return histogram, jobs
+        return histogram
 
 
     def merge_filtered_data(self, data, *args):
@@ -262,14 +264,17 @@ class OsgScheddJobDistroFilter(BaseFilter):
         # Columns are disk requests
         # Rows are memory requests
 
-        histogram, jobs = self.compute_histogram(data["Jobs"])
+        histogram = self.compute_histogram(data["Jobs"])
+        single_core_jobs = data["Jobs"]["SingleCoreJobs"]
+        multi_core_jobs = data["Jobs"].get("MultiCoreJobs", 0)
+        jobs_note = f"{single_core_jobs}/{single_core_jobs+multi_core_jobs}"
         xs = list(DISK_COLUMNS.keys())
         xs.sort()
         ys = list(MEMORY_ROWS.keys())
         ys.sort()
 
         rows = []
-        header_row = [jobs]
+        header_row = [jobs_note]
         for key in xs:
             header_row.append(DISK_COLUMNS[key])
         rows.append(tuple(header_row))
