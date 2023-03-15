@@ -41,14 +41,14 @@ CHTC_APS = {
     "wrightsubmit3000.chtc.wisc.edu",
 }
 
-DISK_COLUMNS = {x: f"[{x}, {x+2})" for x in range(0, 20, 2)}
-DISK_COLUMNS[20] = "[20,)"
+DISK_COLUMNS = {x: f"({x}, {x+2}]" for x in range(0, 20, 2)}
+DISK_COLUMNS[20] = "(20,)"
 DISK_QUANTILES = list(DISK_COLUMNS.keys())
 DISK_QUANTILES.sort()
 
 
-MEMORY_ROWS = {y: f"[{y}, {y+1})" for y in range(0, 8, 1)}
-MEMORY_ROWS[8] = "[8,)"
+MEMORY_ROWS = {y: f"({y}, {y+1}]" for y in range(0, 8, 1)}
+MEMORY_ROWS[8] = "(8,)"
 MEMORY_QUANTILES = list(MEMORY_ROWS.keys())
 MEMORY_QUANTILES.sort()
 
@@ -137,13 +137,13 @@ class ChtcScheddJobDistroFilter(BaseFilter):
 
     @lru_cache(maxsize=1024)
     def quantize_disk(self, disk_kb):
-        disk_gb = int(disk_kb / (1024*1024))  # can chop off the decimal
-        if disk_gb < 0:
+        if disk_kb <= 0:
             return 0
         q = 0
-        for q_check in DISK_QUANTILES:
-            if disk_gb >= q_check:
-                q = q_check
+        for q_disk_gb in DISK_QUANTILES:
+            q_disk_kb = q_disk_gb * (1024 * 1024)
+            if disk_kb > q_disk_kb:
+                q = q_disk_gb
             else:
                 break
         return q
@@ -151,13 +151,13 @@ class ChtcScheddJobDistroFilter(BaseFilter):
 
     @lru_cache(maxsize=1024)
     def quantize_memory(self, memory_mb):
-        memory_gb = int(memory_mb / 1024)  # can chop off the decimal
-        if memory_gb < 0:
+        if memory_mb <= 0:
             return 0
         q = 0
-        for q_check in MEMORY_QUANTILES:
-            if memory_gb >= q_check:
-                q = q_check
+        for q_memory_gb in MEMORY_QUANTILES:
+            q_memory_mb = q_memory_gb * 1024
+            if memory_mb > q_memory_mb:
+                q = q_memory_gb
             else:
                 break
         return q
