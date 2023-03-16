@@ -9,11 +9,6 @@ from functools import lru_cache
 from collections import defaultdict
 
 
-DEFAULT_FILTER_ATTRS = [
-    "RequestMemory",
-    "RequestDisk",
-]
-
 OSG_CONNECT_APS = {
     "login04.osgconnect.net",
     "login05.osgconnect.net",
@@ -138,7 +133,10 @@ class OsgScheddJobDistroFilter(BaseFilter):
         # defined in self.get_filters()
 
         # Create a data structure for storing filtered data:
-        filtered_data = {"Jobs": {}}
+        filtered_data = {
+            "JobRequests": {},
+            "JobUsages": {}
+        }
 
         # Get list of indices so we can use one at a time
         indices = list(self.client.indices.get_alias(index=es_index).keys())
@@ -212,29 +210,48 @@ class OsgScheddJobDistroFilter(BaseFilter):
         # Get input dict
         i = doc["_source"]
 
-        # Get output dict
-        o = data["Jobs"]
-
         # Filter out jobs that did not run in the OS pool
         if not self.is_ospool_job(i.get("ScheddName"), i.get("LastRemotePool")):
             return
 
-        # Filter out jobs that request more than one core
-        if i.get("RequestCpus", 1) > 1:
-            multicore_jobs = o.get("MultiCoreJobs", 0)
-            o["MultiCoreJobs"] = multicore_jobs + 1
-            return
+        # Get output dict
+        requests = data["JobRequests"]
+        usages = data["JobUsages"]
 
-        histogram = o.get("Histogram", defaultdict(int))
-        disk, memory = i.get("RequestDisk"), i.get("RequestMemory")
-        if None in [disk, memory]:
-            return
+        # Check for missing attrs
+        request_disk = i.get("RequestDisk")
+        request_memory = i.get("RequestMemory")
+        skip_requests = None in [request_disk, request_memory]
 
-        d, m = self.quantize_disk(disk), self.quantize_memory(memory)
-        histogram[(d, m)] += 1
-        o["Histogram"] = histogram
-        jobs = o.get("SingleCoreJobs", 0)
-        o["SingleCoreJobs"] = jobs + 1
+        usage_disk = i.get("DiskUsage_RAW", i.get("DiskUsage"))
+        usage_memory = i.get("MemoryUsage_RAW", i.get("MemoryUsage"))
+        skip_usages = None in [usage_disk, usage_memory]
+
+        if not skip_requests:
+            total_jobs = requests.get("TotalJobs", 0)
+            requests["TotalJobs"] = total_jobs + 1
+            # Filter out jobs that request more than one core
+            if not i.get("RequestCpus", 1) > 1:
+                histogram = requests.get("Histogram", defaultdict(int))
+                q_request_disk = self.quantize_disk(request_disk)
+                q_request_memory = self.quantize_memory(request_memory)
+                histogram[(q_request_disk, q_request_memory)] += 1
+                requests["Histogram"] = histogram
+                jobs = requests.get("SingleCoreJobs", 0)
+                requests["SingleCoreJobs"] = jobs + 1
+
+        if not skip_usages:
+            total_jobs = usages.get("TotalJobs", 0)
+            usages["TotalJobs"] = total_jobs + 1
+            # Filter out jobs that request more than one core
+            if not i.get("RequestCpus", 1) > 1:
+                histogram = usages.get("Histogram", defaultdict(int))
+                q_usage_disk = self.quantize_disk(usage_disk)
+                q_usage_memory = self.quantize_memory(usage_memory)
+                histogram[(q_usage_disk, q_usage_memory)] += 1
+                usages["Histogram"] = histogram
+                jobs = usages.get("SingleCoreJobs", 0)
+                usages["SingleCoreJobs"] = jobs + 1
 
 
     def get_filters(self):
@@ -245,7 +262,7 @@ class OsgScheddJobDistroFilter(BaseFilter):
         return filters
 
 
-    def compute_histogram(self, data):
+    def compute_frequency_histogram(self, data):
 
         histogram = data["Histogram"]
         for k, v in histogram.items():
@@ -254,15 +271,15 @@ class OsgScheddJobDistroFilter(BaseFilter):
         return histogram
 
 
-    def merge_filtered_data(self, data, *args):
+    def merge_filtered_data(self, data, agg):
         # Return data sheet
         # Columns are disk requests
         # Rows are memory requests
 
-        histogram = self.compute_histogram(data["Jobs"])
-        single_core_jobs = data["Jobs"]["SingleCoreJobs"]
-        multi_core_jobs = data["Jobs"].get("MultiCoreJobs", 0)
-        jobs_note = f"{single_core_jobs}/{single_core_jobs+multi_core_jobs}"
+        histogram = self.compute_frequency_histogram(data[agg])
+        single_core_jobs = data[agg]["SingleCoreJobs"]
+        total_jobs = data[agg]["TotalJobs"]
+        jobs_note = f"{single_core_jobs}/{total_jobs}"
         xs = list(DISK_COLUMNS.keys())
         xs.sort()
         ys = list(MEMORY_ROWS.keys())
