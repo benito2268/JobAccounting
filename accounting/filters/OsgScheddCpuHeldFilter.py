@@ -517,7 +517,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         else:
             row["Exec Atts / Shadw Start"] = 0
         if sum(data["_NumBadJobStarts"]) > 0:
-            row["CPU Hours / Bad Exec Att"] = (sum(badput_cpu_time) / 3600) / sum(data["_NumBadJobStarts"])
+            row["CPU Hours / Bad Exec Att"] = (sum(self.clean(badput_cpu_time)) / 3600) / sum(data["_NumBadJobStarts"])
         else:
             row["CPU Hours / Bad Exec Att"] = 0
 
