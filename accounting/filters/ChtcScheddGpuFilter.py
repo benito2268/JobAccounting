@@ -369,8 +369,12 @@ class ChtcScheddGpuFilter(BaseFilter):
             else:
                 goodput_cpu_time.append(goodput_time * cpus)
                 goodput_gpu_time.append(goodput_time * gpus)
-            badput_cpu_time.append(badput_time * cpus)
-            badput_gpu_time.append(badput_time * gpus)
+            if None in [badput_time, cpus, gpus]:
+                badput_cpu_time.append(None)
+                badput_gpu_time.append(None)
+            else:
+                badput_cpu_time.append(badput_time * cpus)
+                badput_gpu_time.append(badput_time * gpus)
             if None in [total_time, cpus, gpus]:
                 total_cpu_time.append(None)
                 total_gpu_time.append(None)

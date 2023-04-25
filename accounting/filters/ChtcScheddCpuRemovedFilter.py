@@ -284,7 +284,10 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
                 goodput_cpu_time.append(None)
             else:
                 goodput_cpu_time.append(goodput_time * cpus)
-            badput_cpu_time.append(badput_time * cpus)
+            if None in [badput_time, cpus]:
+                badput_cpu_time.append(None)
+            else:
+                badput_cpu_time.append(badput_time * cpus)
             if None in [total_time, cpus]:
                 total_cpu_time.append(None)
             else:
