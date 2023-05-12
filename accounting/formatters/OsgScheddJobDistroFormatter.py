@@ -109,8 +109,8 @@ class OsgScheddJobDistroFormatter:
                 return "<td></td>"
             if int(x) < 1:
                 return "<td>0</td>"
-            rgb = (100-x/2, 100, 100-x/2)
-            return f'<td style="background-color: rgb({",".join([f"{v}%" for v in rgb])})">{x:.0f}</td>'
+            color = f"rgb({100-int(x/1.5):d}%, {100:d}%, {100-int(x/1.5):d}%)"
+            return f'<td style="background-color: {color}">{x:.0f}</td>'
 
         col_header_fmt = lambda x: f'<th style="text-align: center; font-weight: bold">{break_chars(x)}</th>'
         row_header_fmt = lambda x: f'<td style="background-color: #ddd; text-align: right; font-weight: bold">{break_chars(x)}</td>'
@@ -160,12 +160,25 @@ Memory</th>"""
         sums = [["" for j in range(len(rows[0]) + 1)] for i in range(len(rows) + 1)]
         colors = [["" for j in range(len(rows[0]) + 1)] for i in range(len(rows) + 1)]
         for i, row in enumerate(sums):
-            if i == 0:
-                sums[i] = data["rows"][i]
-                continue
             for j, col in enumerate(row):
+                if i == 0:
+                    header = data["rows"][i][j]
+                    if j == 0:
+                        sums[i][j] = header
+                        continue
+                    try:
+                        max_value = int(header.split(",")[1].lstrip().rstrip("]"))
+                        sums[i][j] = f"&le;{max_value}"
+                    except ValueError:
+                        sums[i][j] = f"all"
+                    continue
                 if j == 0:
-                    sums[i][j] = data["rows"][i][j]
+                    header = data["rows"][i][j]
+                    try:
+                        max_value = int(header.split(",")[1].lstrip().rstrip("]"))
+                        sums[i][j] = f"&le;{max_value}"
+                    except ValueError:
+                        sums[i][j] = f"all"
                     continue
                 sm = sum([sum(rows[ii][0:j]) for ii in range(i)])
                 sums[i][j] = f"{sm:.0f}"
@@ -214,7 +227,7 @@ Memory</th>"""
         rows_html = [f'<tr>{"".join(row)}</tr>' for row in rows]
         newline = "\n  "
         html = f"""
-<h1>{self.get_table_title(table_file, report_period, start_ts, end_ts).replace("histogram", "cumulative histogram")}</h1>
+<br>
 <table>
   {newline.join(rows_html)}
 </table>
