@@ -48,6 +48,7 @@ class ChtcScheddJobDistroFormatter:
         self.table_files = table_files
         for table_file in table_files:
             self.html_tables.append(self.get_table_html(table_file, **kwargs))
+            self.html_tables.append(self.get_cumulative_table_html(table_file, **kwargs))
 
 
     def parse_table_filename(self, table_file):
@@ -107,8 +108,8 @@ class ChtcScheddJobDistroFormatter:
                 return "<td></td>"
             if int(x) < 1:
                 return "<td>0</td>"
-            rgb = (100-x/2, 100, 100-x/2)
-            return f'<td style="background-color: rgb({",".join([f"{v}%" for v in rgb])})">{x:.0f}</td>'
+            color = f"rgb({100-int(x/1.5):d}%, {100:d}%, {100-int(x/1.5):d}%)"
+            return f'<td style="background-color: {color}">{x:.0f}</td>'
 
         col_header_fmt = lambda x: f'<th style="text-align: center; font-weight: bold">{break_chars(x)}</th>'
         row_header_fmt = lambda x: f'<td style="background-color: #ddd; text-align: right; font-weight: bold">{break_chars(x)}</td>'
@@ -151,6 +152,85 @@ Memory</th>"""
 """
         return html
 
+    def get_cumulative_table(self, data):
+        rows = [[float(col) for col in cols[1:]] for cols in data["rows"][1:]]
+        n, m = len(rows), len(rows[0])
+        sums = [["" for j in range(len(rows[0]) + 1)] for i in range(len(rows) + 1)]
+        colors = [["" for j in range(len(rows[0]) + 1)] for i in range(len(rows) + 1)]
+        for i, row in enumerate(sums):
+            for j, col in enumerate(row):
+                if i == 0:
+                    header = data["rows"][i][j]
+                    if j == 0:
+                        sums[i][j] = header
+                        continue
+                    try:
+                        max_value = int(header.split(",")[1].lstrip().rstrip("]"))
+                        sums[i][j] = f"&le;{max_value}"
+                    except ValueError:
+                        sums[i][j] = f"all"
+                    continue
+                if j == 0:
+                    header = data["rows"][i][j]
+                    try:
+                        max_value = int(header.split(",")[1].lstrip().rstrip("]"))
+                        sums[i][j] = f"&le;{max_value}"
+                    except ValueError:
+                        sums[i][j] = f"all"
+                    continue
+                sm = sum([sum(rows[ii][0:j]) for ii in range(i)])
+                sums[i][j] = f"{sm:.0f}"
+                colors[i][j] = f"rgb(100%,{0.95 * (100 - sm):.0f}%,{0.8 * (100 - sm):.0f}%)"
+        return sums, colors
+
+    def format_cumulative_rows(self, header, rows, colors, res_type="requests"):
+
+        jobs_note = rows[0][0]
+        single_core_jobs, total_jobs = tuple(int(x) for x in jobs_note.split("/"))
+
+        col_header_fmt = lambda x: f'<th style="text-align: center; font-weight: bold">{break_chars(x)}</th>'
+        row_header_fmt = lambda x: f'<td style="background-color: #ddd; text-align: right; font-weight: bold">{break_chars(x)}</td>'
+        value_fmt = lambda x, color: f'<td style="background-color: {color}">{x}</td>'
+
+        rows = rows.copy()
+        for i, row in enumerate(rows):
+            for j, value in enumerate(row):
+
+                if i == 0 and j == 0:
+                    rows[i][j] = """<th style="font-family: monospace; white-space: pre; margin: 0; text-align: left">      Disk
+Memory</th>"""
+                elif i == 0:
+                    rows[i][j] = col_header_fmt(value)
+                elif j == 0:
+                    rows[i][j] = row_header_fmt(value)
+                else:
+                    try:
+                        rows[i][j] = value_fmt(value, colors[i][j])
+                    except TypeError:
+                        rows[i][j] = "<td>n/a</td>"
+
+        # Extra header row
+        rows.insert(0, [
+            f"""<th style="text-align: center"></th>""",
+            f"""<th style="text-align: center" colspan="{len(rows[0])-1}">Cumulative percentage of {single_core_jobs:,d} single-core jobs ({single_core_jobs/total_jobs:.1%} of all jobs).<br>Memory and disk {res_type} in GB.</th>""",
+            ])
+
+        return rows
+
+    def get_cumulative_table_html(self, table_file, report_period, start_ts, end_ts, **kwargs):
+        table_data = self.load_table(table_file)
+        cumulative_data, cumulative_colors = self.get_cumulative_table(table_data)
+        info = self.parse_table_filename(table_file)
+        rows = self.format_cumulative_rows(table_data["header"], cumulative_data, cumulative_colors, res_type=info["agg"][3:].lower())
+        rows_html = [f'<tr>{"".join(row)}</tr>' for row in rows]
+        newline = "\n  "
+        html = f"""
+<br>
+<table>
+  {newline.join(rows_html)}
+</table>
+"""
+        return html
 
     def get_css(self, custom_styles={}):
         styles = DEFAULT_STYLES.copy()
