@@ -62,19 +62,20 @@ class ChtcScheddJobDistroFormatter:
         info = self.parse_table_filename(table_file)
         # Format date(s)
         start = datetime.fromtimestamp(start_ts)
+        res_type = info["agg"][3:].lower()
         if report_period in ["daily"]:
             start_date = start.strftime("%Y-%m-%d")
-            title_str = f"{report_period.capitalize()} resource request histogram for jobs completed on {start_date}"
+            title_str = f"{report_period.capitalize()} resource {res_type} histogram for jobs completed on {start_date}"
         elif report_period in ["weekly", "monthly"]:
             end = datetime.fromtimestamp(end_ts)
             start_date = start.strftime("%Y-%m-%d")
             end_date = end.strftime("%Y-%m-%d")
-            title_str = f"Resource request histogram for jobs completed from {start_date} to {end_date}"
+            title_str = f"Resource {res_type} histogram for jobs completed from {start_date} to {end_date}"
         else:
             end = datetime.fromtimestamp(end_ts)
             start_date = start.strftime("%Y-%m-%d %H:%M:%S")
             end_date = end.strftime("%Y-%m-%d %H:%M:%S")
-            title_str = f"Resource request histogram for jobs completed from {start_date} to {end_date}"
+            title_str = f"Resource {res_type} histogram for jobs completed from {start_date} to {end_date}"
         return title_str
 
 
@@ -256,7 +257,8 @@ Memory</th>"""
 {newline.join(self.html_tables)}
 </body>
 <p><strong>Note:</strong> Blank values denote no jobs with the corresponding resource requests,
-while values of 0 denote fewer than 1% of jobs.
+while values of 0 denote fewer than 1% of jobs. The usage table may have fewer jobs due to 
+missing usage data in job ads.</p>
 </html>
 """
         return html

@@ -259,7 +259,7 @@ Memory</th>"""
 </body>
 <p><strong>Note:</strong> Blank values denote no jobs with the corresponding resource requests,
 while values of 0 denote fewer than 1% of jobs. The usage table may have fewer jobs due to 
-missing usage data in job ads.
+missing usage data in job ads.</p>
 </html>
 """
         return html
