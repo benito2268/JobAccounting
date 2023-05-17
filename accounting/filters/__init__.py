@@ -11,3 +11,4 @@ from .OsgScheddCpuRetryFilter import OsgScheddCpuRetryFilter
 from .OsgScheddJobDistroFilter import OsgScheddJobDistroFilter
 from .ChtcScheddCpuMonthlyFilter import ChtcScheddCpuMonthlyFilter
 from .ChtcScheddJobDistroFilter import ChtcScheddJobDistroFilter
+from .PathScheddCpuFilter import PathScheddCpuFilter
