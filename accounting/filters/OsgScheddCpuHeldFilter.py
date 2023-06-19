@@ -175,15 +175,20 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         if schedd not in self.schedd_collector_host_map:
             self.schedd_collector_host_map[schedd] = set()
 
+            collectors_queried = set()
             for collector_host in self.collector_hosts:
                 if collector_host in {"flock.opensciencegrid.org"}:
                     continue
                 collector = htcondor.Collector(collector_host)
-                ads = collector.query(
-                    htcondor.AdTypes.Schedd,
-                    constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
-                    projection=["CollectorHost"],
-                )
+                try:
+                    ads = collector.query(
+                        htcondor.AdTypes.Schedd,
+                        constraint=f'''Machine == "{schedd.split('@')[-1]}"''',
+                        projection=["CollectorHost"],
+                    )
+                except htcondor.HTCondorIOError:
+                    continue
+                collectors_queried.add(collector_host)
                 ads = list(ads)
                 if len(ads) == 0:
                     continue
@@ -201,7 +206,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
                         self.schedd_collector_host_map[schedd] = schedd_collector_hosts
                         break
             else:
-                self.logger.warning(f"Did not find Machine == {schedd} in collectors")
+                self.logger.warning(f"Did not find Machine == {schedd} in collectors {', '.join(collectors_queried)}")
 
         return self.schedd_collector_host_map[schedd]
 
