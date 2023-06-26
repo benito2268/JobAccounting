@@ -119,8 +119,22 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
                     i.get("SuccessCheckpointExitBySignal", False) or
                     i.get("SuccessCheckpointExitCode") is not None
                 ))
-            input_file_stats = literal_eval(i.get("transferinputstats", "{}"))
-            output_file_stats = literal_eval(i.get("transferoutputstats", "{}"))
+
+            try:
+                transferinputstats = i.get("transferinputstats", "{}")
+                if transferinputstats.endswith("..."):
+                    transferinputstats = f"{transferinputstats[:transferinputstats.rindex(',')]}}}"
+                input_file_stats = literal_eval(i.get("transferinputstats", "{}"))
+            except SyntaxError:
+                input_file_stats = {}
+            try:
+                transfeoutputstats = i.get("transfeoutputstats", "{}")
+                if transfeoutputstats.endswith("..."):
+                    transfeoutputstats = f"{transfeoutputstats[:transfeoutputstats.rindex(',')]}}}"
+                output_file_stats = literal_eval(i.get("transfeoutputstats", "{}"))
+            except SyntaxError:
+                output_file_stats = {}
+
             for key, value in input_file_stats.items():
                 if key.casefold().endswith("FilesCountTotal".casefold()):
                     input_files += value
