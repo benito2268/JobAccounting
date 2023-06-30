@@ -383,7 +383,14 @@ class ChtcScheddCpuFilter(BaseFilter):
                 input_files_total_count.append(None)
                 input_files_total_job_starts.append(None)
             else:
-                input_stats = literal_eval(input_stats)
+                try:
+                    if input_stats.endswith("..."):
+                        input_stats = f"{input_stats[:input_stats.rindex(',')]}}}"
+                    input_stats = literal_eval(input_stats)
+                except SyntaxError:
+                    input_files_total_count.append(None)
+                    input_files_total_job_starts.append(None)
+                    continue
                 got_cedar_bytes = False
                 for attr in input_stats:
                     if attr.casefold().endswith("FilesCountTotal".casefold()):
@@ -404,7 +411,14 @@ class ChtcScheddCpuFilter(BaseFilter):
                 output_files_total_count.append(None)
                 output_files_total_job_stops.append(None)
             else:
-                output_stats = literal_eval(output_stats)
+                try:
+                    if output_stats.endswith("..."):
+                        output_stats = f"{output_stats[:output_stats.rindex(',')]}}}"
+                    output_stats = literal_eval(output_stats)
+                except SyntaxError:
+                    output_files_total_count.append(None)
+                    output_files_total_job_stops.append(None)
+                    continue
                 got_cedar_bytes = False
                 for attr in output_stats:
                     if attr.casefold().endswith("FilesCountTotal".casefold()):
