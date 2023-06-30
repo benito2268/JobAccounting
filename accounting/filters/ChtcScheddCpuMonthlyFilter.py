@@ -1,4 +1,6 @@
 
+import statistics as stats
+from collections import defaultdict
 from operator import itemgetter
 from ast import literal_eval
 import elasticsearch.helpers
@@ -215,18 +217,58 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
 
         self.reduce_data(i, output, total)
 
+        counter_cols = {}
+        counter_cols["ScheddNames"] = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
+        counter_cols["ProjectNames"] = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
+
+        for col in counter_cols:
+            if not col in output:
+                output[col] = defaultdict(int)
+            output[col][counter_cols[col]] += 1
+            if not col in total:
+                total[col] = defaultdict(int)
+            total[col][counter_cols[col]] += 1
+
+
+    def project_filter(self, data, doc):
+
+        # Get input dict
+        i = doc["_source"]
+
+        # Get output dict for this project
+        project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
+        output = data["Projects"][project]
+        total = data["Projects"]["TOTAL"]
+
+        self.reduce_data(i, output, total)
+
+        dict_cols = {}
+        dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
+
+        for col in dict_cols:
+            output[col] = output.get(col) or {}
+            output[col][dict_cols[col]] = 1
+            total[col] = total.get(col) or {}
+            total[col][dict_cols[col]] = 1
+
 
     def get_filters(self):
         # Add all filter methods to a list
         filters = [
             self.schedd_filter,
             self.user_filter,
+            self.project_filter,
         ]
         return filters
 
     def add_custom_columns(self, agg):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
+        if agg == "Users":
+            columns[5] = "Most Used Project"
+            columns[175] = "Most Used Schedd"
+        if agg == "Projects":
+            columns[5] = "Num Users"
         return columns
 
     def compute_custom_columns(self, data, agg, agg_name):
@@ -298,6 +340,22 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
             row["Mean Hrs"] = (data["TotalLongJobWallClockTime"] / data["LongJobs"]) / 3600
         else:
             row["Min Hrs"] = row["Max Hrs"] = row["Mean Hrs"] = 0
+
+        # Compute mode for Project and Schedd columns in the Users table
+        if agg == "Users":
+            projects = data["ProjectNames"]
+            if len(projects) > 0:
+                row["Most Used Project"] = max(projects.items(), key=itemgetter(1))[0]
+            else:
+                row["Most Used Project"] = "UNKNOWN"
+
+            schedds = data["ScheddNames"]
+            if len(schedds) > 0:
+                row["Most Used Schedd"] = max(schedds.items(), key=itemgetter(1))[0]
+            else:
+                row["Most Used Schedd"] = "UNKNOWN"
+        if agg == "Projects":
+            row["Num Users"] = len(data["Users"])
 
         return row
 
