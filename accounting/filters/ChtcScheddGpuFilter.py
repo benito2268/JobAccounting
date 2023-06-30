@@ -169,7 +169,7 @@ class ChtcScheddGpuFilter(BaseFilter):
 
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
-        filter_attrs = filter_attrs + ["ScheddName"]
+        filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
 
         # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
@@ -213,10 +213,11 @@ class ChtcScheddGpuFilter(BaseFilter):
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
             # Use UNKNOWN for missing or blank ScheddName
-            if attr in ["ScheddName"]:
+            if attr in {"ScheddName", "ProjectName"}:
                 o[attr].append(i.get(attr, "UNKNOWN") or "UNKNOWN")
             else:
                 o[attr].append(i.get(attr, None))
+
 
     def project_filter(self, data, doc):
 
@@ -242,20 +243,9 @@ class ChtcScheddGpuFilter(BaseFilter):
 
         # Do filtering for scheduler and local universe jobs
         univ = i.get("JobUniverse", 5)
+        o["_NumSchedulerUnivJobs"].append(univ == 7)
+        o["_NumLocalUnivJobs"].append(univ == 12)
         o["_NoShadow"].append(univ in [7, 12])
-
-        # Compute badput fields
-        if (
-                univ not in [7, 12] and
-                i.get("NumJobStarts", 0) > 1 and
-                i.get("RemoteWallClockTime", 0) > 0 and
-                i.get("RemoteWallClockTime") != i.get("CommittedTime")
-            ):
-            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - i.get("CommittedTime", 0))
-            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
-        else:
-            o["_BadWallClockTime"].append(0)
-            o["_NumBadJobStarts"].append(0)
 
         # Count number of checkpointable jobs
         if univ == 5 and (
@@ -270,9 +260,29 @@ class ChtcScheddGpuFilter(BaseFilter):
         else:
             o["_NumCkptJobs"].append(0)
 
+        # Compute badput fields
+        if (
+                univ not in [7, 12] and
+                i.get("NumJobStarts", 0) > 1 and
+                i.get("RemoteWallClockTime", 0) > 0 and
+                #i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
+                i.get("RemoteWallClockTime") != i.get("CommittedTime", 0)
+            ):
+            o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0)))))
+            o["_NumBadJobStarts"].append(i["NumJobStarts"] - 1)
+        else:
+            o["_BadWallClockTime"].append(0)
+            o["_NumBadJobStarts"].append(0)
+
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
-            o[attr].append(i.get(attr, None))
+            if attr in {"lastremotewallclocktime", "activationduration", "activationsetupduration"}:
+                try:
+                    o[attr].append(int(float(i.get(attr))))
+                except TypeError:
+                    o[attr].append(None)
+            else:
+                o[attr].append(i.get(attr, None))
 
 
     def machine_filter(self, data, doc):
@@ -314,6 +324,7 @@ class ChtcScheddGpuFilter(BaseFilter):
             self.schedd_filter,
             self.user_filter,
             self.machine_filter,
+            self.project_filter,
         ]
         return filters
 
@@ -321,6 +332,7 @@ class ChtcScheddGpuFilter(BaseFilter):
         # Add Project and Schedd columns to the Users table
         columns = DEFAULT_COLUMNS.copy()
         if agg == "Users":
+            columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
@@ -498,6 +510,12 @@ class ChtcScheddGpuFilter(BaseFilter):
 
         # Compute mode for Project and Schedd columns in the Users table
         if agg == "Users":
+            projects = self.clean(data["ProjectName"])
+            if len(projects) > 0:
+                row["Most Used Project"] = max(set(projects), key=projects.count)
+            else:
+                row["Most Used Project"] = "UNKNOWN"
+
             schedds = self.clean(data["ScheddName"])
             if len(schedds) > 0:
                 row["Most Used Schedd"] = max(set(schedds), key=schedds.count)
