@@ -16,6 +16,11 @@ OSG_CONNECT_APS = {
     "ap2007.chtc.wisc.edu",
     "ap7.chtc.wisc.edu",
     "ap7.chtc.wisc.edu@ap2007.chtc.wisc.edu",
+    "ap20.uc.osg-htc.org",
+    "ap21.uc.osg-htc.org",
+    "ap22.uc.osg-htc.org",
+    "ap23.uc.osg-htc.org",
+    "ap40.uw.osg-htc.org",
 }
 
 DISK_COLUMNS = {x: f"({x}, {x+2}]" for x in range(0, 20, 2)}
