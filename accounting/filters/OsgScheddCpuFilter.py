@@ -97,6 +97,7 @@ DEFAULT_FILTER_ATTRS = [
     "SingularityImage",
     "ActivationDuration",
     "ActivationSetupDuration",
+    "CondorVersion",
 ]
 
 
@@ -835,19 +836,27 @@ class OsgScheddCpuFilter(BaseFilter):
                 row["Output MB / File"] = output_mb / output_files
                 row["Total Files Xferd"] = row.get("Total Files Xferd", 0) + output_files
 
-        row["OSDF Files Xferd"] = osdf_files_count or ""
-        if osdf_files_count > 0 and osdf_bytes_total > 0 and total_files > 0 and total_bytes > 0:
-            row["% OSDF Files"] = 100 * osdf_files_count / total_files
-            row["% OSDF Bytes"] = 100 * osdf_bytes_total / total_bytes
+        if osdf_files_count == 0 or osdf_bytes_total == 0:
+            version_string = str(data["CondorVersion"])
+            version_numbers = version_string.split()[0].split(".")
+            if version_numbers[0] > 9 or (version_numbers[0] == 9 and version_numbers[1] >= 7):
+                row["OSDF Files Xferd"] = row["% OSDF Files"] = row["% OSDF Bytes"] = 0
+            else:
+                row["OSDF Files Xferd"] = row["% OSDF Files"] = row["% OSDF Bytes"] = "-"                
         else:
-            row["% OSDF Files"] = row["% OSDF Bytes"] = ""
+            row["OSDF Files Xferd"] = osdf_files_count or ""
+            if osdf_files_count > 0 and osdf_bytes_total > 0 and total_files > 0 and total_bytes > 0:
+                row["% OSDF Files"] = 100 * osdf_files_count / total_files
+                row["% OSDF Bytes"] = 100 * osdf_bytes_total / total_bytes
+            else:
+                row["% OSDF Files"] = row["% OSDF Bytes"] = ""
 
-        # Insert missing value if any missing
-        for key in ["Total Files Xferd", "Total Input Files", "Total Output Files",
-                    "Input Files / Exec Att", "Output Files / Job",
-                    "Input MB / Exec Att", "Output MB / Job",
-                    "Input MB / File", "Output MB / File"]:
-            row[key] = row.get(key, -999)
+            # Insert missing value if any missing
+            for key in ["Total Files Xferd", "Total Input Files", "Total Output Files",
+                        "Input Files / Exec Att", "Output Files / Job",
+                        "Input MB / Exec Att", "Output MB / Job",
+                        "Input MB / File", "Output MB / File"]:
+                row[key] = row.get(key, -999)
 
         # Compute activation time stats
         row["Mean Actv Hrs"] = ""
