@@ -13,44 +13,44 @@ and copy the `send_email.py` script to another working directory.
 The main script is `send_email.py`:
 
 ```$ python send_email.py --help
-usage: send_email.py [-h] [--filter FILTER] [--formatter FORMATTER]
-                     [--es_index ES_INDEX] [--es_host ES_HOST]
-                     [--es_user ES_USER] [--es_use_https]
-                     [--es_ca_certs ES_CA_CERTS] [--daily] [--weekly]
-                     [--monthly] [--start_ts START_TS] [--end_ts END_TS]
-                     [--csv_dir CSV_DIR] [--from_addr FROM_ADDR]
-                     [--to_addr TO_ADDR] [--cc_addr CC_ADDR]
-                     [--bcc_addr BCC_ADDR]
+usage: send_email.py [-h] [--debug] [--quiet] [--restart] [--log_file LOG_FILE] [--do_not_upload] [--filter FILTER] [--formatter FORMATTER] [--es_index ES_INDEX]
+                     [--es_host ES_HOST] [--es_user ES_USER] [--es_use_https] [--es_ca_certs ES_CA_CERTS] [--daily] [--weekly] [--monthly] [--start_ts START_TS]
+                     [--end_ts END_TS] [--csv_dir CSV_DIR] [--from_addr FROM_ADDR] [--to_addr TO_ADDR] [--cc_addr CC_ADDR] [--bcc_addr BCC_ADDR]
+                     [--reply_to_addr REPLY_TO_ADDR]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
-  --filter FILTER       Filter class, one of [BaseFilter, OsgScheddCpuFilter]
-                        (default: BaseFilter)
+  --debug               Log debug messages
+  --quiet               Do not print log messages
+  --restart             Try restarting from pickled data on disk
+  --log_file LOG_FILE   Set an optional log file
+  --do_not_upload       Do not store output in ES
+  --filter FILTER       Filter class, one of [BaseFilter, ChtcScheddCpuFilter, ChtcScheddCpuMonthlyFilter, ChtcScheddCpuRemovedFilter, ChtcScheddGpuFilter,
+                        ChtcScheddJobDistroFilter, OsgScheddCpuFilter, OsgScheddCpuHeldFilter, OsgScheddCpuMonthlyFilter, OsgScheddCpuRemovedFilter, OsgScheddCpuRetryFilter,
+                        OsgScheddJobDistroFilter, OsgScheddLongJobFilter, PathScheddCpuFilter] (default: BaseFilter)
   --formatter FORMATTER
-                        Formatter class, one of [BaseFormatter,
-                        OsgScheddCpuFormatter] (default: BaseFormatter)
+                        Formatter class, one of [BaseFormatter, ChtcScheddCpuFormatter, ChtcScheddCpuRemovedFormatter, ChtcScheddGpuFormatter, ChtcScheddJobDistroFormatter,
+                        OsgScheddCpuFormatter, OsgScheddCpuHeldFormatter, OsgScheddCpuRemovedFormatter, OsgScheddCpuRetryFormatter, OsgScheddJobDistroFormatter,
+                        OsgScheddLongJobFormatter, PathScheddCpuFormatter] (default: BaseFormatter)
   --es_index ES_INDEX   Elasticsearch index (default: htcondor-000001)
   --es_host ES_HOST     Elasticsearch hostname[:port] (default: localhost)
   --es_user ES_USER     Elasticsearch username
-  --es_use_https        Use HTTPS with Elasticsearch (default:
-                        ES_USE_HTTPS=False)
+  --es_use_https        Use HTTPS with Elasticsearch (default: ES_USE_HTTPS=False)
   --es_ca_certs ES_CA_CERTS
                         Elasticsearch custom CA certs
-  --daily               Set report period to last full day
-                        (REPORT_PERIOD=daily, default)
-  --weekly              Set report period to last full week
-                        (REPORT_PERIOD=weekly)
-  --monthly             Set report peroid to last full month
-                        (REPORT_PERIOD=monthly)
+  --daily               Set report period to last full day (REPORT_PERIOD=daily, default)
+  --weekly              Set report period to last full week (REPORT_PERIOD=weekly)
+  --monthly             Set report peroid to last full month (REPORT_PERIOD=monthly)
   --start_ts START_TS   Custom starting timestamp
   --end_ts END_TS       Custom ending timestamp
   --csv_dir CSV_DIR     Output directory for CSVs (default: csv)
   --from_addr FROM_ADDR
-                        From: email address (default:
-                        accounting@chtc.wisc.edu)
+                        From: email address (default: accounting@accounting.chtc.wisc.edu)
   --to_addr TO_ADDR     To: email address (can be specified multiple times)
   --cc_addr CC_ADDR     CC: email address (can be specified multiple times)
   --bcc_addr BCC_ADDR   BCC: email address (can be specified multiple times)
+  --reply_to_addr REPLY_TO_ADDR
+                        Reply-To: email address
 ```
 
 This is best wrapped in a shell script that sets up the required
