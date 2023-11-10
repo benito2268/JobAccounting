@@ -837,9 +837,8 @@ class OsgScheddCpuFilter(BaseFilter):
                 row["Total Files Xferd"] = row.get("Total Files Xferd", 0) + output_files
 
         if osdf_files_count == 0 or osdf_bytes_total == 0:
-            version_string = str(data["CondorVersion"])
-            version_numbers = version_string.split()[0].split(".")
-            if version_numbers[0] > 9 or (version_numbers[0] == 9 and version_numbers[1] >= 7):
+            condor_version = tuple([int(x) for x in data["CondorVersion"].split()[1].split(".")])
+            if condor_version > (9, 7, 0):
                 row["OSDF Files Xferd"] = row["% OSDF Files"] = row["% OSDF Bytes"] = 0
             else:
                 row["OSDF Files Xferd"] = row["% OSDF Files"] = row["% OSDF Bytes"] = "-"                
