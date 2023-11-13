@@ -853,12 +853,12 @@ class OsgScheddCpuFilter(BaseFilter):
             else:
                 row["% OSDF Files"] = row["% OSDF Bytes"] = ""
 
-            # Insert missing value if any missing
-            for key in ["Total Files Xferd", "Total Input Files", "Total Output Files",
-                        "Input Files / Exec Att", "Output Files / Job",
-                        "Input MB / Exec Att", "Output MB / Job",
-                        "Input MB / File", "Output MB / File"]:
-                row[key] = row.get(key, -999)
+        # Insert missing value if any missing
+        for key in ["Total Files Xferd", "Total Input Files", "Total Output Files",
+                    "Input Files / Exec Att", "Output Files / Job",
+                    "Input MB / Exec Att", "Output MB / Job",
+                    "Input MB / File", "Output MB / File"]:
+            row[key] = row.get(key, -999)
 
         # Compute activation time stats
         row["Mean Actv Hrs"] = ""
