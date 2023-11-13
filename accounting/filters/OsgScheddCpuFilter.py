@@ -97,6 +97,7 @@ DEFAULT_FILTER_ATTRS = [
     "SingularityImage",
     "ActivationDuration",
     "ActivationSetupDuration",
+    "CondorVersion",
 ]
 
 
@@ -835,12 +836,22 @@ class OsgScheddCpuFilter(BaseFilter):
                 row["Output MB / File"] = output_mb / output_files
                 row["Total Files Xferd"] = row.get("Total Files Xferd", 0) + output_files
 
-        row["OSDF Files Xferd"] = osdf_files_count or ""
-        if osdf_files_count > 0 and osdf_bytes_total > 0 and total_files > 0 and total_bytes > 0:
-            row["% OSDF Files"] = 100 * osdf_files_count / total_files
-            row["% OSDF Bytes"] = 100 * osdf_bytes_total / total_bytes
+        if osdf_files_count == 0 or osdf_bytes_total == 0:
+            condor_versions_set = set(data["CondorVersion"])
+            condor_versions_tuples_list = []
+            for version in condor_versions_set:
+                condor_versions_tuples_list.append(tuple([int(x) for x in version.split()[1].split(".")]))
+            if all(condor_version_tuple < (9, 7, 0) for condor_version_tuple in condor_versions_tuples_list):
+                row["OSDF Files Xferd"] = row["% OSDF Files"] = row["% OSDF Bytes"] = "-"
+            else:
+                row["OSDF Files Xferd"] = row["% OSDF Files"] = row["% OSDF Bytes"] = 0                    
         else:
-            row["% OSDF Files"] = row["% OSDF Bytes"] = ""
+            row["OSDF Files Xferd"] = osdf_files_count or ""
+            if osdf_files_count > 0 and osdf_bytes_total > 0 and total_files > 0 and total_bytes > 0:
+                row["% OSDF Files"] = 100 * osdf_files_count / total_files
+                row["% OSDF Bytes"] = 100 * osdf_bytes_total / total_bytes
+            else:
+                row["% OSDF Files"] = row["% OSDF Bytes"] = ""
 
         # Insert missing value if any missing
         for key in ["Total Files Xferd", "Total Input Files", "Total Output Files",
