@@ -1,3 +1,4 @@
+import sys
 from .BaseFormatter import BaseFormatter
 from datetime import datetime
 from collections import OrderedDict
@@ -8,6 +9,21 @@ def hhmm(hours):
     h = int(hours)
     m = int(60 * (float(hours) - int(hours)))
     return f"{h:02d}:{m:02d}"
+
+
+def handle_dashes(dtype, fmt, value):
+    # Cast value to dtype and format it.
+    # Right-align any non-castable values and return them as is.
+    formatted_str = "<td></td>"
+    try:
+        value = dtype(value)
+        formatted_str = f"<td>{value:{fmt}}</td>"
+    except ValueError:
+        formatted_str = f"""<td style="text-align: right">{value}</td>"""
+    except Exception as err:
+        print(f"Caught unexpected exception {str(err)} when converting {value} to {repr(dtype)}.", file=sys.stderr)
+        formatted_str = f"""<td style="text-align: right">{value}</td>"""
+    return formatted_str
 
 
 class OsgScheddCpuFormatter(BaseFormatter):
@@ -75,8 +91,9 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "Shadw Starts / Job Id":    lambda x: f"<td>{float(x):.2f}</td>",
             "Exec Atts / Shadw Start":  lambda x: f"<td>{float(x):.3f}</td>",
             "Holds / Job Id":           lambda x: f"<td>{float(x):.2f}</td>",
-            "% OSDF Files":         lambda x: f"<td>{float(x):.1f}</td>",
-            "% OSDF Bytes":         lambda x: f"<td>{float(x):.1f}</td>",
+            "OSDF Files Xferd":     lambda x: handle_dashes(  int,   ",", x),
+            "% OSDF Files":         lambda x: handle_dashes(float, ".1f", x),
+            "% OSDF Bytes":         lambda x: handle_dashes(float, ".1f", x),
             "% Rm'd Jobs":          lambda x: f"<td>{float(x):.1f}</td>",
             "% Short Jobs":         lambda x: f"<td>{float(x):.1f}</td>",
             "% Jobs w/>1 Exec Att": lambda x: f"<td>{float(x):.1f}</td>",
