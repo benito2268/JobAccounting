@@ -68,6 +68,10 @@ class ChtcScheddDSIGpuFormatter(BaseFormatter):
 
     def get_legend(self):
         custom_items = OrderedDict()
+        custom_items["All GPU Hours"] = "Total GPU hours for all execution attempts, including preemption and removal"
+        custom_items["Final Exec Att GPU Hours"] = "Total GPU hours for all final execution attempts"
+        custom_items["Num Uniq Job Ids"] = "Number of unique job ids across all execution attempts"
+        custom_items["Max Rqst Gpus"]    = "Maximum number of GPUs requested across all submitted jobs"
         html = super().get_legend(custom_items)
         return html
 
