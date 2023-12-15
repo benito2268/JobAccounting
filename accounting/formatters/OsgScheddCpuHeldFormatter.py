@@ -150,6 +150,14 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
 
     def get_legend(self):
         custom_items = OrderedDict()
+        custom_items["All CPU Hours"]    = "Total CPU hours for all execution attempts, including preemption and removal"
+        custom_items["Num Uniq Job Ids"] = "Number of unique job ids across all execution attempts"
+        custom_items["% Good CPU Hours"] = "Good CPU Hours per All CPU Hours, as a percentage"
+        custom_items["Good CPU Hours"]   = "Total CPU hours for execution attempts that ran to completion"
+        custom_items["Max Rqst Mem MB"]  = "Maximum memory requested across all submitted jobs in MB"
+        custom_items["Max Used Mem MB"]  = "Maximum measured memory usage across all submitted jobs' last execution attempts in MB"
+        custom_items["Max Rqst Cpus"]    = "Maximum number of CPUs requested across all submitted jobs"
+        
         custom_items["Num Shadw Starts"] = "Total times a condor_shadow was spawned across all submitted jobs (excluding Local and Scheduler Universe jobs)"
         custom_items["Num Exec Atts"]    = "Total number of execution attempts (excluding Local and Scheduler Universe jobs)"
         custom_items["Num Rm'd Jobs"]    = "Number of jobs that were removed from the queue instead of allowing to complete"

@@ -53,6 +53,14 @@ class OsgScheddCpuRetryFormatter(BaseFormatter):
 
     def get_legend(self):
         custom_items = OrderedDict()
+        custom_items["All CPU Hours"]    = "Total CPU hours for all execution attempts, including preemption and removal"
+        custom_items["Num Uniq Job Ids"] = "Number of unique job ids across all execution attempts"
+        custom_items["% Good CPU Hours"] = "Good CPU Hours per All CPU Hours, as a percentage"
+        custom_items["Good CPU Hours"]   = "Total CPU hours for execution attempts that ran to completion"
+        custom_items["Max Rqst Mem MB"]  = "Maximum memory requested across all submitted jobs in MB"
+        custom_items["Max Used Mem MB"]  = "Maximum measured memory usage across all submitted jobs' last execution attempts in MB"
+        custom_items["Max Rqst Cpus"]    = "Maximum number of CPUs requested across all submitted jobs"
+
         custom_items["Shadow Starts / Job Id"]   = "Shadow starts per job (that had at least one shadow start)"
         custom_items["Non Success Shadows (NSS)"] = "Shadow starts that did not result in job completion"
         custom_items["% Jobs w/ >1 Shadow Starts"] = "Percentage of jobs that had multiple shadow starts"

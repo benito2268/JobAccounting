@@ -303,8 +303,11 @@ class BaseFilter:
             # Store a tuple of all column data in order
             rows.append(tuple(row[col] for col in columns_sorted))
 
-        # Sort rows by All CPU Hours
-        rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All CPU Hours")))
+        # Sort rows by All CPU Hours or All GPU Hours
+        try:
+            rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All CPU Hours")))
+        except ValueError:
+            rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All GPU Hours")))
 
         # Prepend the header row
         rows.insert(0, tuple(columns_sorted))

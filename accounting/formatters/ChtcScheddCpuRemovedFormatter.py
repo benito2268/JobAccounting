@@ -76,6 +76,14 @@ class ChtcScheddCpuRemovedFormatter(BaseFormatter):
 
     def get_legend(self):
         custom_items = OrderedDict()
+        custom_items["All CPU Hours"]    = "Total CPU hours for all execution attempts, including preemption and removal"
+        custom_items["Num Uniq Job Ids"] = "Number of unique job ids across all execution attempts"
+        custom_items["% Good CPU Hours"] = "Good CPU Hours per All CPU Hours, as a percentage"
+        custom_items["Good CPU Hours"]   = "Total CPU hours for execution attempts that ran to completion"
+        custom_items["Max Rqst Mem MB"]  = "Maximum memory requested across all submitted jobs in MB"
+        custom_items["Max Used Mem MB"]  = "Maximum measured memory usage across all submitted jobs' last execution attempts in MB"
+        custom_items["Max Rqst Cpus"]    = "Maximum number of CPUs requested across all submitted jobs"
+
         custom_items["CPU Hours / Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
         custom_items["Rm'd Jobs w/o Shadw Start"] = "Number of jobs that were removed from the queue before any shadow starts"
         custom_items["% Jobs w/o Shadw"] = "Percentage of removed jobs that never had a shadow start, i.e. were removed before running"

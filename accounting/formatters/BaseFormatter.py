@@ -210,7 +210,8 @@ class BaseFormatter:
         return style
 
     def get_legend(self, custom_items=OrderedDict()):
-        legend_items = DEFAULT_LEGEND.copy()
+        #legend_items = DEFAULT_LEGEND.copy()
+        legend_items = OrderedDict()
         legend_items.update(custom_items)
         html_item = lambda k, v: f"<strong>{k}:</strong> {v}"
         list_delim = "</li>\n  <li>"
