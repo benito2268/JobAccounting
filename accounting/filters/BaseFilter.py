@@ -306,7 +306,7 @@ class BaseFilter:
         # Sort rows by All CPU Hours or All GPU Hours
         try:
             rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All CPU Hours")))
-        except:
+        except ValueError:
             rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All GPU Hours")))
 
         # Prepend the header row

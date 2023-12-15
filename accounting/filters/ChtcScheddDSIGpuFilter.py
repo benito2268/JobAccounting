@@ -22,7 +22,6 @@ DEFAULT_FILTER_ATTRS = [
     "MemoryUsage",
     "NumJobStarts",
     "NumShadowStarts",
-    "JobUniverse",
     "JobStatus",
     "EnteredCurrentStatus",
     "BytesSent",
@@ -58,6 +57,9 @@ class ChtcScheddDSIGpuFilter(BaseFilter):
                             {"term": {
                                 "JobStatus": 4
                             }},
+                            {"term": {
+                                "JobUniverse": 5
+                            }},
                             {"regexp": {
                                 "LastRemoteHost.keyword": ".*dsigpu-?[0-9]+[.]chtc[.]wisc[.]edu"
                             }},
@@ -82,7 +84,7 @@ class ChtcScheddDSIGpuFilter(BaseFilter):
         filter_attrs = filter_attrs + ["User"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -90,14 +92,8 @@ class ChtcScheddDSIGpuFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Count number of checkpointable jobs
-        if univ == 5 and (
+        if (
                 (
                     i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
                     i.get("Is_resumable", False)
@@ -111,7 +107,6 @@ class ChtcScheddDSIGpuFilter(BaseFilter):
 
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 #i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
@@ -141,10 +136,6 @@ class ChtcScheddDSIGpuFilter(BaseFilter):
 
         # Filter out jobs that were removed
         if i.get("JobStatus", 4) == 3:
-            return
-
-        # Filter out scheduler and local universe jobs
-        if i.get("JobUniverse") in [7, 12]:
             return
 
         # Get output dict for this site
