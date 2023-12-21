@@ -19,8 +19,15 @@ DEFAULT_COLUMNS = {
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
+    80: "% Jobs w/1+ Holds",
+    81: "% Jobs Over Rqst Disk",
+    82: "% Jobs using S'ty",
+    83: "Total Files Xferd",
+    84: "OSDF Files Xferd",
+    85: "% OSDF Files",
+    86: "% OSDF Bytes",
 
-    80: "Shadw Starts / Job Id",
+    88: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
 
     110: "Min Hrs",
@@ -450,7 +457,7 @@ class OsgScheddGpuFilter(BaseFilter):
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
-            rm_columns = [30,35,45,50,70,80,90,180,181,190,191,300,303,305,307,310,320,330,340,350,390]
+            rm_columns = [30,35,45,50,70,80,83,84,85,86,88,90,180,181,190,191,300,303,305,307,310,320,330,340,350,390]
             [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
