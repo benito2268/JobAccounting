@@ -148,12 +148,9 @@ class OsgScheddGpuFilter(BaseFilter):
 
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,
-        # unless result previously cached or it's Monday
-        if schedd not in self.schedd_collector_host_map_checked:
-            self.logger.debug(f"Schedd {schedd} not found/needs updating in cached collector host map, querying collector")
+        # unless result previously cached
+        if schedd not in self.schedd_collector_host_map:
             self.schedd_collector_host_map[schedd] = set()
-            self.schedd_collector_host_map_checked.add(schedd)
-            new_hosts = False
 
             collectors_queried = set()
             for collector_host in self.collector_hosts:
@@ -169,7 +166,6 @@ class OsgScheddGpuFilter(BaseFilter):
                 except htcondor.HTCondorIOError:
                     continue
                 collectors_queried.add(collector_host)
-                ads = list(ads)
                 if len(ads) == 0:
                     continue
                 if len(ads) > 1:
@@ -182,26 +178,11 @@ class OsgScheddGpuFilter(BaseFilter):
                         schedd_collector_host = schedd_collector_host.strip().split(":")[0]
                         if schedd_collector_host:
                             schedd_collector_hosts.add(schedd_collector_host)
-                            new_hosts = True
                     if schedd_collector_hosts:
                         self.schedd_collector_host_map[schedd] = schedd_collector_hosts
                         break
             else:
                 self.logger.warning(f"Did not find Machine == {schedd} in collectors {', '.join(collectors_queried)}")
-
-            # Update the pickle
-            if new_hosts and len(schedd_collector_hosts) > 0:
-                self.logger.debug(f"Updating collector host pickle for {schedd} with {schedd_collector_hosts}")
-                old_schedd_collector_host_map = {}
-                if self.schedd_collector_host_map_pickle.exists():
-                    try:
-                        old_schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
-                        old_schedd_collector_host_map[schedd] = schedd_collector_hosts
-                    except IOError:
-                        pass
-                old_schedd_collector_host_map[schedd] = schedd_collector_hosts
-                with open(self.schedd_collector_host_map_pickle, "wb") as f:
-                    pickle.dump(old_schedd_collector_host_map, f)
 
         return self.schedd_collector_host_map[schedd]
 
