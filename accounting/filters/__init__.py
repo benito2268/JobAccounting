@@ -3,6 +3,7 @@ from .OsgScheddCpuFilter import OsgScheddCpuFilter
 from .OsgScheddCpuHeldFilter import OsgScheddCpuHeldFilter
 from .OsgScheddCpuRemovedFilter import OsgScheddCpuRemovedFilter
 from .OsgScheddCpuMonthlyFilter import OsgScheddCpuMonthlyFilter
+from .OsgScheddGpuFilter import OsgScheddGpuFilter
 from .ChtcScheddCpuFilter import ChtcScheddCpuFilter
 from .ChtcScheddCpuRemovedFilter import ChtcScheddCpuRemovedFilter
 from .ChtcScheddGpuFilter import ChtcScheddGpuFilter
