@@ -112,10 +112,6 @@ class OsgScheddGpuFilter(BaseFilter):
                 self.schedd_collector_host_map = pickle.load(open(self.schedd_collector_host_map_pickle, "rb"))
             except IOError:
                 pass
-        self.schedd_collector_host_map_checked = set(self.schedd_collector_host_map)
-        # Recheck and update the collector map every Monday during the daily report
-        if kwargs.get("report_period") == "daily" and date.today().weekday() == 0:
-            self.schedd_collector_host_map_checked = set()
         super().__init__(**kwargs)
 
     def get_query(self, index, start_ts, end_ts, **kwargs):
