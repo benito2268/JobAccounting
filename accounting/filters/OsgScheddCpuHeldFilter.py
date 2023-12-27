@@ -199,7 +199,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
                 # Cache the CollectorHost in the map
                 if "CollectorHost" in ads[0]:
                     schedd_collector_hosts = set()
-                    for schedd_collector_host in re.split(', |,| ', ads[0]["CollectorHost"]):
+                    for schedd_collector_host in re.split(r'[, ]+', ads[0]["CollectorHost"]):
                         schedd_collector_host = schedd_collector_host.strip().split(":")[0]
                         if schedd_collector_host:
                             schedd_collector_hosts.add(schedd_collector_host)
