@@ -114,7 +114,7 @@ class ChtcScheddCpuFormatter(BaseFormatter):
         custom_items["Holds / Job Id"] = "Num Job Holds per Num Uniq Job Ids"
 
         custom_items["Mean Actv Hrs"] = "Mean slot activation time (in hours)"
-        custom_items["Mean Setup Secs"] = "Mean slot activation setup time (in seconds)"
+        custom_items["Mean Setup Secs"] = "Mean slot activation setup time (in seconds). The slot activation setup time is the duration from when a shadow sends a claim activation to when the shadow is told that a job's executable is running."
 
         custom_items["Min/25%/Median/75%/Max/Mean/Std Hrs"] = "Final execution wallclock hours that a non-short job (Min-Max) or jobs (Mean/Std) ran for (excluding Short jobs, excluding Local and Scheduler Universe jobs)"
 
