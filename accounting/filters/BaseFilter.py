@@ -310,7 +310,10 @@ class BaseFilter:
             rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All GPU Hours")))
 
         # Ensure the TOTAL row is at the top
-        rows.insert(0, rows.pop(list(row[0] for row in rows).index("TOTAL")))
+        try:
+            rows.insert(0, rows.pop(list(row[0] for row in rows).index("TOTAL")))
+        except ValueError:
+            pass
 
         # Prepend the header row
         rows.insert(0, tuple(columns_sorted))
