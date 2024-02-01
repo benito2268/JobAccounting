@@ -10,6 +10,8 @@ from collections import defaultdict
 
 
 CHTC_APS = {
+    "ap2001.chtc.wisc.edu",
+    "ap2002.chtc.wisc.edu",
     "atlassubmit1000.chtc.wisc.edu",
     "atlassubmit1001.chtc.wisc.edu",
     "atlassubmit1002.chtc.wisc.edu",

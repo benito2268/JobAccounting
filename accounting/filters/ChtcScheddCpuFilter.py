@@ -105,7 +105,7 @@ class ChtcScheddCpuFilter(BaseFilter):
                                 }
                             }},
                             {"regexp": {
-                                "ScheddName.keyword": "(submit-?[0-9]+|learn)[.]chtc[.]wisc[.]edu"
+                                "ScheddName.keyword": "(submit-?[0-9]+|learn|ap[0-9]+)[.]chtc[.]wisc[.]edu"
                             }}
                         ]
                     }
