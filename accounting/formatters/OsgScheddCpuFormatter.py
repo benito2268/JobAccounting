@@ -138,7 +138,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
         custom_items["% Jobs using S'ty"] = "Percent of Num Uniq Job Ids that requested to run inside a Singularity image"
         custom_items["% Ckpt Able"] = "Percent of Num Uniq Job Ids that may be using user-level checkpointing"
         custom_items["Total Files Xferd"] = "Total files transferred (input and output) across all transfer protocols and execution attempts"
-        custom_items["OSDF Files Xferd"] = "Total files transferred using the OSDF (f.k.a. Stash) transfer plugin"
+        custom_items["OSDF Files Xferd"] = "Total files transferred using the OSDF (f.k.a. Stash) transfer plugin. A zero in an OSDF column means that no files were transferred with the OSDF for this [row]. A dash in an OSDF column means that this [row] is unable to transfer files with the OSDF"
         custom_items["% OSDF Files"] = "Percent of all transferred files that were transferred using the OSDF plugin"
         custom_items["% OSDF Bytes"] = "Percent of all transferred bytes that were transferred using the OSDF plugin"
 
