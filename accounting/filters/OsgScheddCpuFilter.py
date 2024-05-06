@@ -16,15 +16,16 @@ DEFAULT_COLUMNS = {
 
     45: "% Ckpt Able",
     50: "% Rm'd Jobs",
+    55: "Total Files Xferd",
+    56: "OSDF Files Xferd",
+    57: "% OSDF Files",
+    58: "% OSDF Bytes",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
     80: "% Jobs w/1+ Holds",
     81: "% Jobs Over Rqst Disk",
     82: "% Jobs using S'ty",
-    83: "Total Files Xferd",
-    84: "OSDF Files Xferd",
-    85: "% OSDF Files",
-    86: "% OSDF Bytes",
+    
 
     88: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
@@ -434,7 +435,7 @@ class OsgScheddCpuFilter(BaseFilter):
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
-            rm_columns = [30,45,50,70,80,83,84,85,86,88,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
+            rm_columns = [30,45,50,55,56,57,58,70,80,88,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
             [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
