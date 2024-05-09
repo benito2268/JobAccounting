@@ -16,20 +16,19 @@ DEFAULT_COLUMNS = {
 
     45: "% Ckpt Able",
     50: "% Rm'd Jobs",
-    55: "Total Files Xferd",
-    56: "OSDF Files Xferd",
-    57: "% OSDF Files",
-    58: "% OSDF Bytes",
+    51: "Total Files Xferd",
+    52: "OSDF Files Xferd",
+    53: "% OSDF Files",
+    54: "% OSDF Bytes",
+    55: "Shadw Starts / Job Id",
+    56: "Exec Atts / Shadw Start",
+    57: "Holds / Job Id",
+
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
     80: "% Jobs w/1+ Holds",
     81: "% Jobs Over Rqst Disk",
     82: "% Jobs using S'ty",
-    
-
-    88: "Shadw Starts / Job Id",
-    90: "Exec Atts / Shadw Start",
-    95: "Holds / Job Id",
 
     100: "Mean Actv Hrs",
     105: "Mean Setup Secs",
@@ -50,13 +49,6 @@ DEFAULT_COLUMNS = {
 #    191: "Output MB / Job",
 #    192: "Output MB / File",
 
-    200: "Max Rqst Mem MB",
-    210: "Med Used Mem MB",
-    220: "Max Used Mem MB",
-    225: "Max Rqst Disk GB",
-    227: "Max Used Disk GB",
-    230: "Max Rqst Cpus",
-
     300: "Good CPU Hours",
     305: "CPU Hours / Bad Exec Att",
     310: "Num Exec Atts",
@@ -72,6 +64,13 @@ DEFAULT_COLUMNS = {
     380: "Num Sched Univ Jobs",
     390: "Num Ckpt Able Jobs",
     400: "Num S'ty Jobs",
+
+    500: "Max Rqst Mem MB",
+    510: "Med Used Mem MB",
+    520: "Max Used Mem MB",
+    525: "Max Rqst Disk GB",
+    527: "Max Used Disk GB",
+    530: "Max Rqst Cpus",
 }
 
 
@@ -435,7 +434,7 @@ class OsgScheddCpuFilter(BaseFilter):
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
-            rm_columns = [30,45,50,55,56,57,58,70,80,88,90,95,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
+            rm_columns = [30,45,50,51,52,53,54,55,56,57,70,80,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
             [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
