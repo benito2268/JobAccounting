@@ -48,14 +48,6 @@ DEFAULT_COLUMNS = {
 #    191: "Output MB / Job",
 #    192: "Output MB / File",
 
-    200: "Max Rqst Mem MB",
-    210: "Med Used Mem MB",
-    220: "Max Used Mem MB",
-    225: "Max Rqst Disk GB",
-    227: "Max Used Disk GB",
-    230: "Max Rqst Cpus",
-    240: "Max Rqst Gpus",
-
     300: "Good CPU Hours",
     303: "Good GPU Hours",
     305: "CPU Hours / Bad Exec Att",
@@ -67,6 +59,14 @@ DEFAULT_COLUMNS = {
     350: "Num Jobs w/>1 Exec Att",
     360: "Num Short Jobs",
     390: "Num Ckpt Able Jobs",
+
+    500: "Max Rqst Mem MB",
+    510: "Med Used Mem MB",
+    520: "Max Used Mem MB",
+    525: "Max Rqst Disk GB",
+    527: "Max Used Disk GB",
+    530: "Max Rqst Cpus",
+    540: "Max Rqst Gpus",
 }
 
 
