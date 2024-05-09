@@ -59,8 +59,8 @@ HOLD_REASONS = [
 ]
 
 DEFAULT_COLUMNS = {
-    10: "All CPU Hours",
-    20: "Num Uniq Job Ids",
+    10: "Num Uniq Job Ids",
+    20: "All CPU Hours",
 
     30: "Most Common Hold Reason",
     31: "% Holds Most Comm Reas",
@@ -141,6 +141,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
             except IOError:
                 pass
         super().__init__(**kwargs)
+        self.sort_col = "Num Uniq Job Ids"
 
     def get_query(self, index, start_ts, end_ts, **kwargs):
         # Returns dict matching Elasticsearch.search() kwargs

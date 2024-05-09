@@ -8,8 +8,8 @@ from .BaseFilter import BaseFilter
 
 
 DEFAULT_COLUMNS = {
-    10: "All CPU Hours",
-    20: "Num Uniq Job Ids",
+    10: "Num Uniq Job Ids",
+    20: "All CPU Hours",
     30: "CPU Hours / Exec Att",
 
     40: "% Jobs w/1+ Holds",
@@ -70,6 +70,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
             except IOError:
                 pass
         super().__init__(**kwargs)
+        self.sort_col = "Num Uniq Job Ids"
 
     def get_query(self, index, start_ts, end_ts, **kwargs):
         # Returns dict matching Elasticsearch.search() kwargs

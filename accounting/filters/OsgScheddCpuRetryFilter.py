@@ -8,7 +8,7 @@ from accounting.pull_hold_reasons import get_hold_reasons
 
 
 DEFAULT_COLUMNS = {
-    10: "All CPU Hours",  # Num Uniq Job Ids
+    10: "Num Uniq Job Ids",
     20: "Shadow Starts / Job Id",
     30: "Non Success Shadows (NSS)",
 
@@ -37,6 +37,7 @@ class OsgScheddCpuRetryFilter(BaseFilter):
             except IOError:
                 pass
         super().__init__(**kwargs)
+        self.sort_col = "Num Uniq Job Ids"
 
     def get_query(self, index, start_ts, end_ts, **kwargs):
         # Returns dict matching Elasticsearch.search() kwargs
@@ -213,12 +214,6 @@ class OsgScheddCpuRetryFilter(BaseFilter):
             columns[5] = "Num Users"
         return columns
 
-    def merge_filtered_data(self, data, agg):
-        rows = super().merge_filtered_data(data, agg)
-        columns_sorted = list(rows[0])
-        columns_sorted[columns_sorted.index("All CPU Hours")] = "Num Uniq Job Ids"
-        rows[0] = tuple(columns_sorted)
-        return rows
 
     def compute_custom_columns(self, data, agg, agg_name):
 
@@ -296,7 +291,5 @@ class OsgScheddCpuRetryFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(set(data["User"]))  
-
-        row["All CPU Hours"] = row["Num Uniq Job Ids"]
 
         return row 

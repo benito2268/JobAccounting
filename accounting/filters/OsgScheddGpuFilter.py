@@ -10,9 +10,9 @@ from accounting.pull_topology import get_site_map
 
 
 DEFAULT_COLUMNS = {
-    10: "All CPU Hours",
-    15: "All GPU Hours",
-    20: "Num Uniq Job Ids",
+    10: "Num Uniq Job Ids",
+    20: "All CPU Hours",
+    25: "All GPU Hours",
     30: "% Good CPU Hours",
     35: "% Good GPU Hours",
 
@@ -115,6 +115,7 @@ class OsgScheddGpuFilter(BaseFilter):
             except IOError:
                 pass
         super().__init__(**kwargs)
+        self.sort_col = "Num Uniq Job Ids"
 
     def get_query(self, index, start_ts, end_ts, **kwargs):
         # Returns dict matching Elasticsearch.search() kwargs

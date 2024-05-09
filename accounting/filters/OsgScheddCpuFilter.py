@@ -10,8 +10,8 @@ from accounting.pull_topology import get_site_map
 
 
 DEFAULT_COLUMNS = {
-    10: "All CPU Hours",
-    20: "Num Uniq Job Ids",
+    10: "Num Uniq Job Ids",
+    20: "All CPU Hours",
     30: "% Good CPU Hours",
 
     45: "% Ckpt Able",
@@ -122,6 +122,7 @@ class OsgScheddCpuFilter(BaseFilter):
         if kwargs.get("report_period") == "daily" and date.today().weekday() == 0:
             self.schedd_collector_host_map_checked = set()
         super().__init__(**kwargs)
+        self.sort_col = "Num Uniq Job Ids"
 
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,

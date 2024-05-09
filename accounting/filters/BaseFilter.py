@@ -11,6 +11,7 @@ class BaseFilter:
     name = "job history"
 
     def __init__(self, skip_init=False, **kwargs):
+        self.sort_col = "All CPU Hours"
         self.logger = logging.getLogger("accounting.filter")
         if skip_init:
             return
@@ -303,11 +304,8 @@ class BaseFilter:
             # Store a tuple of all column data in order
             rows.append(tuple(row[col] for col in columns_sorted))
 
-        # Sort rows by All CPU Hours or All GPU Hours
-        try:
-            rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All CPU Hours")))
-        except ValueError:
-            rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All GPU Hours")))
+        # Sort rows
+        rows.sort(reverse=True, key=itemgetter(columns_sorted.index(self.sort_col)))
 
         # Ensure the TOTAL row is at the top
         try:
