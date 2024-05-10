@@ -36,12 +36,12 @@ class ChtcScheddCpuFormatter(BaseFormatter):
         start = datetime.fromtimestamp(start_ts)
         if report_period in ["daily", "weekly", "monthly"]:
             start_date = start.strftime("%Y-%m-%d")
-            subject_str = f"CHTC Schedd {report_period.capitalize()} Usage Report {start_date}"
+            subject_str = f"CHTC AP {report_period.capitalize()} Usage Report {start_date}"
         else:
             end = datetime.fromtimestamp(end_ts)
             start_date = start.strftime("%Y-%m-%d %H:%M:%S")
             end_date = end.strftime("%Y-%m-%d %H:%M:%S")
-            subject_str = f"CHTC Schedd Usage Report {start_date} to {end_date}"
+            subject_str = f"CHTC AP Usage Report {start_date} to {end_date}"
         return subject_str
 
     def rm_cols(self, data):
