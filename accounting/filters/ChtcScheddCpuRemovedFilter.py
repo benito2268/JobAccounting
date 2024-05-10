@@ -72,7 +72,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
                                 "JobStatus": 3
                             }},
                             {"regexp": {
-                                "ScheddName.keyword": "(submit-?[0-9]+|learn|ap[0-9]+)[.]chtc[.]wisc[.]edu"
+                                "ScheddName.keyword": ".*[.]chtc[.]wisc[.]edu"
                             }}
                         ]
                     }
