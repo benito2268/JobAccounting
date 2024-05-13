@@ -10,7 +10,7 @@ from .BaseFilter import BaseFilter
 
 DEFAULT_COLUMNS = {
     5 : "Project",
-    10: "All CPU Hours", # "Last Wall Hrs",
+    10: "Last Wall Hrs",
     20: "Total Wall Hrs",
     30: "Potent CPU Hrs",
     40: "Actual CPU Hrs",
@@ -78,6 +78,7 @@ class OsgScheddLongJobFilter(BaseFilter):
             except IOError:
                 pass
         super().__init__(**kwargs)
+        self.sort_col = "Last Wall Hrs"
 
     def get_query(self, index, start_ts, end_ts, **kwargs):
         # Returns dict matching Elasticsearch.search() kwargs
@@ -217,12 +218,6 @@ class OsgScheddLongJobFilter(BaseFilter):
         columns = DEFAULT_COLUMNS.copy()
         return columns
 
-    def merge_filtered_data(self, data, agg):
-        rows = super().merge_filtered_data(data, agg)
-        columns_sorted = list(rows[0])
-        columns_sorted[columns_sorted.index("All CPU Hours")] = "Last Wall Hrs"
-        rows[0] = tuple(columns_sorted)
-        return rows
 
     def compute_custom_columns(self, data, agg, agg_name):
         cpus_usage = data["CPUsUsage"][0]
@@ -264,7 +259,5 @@ class OsgScheddLongJobFilter(BaseFilter):
         row["Disk Used GB"] = data["DiskUsage"][0] / 1024**2
         row["MB Sent"] = data["BytesSent"][0] / 1024**2
         row["MB Recvd"] = data["BytesRecvd"][0] / 1024**2
-
-        row["All CPU Hours"] = row["Last Wall Hrs"]
 
         return row

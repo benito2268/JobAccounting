@@ -15,8 +15,8 @@ from accounting.pull_topology import get_site_map
 MAX_INT = 2**62
 
 DEFAULT_COLUMNS = {
-    10: "All CPU Hours",
-    20: "Num Uniq Job Ids",
+    10: "Num Uniq Job Ids",
+    20: "All CPU Hours",
     30: "% Good CPU Hours",
 
     45: "% Ckpt Able",
@@ -86,6 +86,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             except IOError:
                 pass
         super().__init__(**kwargs)
+        self.sort_col = "Num Uniq Job Ids"
 
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,
@@ -585,7 +586,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             rows.append(tuple(row[col] for col in columns_sorted))
 
         # Sort rows by All CPU Hours
-        rows.sort(reverse=True, key=itemgetter(columns_sorted.index("All CPU Hours")))
+        rows.sort(reverse=True, key=itemgetter(columns_sorted.index(self.sort_col)))
 
         # Prepend the header row
         rows.insert(0, tuple(columns_sorted))
