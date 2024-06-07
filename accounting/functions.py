@@ -169,3 +169,17 @@ def send_email(subject, from_addr, to_addrs, cc_addrs, bcc_addrs, reply_to_addr,
 
         else:
             logger.error(f"Failed to send email after {tries} loops")
+
+
+def get_job_units(cpus, memory_gb, disk_gb):
+    unit_size = {
+        "cpus": 1,
+        "memory_gb": 4,
+        "disk_gb": 4,
+    }
+    job_units = max([
+        max(1., cpus/unit_size["cpus"]),
+        max(1., memory_gb/unit_size["memory_gb"]),
+        max(1., disk_gb/unit_size["disk_gb"])
+    ])
+    return job_units
