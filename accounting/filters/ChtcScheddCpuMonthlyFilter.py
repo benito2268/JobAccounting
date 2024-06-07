@@ -5,6 +5,7 @@ from operator import itemgetter
 from ast import literal_eval
 import elasticsearch.helpers
 from .BaseFilter import BaseFilter
+from accounting.functions import get_job_units
 
 MAX_INT = 2**62
 
@@ -12,6 +13,7 @@ DEFAULT_COLUMNS = {
     10: "Num Uniq Job Ids",
     20: "All CPU Hours",
     30: "% Good CPU Hours",
+    35: "Job Unit Hours",
 
     45: "% Ckpt Able",
     50: "% Rm'd Jobs",
@@ -64,6 +66,7 @@ DEFAULT_COLUMNS = {
     525: "Max Rqst Disk GB",
     527: "Max Used Disk GB",
     530: "Max Rqst Cpus",
+    545: "Max Job Units",
 }
 
 
@@ -128,6 +131,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         goodput_time = 0
         osdf_files = 0
         osdf_bytes = 0
+        job_units = 0
         if has_shadow and not is_removed:
             goodput_time = int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
             if goodput_time > 0 and goodput_time < 60:
@@ -141,6 +145,12 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
                 is_long = True
         elif not is_removed:
             goodput_time = int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
+        if has_shadow:
+            job_units = get_job_units(
+                cpus=i.get("RequestCpus", 1),
+                memory_gb=i.get("RequestMemory", 1024)/1024,
+                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+            )
         input_files = 0
         input_bytes = 0
         output_files = 0
@@ -221,6 +231,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["GoodCpuTime"] = (goodput_time * max(i.get("RequestCpus", 1), 1))
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * max(i.get("RequestCpus", 1), 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * max(i.get("RequestCpus", 1), 1))
+        sum_cols["JobUnitTime"] = job_units * i.get("RemoteWallClockTime", 0)
         sum_cols["NumShadowStarts"] = int(has_shadow) * i.get("NumShadowStarts", 0)
         sum_cols["NumJobStarts"] = int(has_shadow) * i.get("NumJobStarts", 0)
         sum_cols["NumBadJobStarts"] = int(has_shadow) * max(i.get("NumJobStarts", 0) - 1, 0)
@@ -246,6 +257,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         max_cols["MaxRequestDisk"] = i.get("RequestDisk", 0)
         max_cols["MaxDiskUsage"] = i.get("DiskUsage", 0)
         max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
+        max_cols["MaxJobUnits"] = job_units
 
         min_cols = {}
         min_cols["MinLongJobWallClockTime"] = long_job_wallclock_time
@@ -347,6 +359,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         row["All CPU Hours"]     = data["CpuTime"] / 3600
         row["Num Uniq Job Ids"]  = data["Jobs"]
         row["Good CPU Hours"]    = data["GoodCpuTime"] / 3600
+        row["Job Unit Hours"]    = data["JobUnitTime"] / 3600
 
         row["OSDF Files Xferd"] = data.get("OSDFFiles", "")
         row["Num DAG Node Jobs"] = data["DAGNodeJobs"]
@@ -362,6 +375,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         row["Max Rqst Disk GB"]    = data["MaxRequestDisk"] / (1000*1000)
         row["Max Used Disk GB"]    = data["MaxDiskUsage"] / (1000*1000)
         row["Max Rqst Cpus"]       = data["MaxRequestCpus"]
+        row["Max Job Units"]       = data["MaxJobUnits"]
         row["Num Exec Atts"]       = data["NumJobStarts"]
         row["Num Shadw Starts"]    = data["NumShadowStarts"]
         row["Num Job Holds"]       = data["NumJobHolds"]
