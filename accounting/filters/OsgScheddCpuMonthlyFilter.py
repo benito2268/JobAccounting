@@ -11,6 +11,7 @@ import elasticsearch.helpers
 from functools import lru_cache
 from .BaseFilter import BaseFilter
 from accounting.pull_topology import get_site_map
+from accounting.functions import get_job_units
 
 MAX_INT = 2**62
 
@@ -18,6 +19,7 @@ DEFAULT_COLUMNS = {
     10: "Num Uniq Job Ids",
     20: "All CPU Hours",
     30: "% Good CPU Hours",
+    35: "Job Unit Hours",
 
     45: "% Ckpt Able",
     50: "% Rm'd Jobs",
@@ -67,6 +69,7 @@ DEFAULT_COLUMNS = {
     525: "Max Rqst Disk GB",
     527: "Max Used Disk GB",
     530: "Max Rqst Cpus",
+    545: "Max Job Units",
 }
 
 
@@ -176,6 +179,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         input_files = output_files = 0
         input_bytes = output_bytes = 0
         osdf_files = osdf_bytes = 0
+        job_units = 0
         if has_shadow and not is_site:
             input_file_stats = i.get("TransferInputStats", {})
             output_file_stats = i.get("TransferOutputStats", {})
@@ -206,6 +210,12 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             if not (got_cedar_input_bytes or got_cedar_output_bytes):
                 input_bytes += i.get("BytesRecvd", 0)
                 output_bytes += i.get("BytesSent", 0)
+        if has_shadow:
+            job_units = get_job_units(
+                cpus=i.get("RequestCpus", 1),
+                memory_gb=i.get("RequestMemory", 1024)/1024,
+                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+            )
         long_job_wallclock_time = int(is_long) * i.get("LastRemoteWallClockTime", i.get("CommittedTime", 60))
 
         sum_cols = {}
@@ -227,6 +237,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["GoodCpuTime"] = (goodput_time * max(i.get("RequestCpus", 1), 1))
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * max(i.get("RequestCpus", 1), 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * max(i.get("RequestCpus", 1), 1))
+        sum_cols["JobUnitTime"] = job_units * i.get("RemoteWallClockTime", 0)
         sum_cols["NumShadowStarts"] = int(has_shadow) * i.get("NumShadowStarts", 0)
         sum_cols["NumJobStarts"] = int(has_shadow) * i.get("NumJobStarts", 0)
         sum_cols["NumBadJobStarts"] = int(has_shadow) * max(i.get("NumJobStarts", 0) - 1, 0)
@@ -251,6 +262,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         max_cols["MaxRequestDisk"] = i.get("RequestDisk", 0)
         max_cols["MaxDiskUsage"] = i.get("DiskUsage", 0)
         max_cols["MaxRequestCpus"] = i.get("RequestCpus", 1)
+        max_cols["MaxJobUnits"] = job_units
 
         min_cols = {}
         min_cols["MinLongJobWallClockTime"] = long_job_wallclock_time
@@ -404,6 +416,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         # Compute columns
         row["All CPU Hours"]    = data["GoodCpuTime"] / 3600
+        row["Job Unit Hours"]    = data["JobUnitTime"] / 3600
         row["Num Uniq Job Ids"] = data["Jobs"]
         row["Num Jobs Over Rqst Disk"] = data["OverDiskJobs"]
         row["Num Short Jobs"]   = data["ShortJobs"]
@@ -412,6 +425,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Max Rqst Disk GB"] = data["MaxRequestDisk"] / (1024*1024)
         row["Max Used Disk GB"] = data["MaxDiskUsage"] / (1024*1024)
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
+        row["Max Job Units"]    = data["MaxJobUnits"]
         row["Num S'ty Jobs"]    = data["SingularityJobs"]
 
         if row["Num Uniq Job Ids"] > 0:
@@ -447,6 +461,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         # Compute columns
         row["All CPU Hours"]     = data["CpuTime"] / 3600
         row["Good CPU Hours"]    = data["GoodCpuTime"] / 3600
+        row["Job Unit Hours"]    = data["JobUnitTime"] / 3600
         row["Num Uniq Job Ids"]  = data["Jobs"]
         row["Num DAG Node Jobs"] = data["DAGNodeJobs"]
         row["Num Rm'd Jobs"]     = data["RmJobs"]
@@ -460,6 +475,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Max Rqst Disk GB"] = data["MaxRequestDisk"] / (1024*1024)
         row["Max Used Disk GB"] = data["MaxDiskUsage"] / (1024*1024)
         row["Max Rqst Cpus"]    = data["MaxRequestCpus"]
+        row["Max Job Units"]    = data["MaxJobUnits"]
         row["Num Exec Atts"]    = data["NumJobStarts"]
         row["Num Shadw Starts"] = data["NumShadowStarts"]
         row["Num Local Univ Jobs"] = data["LocalJobs"]

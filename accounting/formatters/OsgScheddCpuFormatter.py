@@ -109,6 +109,8 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "Output MB / File":       lambda x: f"<td>{float(x):.1f}</td>",
             "Max Rqst Disk GB":       lambda x: f"<td>{float(x):.1f}</td>",
             "Max Used Disk GB":       lambda x: f"<td>{float(x):.1f}</td>",
+            "Med Job Units":          lambda x: f"<td>{float(x):.1f}</td>",
+            "Max Job Units":          lambda x: f"<td>{float(x):.1f}</td>",
         }
         return super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
 
@@ -118,6 +120,10 @@ class OsgScheddCpuFormatter(BaseFormatter):
         custom_items["All CPU Hours"]    = "Total CPU hours for all execution attempts, including preemption and removal"
         custom_items["% Good CPU Hours"] = "Good CPU Hours per All CPU Hours, as a percentage"
         custom_items["Good CPU Hours"]   = "Total CPU hours for execution attempts that ran to completion"
+        custom_items["Job Units"]        = "The minimum number of base job units required to satisfy a job's resource requirements. The base job unit is 1 CPU, 4 GB memory, and 4 GB disk"
+        custom_items["Job Unit Hours"]   = """Job units multiplied by total wallclock hours, like "All CPU Hours" but using "Job Units" instead of CPUs"""
+        custom_items["Med Job Units"]    = "Median number of job units requested by the submitted jobs"
+        custom_items["Med Job Units"]    = "Maximum number of job units requested by a submitted job"
         custom_items["Max Rqst Mem MB"]  = "Maximum memory requested across all submitted jobs in MB"
         custom_items["Max Used Mem MB"]  = "Maximum measured memory usage across all submitted jobs' last execution attempts in MB"
         custom_items["Max Rqst Cpus"]    = "Maximum number of CPUs requested across all submitted jobs"

@@ -7,12 +7,14 @@ from datetime import date
 from pathlib import Path
 from .BaseFilter import BaseFilter
 from accounting.pull_topology import get_site_map
+from accounting.functions import get_job_units
 
 
 DEFAULT_COLUMNS = {
     10: "Num Uniq Job Ids",
     20: "All CPU Hours",
     30: "% Good CPU Hours",
+    35: "Job Unit Hours",
 
     45: "% Ckpt Able",
     50: "% Rm'd Jobs",
@@ -71,6 +73,8 @@ DEFAULT_COLUMNS = {
     525: "Max Rqst Disk GB",
     527: "Max Used Disk GB",
     530: "Max Rqst Cpus",
+    540: "Med Job Units",
+    545: "Max Job Units",
 }
 
 
@@ -246,6 +250,16 @@ class OsgScheddCpuFilter(BaseFilter):
             o["_BadWallClockTime"].append(0)
             o["_NumBadJobStarts"].append(0)
 
+        # Compute job units
+        if univ not in (7, 12) and i.get("RemoteWallClockTime", 0) > 0:
+            o["NumJobUnits"].append(get_job_units(
+                cpus=i.get("RequestCpus", 1),
+                memory_gb=i.get("RequestMemory", 1024)/1024,
+                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+            ))
+        else:
+            o["NumJobUnits"].append(None)
+
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
             o[attr].append(i.get(attr, None))
@@ -304,6 +318,16 @@ class OsgScheddCpuFilter(BaseFilter):
             o["_BadWallClockTime"].append(0)
             o["_NumBadJobStarts"].append(0)
 
+        # Compute job units
+        if univ not in (7, 12) and i.get("RemoteWallClockTime", 0) > 0:
+            o["NumJobUnits"].append(get_job_units(
+                cpus=i.get("RequestCpus", 1),
+                memory_gb=i.get("RequestMemory", 1024)/1024,
+                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+            ))
+        else:
+            o["NumJobUnits"].append(None)
+
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
             # Use UNKNOWN for missing or blank ProjectName and ScheddName
@@ -352,6 +376,16 @@ class OsgScheddCpuFilter(BaseFilter):
             o["_NumCkptJobs"].append(1)
         else:
             o["_NumCkptJobs"].append(0)
+
+        # Compute job units
+        if univ not in (7, 12) and i.get("RemoteWallClockTime", 0) > 0:
+            o["NumJobUnits"].append(get_job_units(
+                cpus=i.get("RequestCpus", 1),
+                memory_gb=i.get("RequestMemory", 1024)/1024,
+                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+            ))
+        else:
+            o["NumJobUnits"].append(None)
 
         # Compute badput fields
         if (
@@ -409,6 +443,16 @@ class OsgScheddCpuFilter(BaseFilter):
 
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
+
+        # Compute job units
+        if i.get("RemoteWallClockTime", 0) > 0:
+            o["NumJobUnits"].append(get_job_units(
+                cpus=i.get("RequestCpus", 1),
+                memory_gb=i.get("RequestMemory", 1024)/1024,
+                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+            ))
+        else:
+            o["NumJobUnits"].append(None)
 
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
@@ -560,6 +604,17 @@ class OsgScheddCpuFilter(BaseFilter):
         else:
             # There is no variance if there is only one value
             row["Std Hrs"] = 0
+
+        # Compute job unit metrics
+        row["Med Job Units"] = stats.median(self.clean(data["NumJobUnits"], allow_empty_list=False))
+        row["Max Job Units"] = max(self.clean(data["NumJobUnits"], allow_empty_list=False))
+        row["Job Unit Hours"] = sum(
+            job_units*wallclocktime/3600 for job_units, wallclocktime in zip(
+                data.get("NumJobUnits", []),
+                data.get("RemoteWallClockTime", []),
+            )
+            if job_units is not None
+        )
 
         # Compute mode for Project and Schedd columns in the Users table
         row["Num Users"] = len(set(data["User"]))
@@ -888,6 +943,17 @@ class OsgScheddCpuFilter(BaseFilter):
         else:
             # There is no variance if there is only one value
             row["Std Hrs"] = 0
+
+        # Compute job unit metrics
+        row["Med Job Units"] = stats.median(self.clean(data["NumJobUnits"], allow_empty_list=False))
+        row["Max Job Units"] = max(self.clean(data["NumJobUnits"], allow_empty_list=False))
+        row["Job Unit Hours"] = sum(
+            job_units*wallclocktime/3600 for job_units, wallclocktime in zip(
+                data.get("NumJobUnits", []),
+                data.get("RemoteWallClockTime", []),
+            )
+            if job_units is not None
+        )
 
         # Compute mode for Project and Schedd columns in the Users table
         if agg == "Users":
