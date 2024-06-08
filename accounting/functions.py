@@ -7,6 +7,7 @@ import smtplib
 import dns.resolver
 import time
 from pathlib import Path
+from math import ceil
 from email.mime.multipart import MIMEMultipart
 from email.mime.text  import MIMEText
 from email.mime.base import MIMEBase
@@ -178,8 +179,8 @@ def get_job_units(cpus, memory_gb, disk_gb):
         "disk_gb": 4,
     }
     job_units = max([
-        max(1., cpus/unit_size["cpus"]),
-        max(1., memory_gb/unit_size["memory_gb"]),
-        max(1., disk_gb/unit_size["disk_gb"])
+        max(1, cpus/unit_size["cpus"]),
+        max(0, memory_gb/unit_size["memory_gb"]),
+        max(0, disk_gb/unit_size["disk_gb"])
     ])
-    return job_units
+    return ceil(job_units)
