@@ -109,8 +109,6 @@ class OsgScheddCpuFormatter(BaseFormatter):
             "Output MB / File":       lambda x: f"<td>{float(x):.1f}</td>",
             "Max Rqst Disk GB":       lambda x: f"<td>{float(x):.1f}</td>",
             "Max Used Disk GB":       lambda x: f"<td>{float(x):.1f}</td>",
-            "Med Job Units":          lambda x: f"<td>{float(x):.1f}</td>",
-            "Max Job Units":          lambda x: f"<td>{float(x):.1f}</td>",
         }
         return super().format_rows(header, rows, custom_fmts=custom_fmts, default_text_fmt=default_text_fmt, default_numeric_fmt=default_numeric_fmt)
 
