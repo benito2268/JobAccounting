@@ -5,6 +5,7 @@ from functools import partial
 from operator import itemgetter
 from elasticsearch import Elasticsearch
 import elasticsearch.helpers
+import importlib
 
 
 class BaseFilter:

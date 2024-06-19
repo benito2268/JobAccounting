@@ -12,3 +12,4 @@ from .OsgScheddCpuRetryFormatter import OsgScheddCpuRetryFormatter
 from .OsgScheddJobDistroFormatter import OsgScheddJobDistroFormatter
 from .ChtcScheddJobDistroFormatter import ChtcScheddJobDistroFormatter
 from .PathScheddCpuFormatter import PathScheddCpuFormatter
+from .IgwnScheddCpuFormatter import IgwnScheddCpuFormatter

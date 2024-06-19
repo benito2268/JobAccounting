@@ -2,6 +2,7 @@ import json
 import elasticsearch
 import logging
 from pathlib import Path
+import importlib
 
 logger = logging.getLogger("accounting.push_totals_to_es")
 
