@@ -121,7 +121,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         else:
             activation_duration = 0
         has_activation_setup_duration = i.get("activationsetupduration") is not None
-        if has_activation_duration:
+        if has_activation_setup_duration:
             activation_setup_duration = i.get("activationsetupduration")
         else:
             activation_setup_duration = 0
