@@ -27,17 +27,14 @@ def handle_dashes(dtype, fmt, value):
 
 
 def compact_institution(s):
-    # Break after [@_.]
-    # Don't break after [-]
-    # University -> U.
-    # College -> Coll.
-    # State -> St
-    # Laboratory -> Lab
-    # Saint -> St.
+    # Shorted some common nouns
     s = s.replace("University", "U.")
-    s = s.replace("State", "St")
-    s = s.replace("Laboratory", "Lab")
+    s = s.replace("Laboratory", "Lab.")
     s = s.replace("College", "Coll.")
+    s = s.replace("Institute", "Inst.")
+    s = s.replace("Technology", "Tech.")
+    s = s.replace("National", "Nat'l")
+    s = s.replace("Science", "Sci.")
     s = break_chars(s)
     return s
 
