@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 from .BaseFilter import BaseFilter
 from accounting.pull_topology import get_site_map
-from accounting.functions import get_job_units
+from accounting.functions import get_job_units, get_topology_project_data
 
 
 DEFAULT_COLUMNS = {
@@ -127,6 +127,8 @@ class OsgScheddCpuFilter(BaseFilter):
             self.schedd_collector_host_map_checked = set()
         super().__init__(**kwargs)
         self.sort_col = "Num Uniq Job Ids"
+        self.topology_project_map = get_topology_project_data()
+
 
     def schedd_collector_host(self, schedd):
         # Query Schedd ad in Collector for its CollectorHost,
@@ -475,6 +477,7 @@ class OsgScheddCpuFilter(BaseFilter):
             columns[5] = "Most Used Project"
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
+            columns[4] = "PI Institution"
             columns[5] = "Num Users"
         if agg == "Institution":
             columns[4] = "Num Sites"
@@ -970,5 +973,10 @@ class OsgScheddCpuFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(set(data["User"]))
+            if agg_name != "TOTAL":
+                project_map = self.topology_project_map.get(agg_name.lower(), self.topology_project_map["UNKNOWN"])
+                row["PI Institution"] = project_map["pi_institution"]
+            else:
+                row["PI Institution"] = ""
 
         return row

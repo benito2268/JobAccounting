@@ -4,6 +4,10 @@ import logging
 import csv
 import smtplib
 import time
+import pickle
+import xml.etree.ElementTree as ET
+from urllib.request import urlopen
+from urllib.error import HTTPError
 from pathlib import Path
 from math import ceil
 from email.mime.multipart import MIMEMultipart
@@ -12,6 +16,10 @@ from email.mime.base import MIMEBase
 from email.utils import formatdate
 from email import encoders
 from dns.resolver import query as dns_query
+
+
+TOPOLOGY_PROJECT_DATA_URL = "https://topology.opensciencegrid.org/miscproject/xml"
+TOPOLOGY_RESOURCE_DATA_URL = "https://topology.opensciencegrid.org/rgsummary/xml"
 
 
 def get_timestamps(report_period, start_ts, end_ts):
@@ -208,3 +216,103 @@ def get_job_units(cpus, memory_gb, disk_gb):
         max(0, disk_gb/unit_size["disk_gb"])
     ])
     return ceil(job_units)
+
+
+def get_topology_project_data(
+        force_update=False,
+        project_data_path=Path("topology_project_data_map.pickle"),
+    ) -> dict:
+    if (
+        not force_update and
+        project_data_path.is_file() and
+        project_data_path.stat().st_mtime > (time.time() - 24*3600)
+    ):
+        projects_map = pickle.load(project_data_path.open("rb"))
+    else:
+        tries = 0
+        max_tries = 5
+        while tries < max_tries:
+            try:
+                with urlopen(TOPOLOGY_PROJECT_DATA_URL) as xml:
+                    xmltree = ET.parse(xml)
+            except HTTPError:
+                time.sleep(2**tries)
+                tries += 1
+                if tries == max_tries:
+                    raise
+            else:
+                break
+        projects = xmltree.getroot()
+        projects_map = {
+            "UNKNOWN": {
+                "name": "UNKNOWN",
+                "pi": "UNKNOWN",
+                "pi_institution": "UNKNOWN",
+                "field_of_science": "UNKNOWN",
+            }
+        }
+
+        for project in projects:
+            project_map = {}
+            project_map["name"] = project.find("Name").text
+            project_map["pi"] = project.find("PIName").text
+            project_map["pi_institution"] = project.find("Organization").text
+            project_map["field_of_science"] = project.find("FieldOfScience").text
+            project_map["id"] = project.find("ID").text
+            project_map["pi_institution_id"] = project.find("InstitutionID").text
+            project_map["field_of_science_id"] = project.find("FieldOfScienceID").text
+            projects_map[project_map["name"].lower()] = project_map.copy()
+
+        pickle.dump(projects_map, project_data_path.open("wb"))
+
+    return projects_map
+
+
+def get_topology_resource_data(
+        force_update=False,
+        resource_data_path=Path("topology_resource_data_map.pickle"),
+    ) -> dict:
+    if (
+        not force_update and
+        resource_data_path.is_file() and
+        resource_data_path.stat().st_mtime > (time.time() - 24*3600)
+    ):
+        resources_map = pickle.load(resource_data_path.open("rb"))
+    else:
+        tries = 0
+        max_tries = 5
+        while tries < max_tries:
+            try:
+                with urlopen(TOPOLOGY_RESOURCE_DATA_URL) as xml:
+                    xmltree = ET.parse(xml)
+            except HTTPError:
+                time.sleep(2**tries)
+                tries += 1
+                if tries == max_tries:
+                    raise
+            else:
+                break
+        resource_groups = xmltree.getroot()
+        resources_map = {
+            "UNKNOWN": {
+                "name": "UNKNOWN",
+                "institution": "UNKNOWN",
+            }
+        }
+
+        for resource_group in resource_groups:
+            resource_institution = resource_group.find("Facility").find("Name").text
+            resource_institution_id = resource_group.find("Facility").find("ID").text
+
+            resources = resource_group.find("Resources")
+            for resource in resources:
+                resource_map = {}
+                resource_map["institution"] = resource_institution
+                resource_map["institution_id"] = resource_institution_id
+                resource_map["name"] = resource.find("Name").text
+                resource_map["id"] = resource.find("ID").text
+                resources_map[resource_map["name"].lower()] = resource_map.copy()
+
+        pickle.dump(resources_map, resource_data_path.open("wb"))
+
+    return resources_map
