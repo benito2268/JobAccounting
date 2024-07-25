@@ -973,7 +973,10 @@ class OsgScheddCpuFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(set(data["User"]))
-            project_map = self.topology_project_map.get(agg_name.lower(), self.topology_project_map["UNKNOWN"])
-            row["PI Institution"] = project_map["pi_institution"]
+            if agg_name != "TOTAL":
+                project_map = self.topology_project_map.get(agg_name.lower(), self.topology_project_map["UNKNOWN"])
+                row["PI Institution"] = project_map["pi_institution"]
+            else:
+                row["PI Institution"] = ""
 
         return row
