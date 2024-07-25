@@ -1,5 +1,5 @@
 import sys
-from .BaseFormatter import BaseFormatter
+from .BaseFormatter import BaseFormatter, break_chars
 from datetime import datetime
 from collections import OrderedDict
 
@@ -24,6 +24,22 @@ def handle_dashes(dtype, fmt, value):
         print(f"Caught unexpected exception {str(err)} when converting {value} to {repr(dtype)}.", file=sys.stderr)
         formatted_str = f"""<td style="text-align: right">{value}</td>"""
     return formatted_str
+
+
+def compact_institution(s):
+    # Break after [@_.]
+    # Don't break after [-]
+    # University -> U.
+    # College -> Coll.
+    # State -> St
+    # Laboratory -> Lab
+    # Saint -> St.
+    s = s.replace("University", "U.")
+    s = s.replace("State", "St")
+    s = s.replace("Laboratory", "Lab")
+    s = s.replace("College", "Coll.")
+    s = break_chars(s)
+    return s
 
 
 class OsgScheddCpuFormatter(BaseFormatter):
@@ -78,6 +94,7 @@ class OsgScheddCpuFormatter(BaseFormatter):
 
     def format_rows(self, header, rows, custom_fmts={}, default_text_fmt=None, default_numeric_fmt=None):
         custom_fmts = {
+            "PI Institution": lambda x: f'<td class="text">{compact_institution(x)}</td>',
             "Min Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "25% Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
             "Med Hrs":    lambda x: f"<td>{hhmm(x)}</td>",
