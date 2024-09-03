@@ -57,6 +57,9 @@ def push_totals_to_es(csv_files, index_name, **kwargs):
         else:
             es_client["http_auth"] = (es_user, es_pass)
 
+        if "es_url_prefix" in kwargs:
+            es_client["url_prefix"] = kwargs["es_url_prefix"]
+
         # Only use HTTPS if CA certs are given or if certifi is available
         if es_use_https:
             if es_ca_certs is not None:

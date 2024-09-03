@@ -3,6 +3,7 @@
 import os
 import sys
 import time
+import json
 import pickle
 import logging
 import logging.handlers
@@ -108,3 +109,14 @@ if args.report_period in ["daily", "weekly", "monthly"] and not args.do_not_uplo
         logger.error("Could not push daily totals to Elasticsearch")
         if args.debug:
             logger.exception("Error follows")
+
+    # Push summary data to tables in Tiger
+    if Path("tiger-es-summary-config.json").exists():
+        logger.info("Pushing daily totals to Tiger Elasticsearch")
+        try:
+            tiger_args = json.load(Path("tiger-es-summary-config.json").open("r"))
+            push_totals_to_es(table_files, "usage-summary-000001", **tiger_args)
+        except Exception as e:
+            logger.error("Could not push daily totals to Tiger Elasticsearch")
+            if args.debug:
+                logger.exception("Error follows")
