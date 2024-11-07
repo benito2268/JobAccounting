@@ -299,6 +299,7 @@ def get_topology_resource_data(
             "UNKNOWN": {
                 "name": "UNKNOWN",
                 "institution": "UNKNOWN",
+                "osg_id": "UNKNOWN"
             }
         }
 
@@ -333,6 +334,8 @@ def get_prp_mapping_data(
     ):
         prp_id_map = pickle.load(prp_data_path.open("rb"))
     else:
+        topology_resource_map = get_topology_resource_data(force_update=force_update)
+        osg_id_institution_map = {d["osg_id"]: d["institution"] for d in topology_resource_map.values()}
         prp_id_map = {}
         tries = 0
         max_tries = 5
@@ -340,13 +343,17 @@ def get_prp_mapping_data(
             try:
                 with urlopen(INSTITUTION_IDS_DATA_URL) as f:
                     for resource in json.load(f):
-                        institution = resource["name"]
-                        osg_id_short = (resource.get("id") or "").split("/")[-1]
-                        ror_id_short = (resource.get("ror_id") or "").split("/")[-1]
-                        if osg_id_short:
-                            prp_id_map[osg_id_short] = institution
+                        osg_id = resource.get("id")
+                        if not osg_id:
+                            continue
+                        institution = osg_id_institution_map.get(osg_id)
+                        if not institution:
+                            continue
+                        osg_id_short = osg_id.split("/")[-1]
+                        prp_id_map[osg_id_short] = institution
                         # OSG_INSTITUTION_IDS mistakenly had the ROR IDs before ~2024-11-07,
                         # so we map those too (as long as they don't conflict with OSG IDs)
+                        ror_id_short = (resource.get("ror_id") or "").split("/")[-1]
                         if ror_id_short and ror_id_short not in prp_id_map:
                             prp_id_map[ror_id_short] = institution
             except HTTPError:
