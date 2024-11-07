@@ -346,7 +346,7 @@ def get_prp_mapping_data(
                         osg_id = resource.get("id")
                         if not osg_id:
                             continue
-                        institution = osg_id_institution_map.get(osg_id)
+                        institution = osg_id_institution_map.get(osg_id, resource.get("name"))
                         if not institution:
                             continue
                         osg_id_short = osg_id.split("/")[-1]
