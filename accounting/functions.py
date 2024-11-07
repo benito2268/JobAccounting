@@ -5,6 +5,7 @@ import csv
 import smtplib
 import time
 import pickle
+import json
 import xml.etree.ElementTree as ET
 from urllib.request import urlopen
 from urllib.error import HTTPError
@@ -20,6 +21,7 @@ from dns.resolver import query as dns_query
 
 TOPOLOGY_PROJECT_DATA_URL = "https://topology.opensciencegrid.org/miscproject/xml"
 TOPOLOGY_RESOURCE_DATA_URL = "https://topology.opensciencegrid.org/rgsummary/xml"
+INSTITUTION_IDS_DATA_URL = "https://topology-institutions.osg-htc.org/api/institution_ids"
 
 
 def get_timestamps(report_period, start_ts, end_ts):
@@ -303,12 +305,14 @@ def get_topology_resource_data(
         for resource_group in resource_groups:
             resource_institution = resource_group.find("Facility").find("Name").text
             resource_institution_id = resource_group.find("Facility").find("ID").text
+            resource_institution_osg_id = resource_group.find("Facility").find("InstitutionID").text
 
             resources = resource_group.find("Resources")
             for resource in resources:
                 resource_map = {}
                 resource_map["institution"] = resource_institution
                 resource_map["institution_id"] = resource_institution_id
+                resource_map["osg_id"] = resource_institution_osg_id
                 resource_map["name"] = resource.find("Name").text
                 resource_map["id"] = resource.find("ID").text
                 resources_map[resource_map["name"].lower()] = resource_map.copy()
@@ -316,3 +320,43 @@ def get_topology_resource_data(
         pickle.dump(resources_map, resource_data_path.open("wb"))
 
     return resources_map
+
+
+def get_prp_mapping_data(
+        force_update=False,
+        prp_data_path=Path("prp_data_map.pickle"),
+    ) -> dict:
+    if (
+        not force_update and
+        prp_data_path.is_file() and
+        prp_data_path.stat().st_mtime > (time.time() - 24*3600)
+    ):
+        prp_id_map = pickle.load(prp_data_path.open("rb"))
+    else:
+        prp_id_map = {}
+        tries = 0
+        max_tries = 5
+        while tries < max_tries:
+            try:
+                with urlopen(INSTITUTION_IDS_DATA_URL) as f:
+                    for resource in json.load(f):
+                        institution = resource["name"]
+                        osg_id_short = (resource.get("id") or "").split("/")[-1]
+                        ror_id_short = (resource.get("ror_id") or "").split("/")[-1]
+                        if osg_id_short:
+                            prp_id_map[osg_id_short] = institution
+                        # OSG_INSTITUTION_IDS mistakenly had the ROR IDs before ~2024-11-07,
+                        # so we map those too (as long as they don't conflict with OSG IDs)
+                        if ror_id_short and ror_id_short not in prp_id_map:
+                            prp_id_map[ror_id_short] = institution
+            except HTTPError:
+                time.sleep(2**tries)
+                tries += 1
+                if tries == max_tries:
+                    raise
+            else:
+                break
+
+        pickle.dump(prp_id_map, prp_data_path.open("wb"))
+
+    return prp_id_map

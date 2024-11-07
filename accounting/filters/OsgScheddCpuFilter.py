@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 from .BaseFilter import BaseFilter
 from accounting.pull_topology import get_site_map
-from accounting.functions import get_job_units, get_topology_project_data
+from accounting.functions import get_job_units, get_topology_project_data, get_prp_mapping_data
 
 
 DEFAULT_COLUMNS = {
@@ -107,6 +107,7 @@ DEFAULT_FILTER_ATTRS = [
 
 
 SITE_MAP = get_site_map()
+PRP_ID_MAP = get_prp_mapping_data()
 
 
 class OsgScheddCpuFilter(BaseFilter):
@@ -428,6 +429,9 @@ class OsgScheddCpuFilter(BaseFilter):
         site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
         if (site is None) or (not site):
             institution = "Unknown (resource name missing)"
+        elif site.lower() == "SDSC-PRP-OSPool-Provisioner".lower() and "MachineAttrOSG_INSTITUTION_ID0" in i:
+            osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
+            institution = PRP_ID_MAP.get(osg_id_short, SITE_MAP.get(site, f"Unmapped resource: {site}"))
         else:
             institution = SITE_MAP.get(site, f"Unmapped resource: {site}")
         o = data["Institution"][institution]
