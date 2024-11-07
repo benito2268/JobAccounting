@@ -429,7 +429,7 @@ class OsgScheddCpuFilter(BaseFilter):
         site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
         if (site is None) or (not site):
             institution = "Unknown (resource name missing)"
-        elif site.lower() == "SDSC-PRP-OSPool-Provisioner".lower() and "MachineAttrOSG_INSTITUTION_ID0" in i:
+        elif "MachineAttrOSG_INSTITUTION_ID0" in i:
             osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
             institution = PRP_ID_MAP.get(osg_id_short, SITE_MAP.get(site, f"Unmapped resource: {site}"))
         else:
