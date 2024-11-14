@@ -101,6 +101,7 @@ DEFAULT_FILTER_ATTRS = [
 
 
 SITE_MAP = get_site_map()
+PRP_ID_MAP = get_prp_mapping_data()
 
 
 class OsgScheddGpuFilter(BaseFilter):

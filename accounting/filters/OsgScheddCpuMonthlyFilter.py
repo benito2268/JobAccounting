@@ -74,6 +74,7 @@ DEFAULT_COLUMNS = {
 
 
 SITE_MAP = get_site_map()
+PRP_ID_MAP = get_prp_mapping_data()
 
 
 class OsgScheddCpuMonthlyFilter(BaseFilter):
