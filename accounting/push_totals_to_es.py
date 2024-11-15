@@ -114,19 +114,20 @@ def push_totals_to_es(csv_files, index_name, **kwargs):
         (totals[table], lengths[table]) = read_csv(csv_file)
         del totals[table][table.casefold()]
         for key in totals[table]:
-            try:
-                totals[table][key] = int(totals[table][key])
-                if totals[table][key] == -999:
-                    totals[table][key] = None
-            except ValueError:
+            if totals[table][key] == "n/a":
+                totals[table][key] = None
+            if totals[table][key] is not None:
                 try:
-                    totals[table][key] = float(totals[table][key])
-                    if abs(totals[table][key] + 999) < 0.001:
-                        totals[table][key] = None
-                    if totals[table][key] == "n/a":
+                    totals[table][key] = int(totals[table][key])
+                    if totals[table][key] == -999:
                         totals[table][key] = None
                 except ValueError:
-                    pass
+                    try:
+                        totals[table][key] = float(totals[table][key])
+                        if abs(totals[table][key] + 999) < 0.001:
+                            totals[table][key] = None
+                    except ValueError:
+                        pass
         totals[table][f"num_{table.casefold()}s"] = lengths[table]
         totals[table]["date"] = metadata["Date"]
         totals[table]["query"] = metadata["Name"]
