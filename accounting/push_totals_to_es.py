@@ -98,7 +98,7 @@ def push_totals_to_es(csv_files, index_name, **kwargs):
             "numeric_detection": True,
         }
 
-        body = json.dumps({"mappings": mappings}) 
+        body = json.dumps({"mappings": mappings})
         client.indices.create(index=index, body=body)
 
     def get_doc_id(doc):
@@ -122,6 +122,8 @@ def push_totals_to_es(csv_files, index_name, **kwargs):
                 try:
                     totals[table][key] = float(totals[table][key])
                     if abs(totals[table][key] + 999) < 0.001:
+                        totals[table][key] = None
+                    if totals[table][key] == "n/a":
                         totals[table][key] = None
                 except ValueError:
                     pass
