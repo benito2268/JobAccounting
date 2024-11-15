@@ -3,8 +3,6 @@ import re
 import htcondor
 import pickle
 from pathlib import Path
-from elasticsearch import Elasticsearch
-import elasticsearch.helpers
 from .BaseFilter import BaseFilter
 
 
@@ -42,6 +40,7 @@ DEFAULT_COLUMNS = {
 
 DEFAULT_FILTER_ATTRS = [
     "RemoteWallClockTime",
+    "LastRemoteWallClockTime",
     "CommittedTime",
     "GlobalJobId",
     "ScheddName",
@@ -228,12 +227,12 @@ class OsgScheddLongJobFilter(BaseFilter):
         row = {}
         row["Project"] = data["ProjectName"]
 
-        row["Last Wall Hrs"] = data["CommittedTime"][0] / 3600
+        row["Last Wall Hrs"] = (data["LastRemoteWallClockTime"][0] or data["CommittedTime"][0] or 0) / 3600
         row["Total Wall Hrs"] = data["RemoteWallClockTime"][0] / 3600
-        row["Potent CPU Hrs"] = max(data["RequestCpus"][0], 1) * row["Last Wall Hrs"]
+        row["Potent CPU Hrs"] = max(data["RequestCpus"][0] or 1, 1) * row["Last Wall Hrs"]
         try:
             row["Actual CPU Hrs"] = cpus_usage * row["Last Wall Hrs"]
-            row["% CPU Eff"] = 100 * cpus_usage / max(data["RequestCpus"][0], 1)
+            row["% CPU Eff"] = 100 * cpus_usage / max(data["RequestCpus"][0] or 1, 1)
         except TypeError:
             row["Actual CPU Hrs"] = "n/a"
             row["% CPU Eff"] = "n/a"
@@ -250,14 +249,14 @@ class OsgScheddLongJobFilter(BaseFilter):
         row["Num Shadw Starts"] = data["NumShadowStarts"][0] or 0
         row["Num Holds"] = data["NumHolds"][0] or 0
 
-        row["Rqst Cpus"] = data["RequestCpus"][0]
+        row["Rqst Cpus"] = data["RequestCpus"][0] or 1
         row["CPUs Used"] = data["CPUsUsage"][0]
         row["Rqst Gpus"] = data["RequestGpus"][0]
-        row["Rqst Mem GB"] = data["RequestMemory"][0] / 1024
-        row["Mem Used GB"] = data["MemoryUsage"][0] / 1024
-        row["Rqst Disk GB"] = data["RequestDisk"][0] / 1024**2
-        row["Disk Used GB"] = data["DiskUsage"][0] / 1024**2
-        row["MB Sent"] = data["BytesSent"][0] / 1024**2
-        row["MB Recvd"] = data["BytesRecvd"][0] / 1024**2
+        row["Rqst Mem GB"] = (data["RequestMemory"][0] or 0) / 1024
+        row["Mem Used GB"] = (data["MemoryUsage"][0] or 0) / 1024
+        row["Rqst Disk GB"] = (data["RequestDisk"][0] or 0) / 1024**2
+        row["Disk Used GB"] = (data["DiskUsage"][0] or 0) / 1024**2
+        row["MB Sent"] = (data["BytesSent"][0] or 0) / 1024**2
+        row["MB Recvd"] = (data["BytesRecvd"][0] or 0) / 1024**2
 
         return row
