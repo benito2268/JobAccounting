@@ -73,7 +73,7 @@ def get_site_map(topology_pickle=TOPOLOGY_PICKLE, force_update=False):
 
     # Update site map if older than a day
     try:
-        if (time.time() - topology_pickle.stat().st_mtime > 23*3600) or force_update:
+        if (time.time() - topology_pickle.stat().st_mtime > 3600) or force_update:
             update_topology_pickle(topology_pickle)
         return pickle.load(topology_pickle.open("rb"))
     except FileNotFoundError:

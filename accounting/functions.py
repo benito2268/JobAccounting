@@ -227,7 +227,7 @@ def get_topology_project_data(
     if (
         not force_update and
         project_data_path.is_file() and
-        project_data_path.stat().st_mtime > (time.time() - 24*3600)
+        project_data_path.stat().st_mtime > (time.time() - 3600)
     ):
         projects_map = pickle.load(project_data_path.open("rb"))
     else:
@@ -277,7 +277,7 @@ def get_topology_resource_data(
     if (
         not force_update and
         resource_data_path.is_file() and
-        resource_data_path.stat().st_mtime > (time.time() - 24*3600)
+        resource_data_path.stat().st_mtime > (time.time() - 3600)
     ):
         resources_map = pickle.load(resource_data_path.open("rb"))
     else:
@@ -330,7 +330,7 @@ def get_prp_mapping_data(
     if (
         not force_update and
         prp_data_path.is_file() and
-        prp_data_path.stat().st_mtime > (time.time() - 24*3600)
+        prp_data_path.stat().st_mtime > (time.time() - 3600)
     ):
         prp_id_map = pickle.load(prp_data_path.open("rb"))
     else:
