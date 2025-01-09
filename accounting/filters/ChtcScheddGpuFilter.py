@@ -246,7 +246,7 @@ class ChtcScheddGpuFilter(BaseFilter):
         for attr in filter_attrs:
             # Use UNKNOWN for missing or blank ScheddName
             if attr in {"ScheddName", "ProjectName"}:
-                o[attr].append(i.get(attr, "UNKNOWN") or "UNKNOWN")
+                o[attr].append(i.get(attr, i.get(attr.lower(), "UNKNOWN")) or "UNKNOWN")
             else:
                 o[attr].append(i.get(attr, None))
 
@@ -257,7 +257,7 @@ class ChtcScheddGpuFilter(BaseFilter):
         i = doc["_source"]
 
         # Get output dict for this project
-        project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
+        project = i.get("ProjectName", i.get("projectname", "UNKNOWN")) or "UNKNOWN"
         o = data["Projects"][project]
 
         # Add custom attrs to the list of attrs

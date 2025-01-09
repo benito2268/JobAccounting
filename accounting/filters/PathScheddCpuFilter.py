@@ -113,7 +113,7 @@ class PathScheddCpuFilter(BaseFilter):
         i = doc["_source"]
 
         # Get output dict for this project
-        project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
+        project = i.get("ProjectName", i.get("projectname", "UNKNOWN")) or "UNKNOWN"
         o = data["Projects"][project]
 
         # Add custom attrs to the list of attrs
@@ -294,7 +294,7 @@ class PathScheddCpuFilter(BaseFilter):
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
             # Use UNKNOWN for missing or blank ScheddName
-            if attr in ["ScheddName"]:
+            if attr in {"ScheddName"}:
                 o[attr].append(i.get(attr, "UNKNOWN") or "UNKNOWN")
             elif attr in {"lastremotewallclocktime", "activationduration", "activationsetupduration"}:
                 try:

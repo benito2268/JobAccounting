@@ -82,7 +82,7 @@ class ChtcScheddDSIGpuFilter(BaseFilter):
         i = doc["_source"]
 
         # Get output dict for this project
-        project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
+        project = i.get("ProjectName", i.get("projectname", "UNKNOWN")) or "UNKNOWN"
         o = data["Projects"][project]
 
         # Add custom attrs to the list of attrs

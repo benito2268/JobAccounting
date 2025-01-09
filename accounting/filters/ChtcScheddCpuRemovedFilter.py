@@ -194,8 +194,8 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         # Add attr values to the output dict, use None if missing
         for attr in filter_attrs:
             # Use UNKNOWN for missing or blank ProjectName and ScheddName
-            if attr in ["ScheddName", "ProjectName"]:
-                o[attr].append(i.get(attr, "UNKNOWN") or "UNKNOWN")
+            if attr in {"ScheddName", "ProjectName"}:
+                o[attr].append(i.get(attr, i.get(attr.lower(), "UNKNOWN")) or "UNKNOWN")
             else:
                 o[attr].append(i.get(attr, None))
 
@@ -205,7 +205,7 @@ class ChtcScheddCpuRemovedFilter(BaseFilter):
         i = doc["_source"]
 
         # Get output dict for this project
-        project = i.get("ProjectName", "UNKNOWN") or "UNKNOWN"
+        project = i.get("ProjectName", i.get("projectname", "UNKNOWN")) or "UNKNOWN"
         o = data["Projects"][project]
 
         # Filter out jobs that were not removed

@@ -193,11 +193,11 @@ class OsgScheddLongJobFilter(BaseFilter):
                 o[attr].append(None)
 
             # Use UNKNOWN for missing or blank ProjectName and ScheddName
-            if attr in ["GlobalJobId", "ScheddName", "ProjectName",
+            if attr in {"GlobalJobId", "ScheddName", "ProjectName",
                             "MATCH_EXP_JOBGLIDEIN_ResourceName",
-                            "LastRemoteHost"]:
-                o[attr][0] = i.get(attr, "UNKNOWN") or "UNKNOWN"
-            elif attr in ["RequestGpus"]:
+                            "LastRemoteHost"}:
+                o[attr][0] = i.get(attr, i.get(attr.lower(), "UNKNOWN")) or "UNKNOWN"
+            elif attr in {"RequestGpus"}:
                 o[attr][0] = i.get(attr, 0)
             else:
                 o[attr][0] = i.get(attr, None)
