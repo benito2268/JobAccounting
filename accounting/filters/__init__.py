@@ -13,6 +13,7 @@ from .OsgScheddLongJobFilter import OsgScheddLongJobFilter
 from .OsgScheddCpuRetryFilter import OsgScheddCpuRetryFilter
 from .OsgScheddJobDistroFilter import OsgScheddJobDistroFilter
 from .ChtcScheddCpuMonthlyFilter import ChtcScheddCpuMonthlyFilter
+from .ChtcScheddCpuOspoolMonthlyFilter import ChtcScheddCpuOspoolMonthlyFilter
 from .ChtcScheddJobDistroFilter import ChtcScheddJobDistroFilter
 from .PathScheddCpuFilter import PathScheddCpuFilter
 from .IgwnScheddCpuFilter import IgwnScheddCpuFilter
