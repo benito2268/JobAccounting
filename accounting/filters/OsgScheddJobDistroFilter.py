@@ -67,15 +67,15 @@ class OsgScheddJobDistroFilter(BaseFilter):
                                     "lt": end_ts,
                                 }
                             }},
-                            {"term": {
-                                "JobUniverse": {
-                                    "value": 5,
-                                }
-                            }},
                             {"terms": {
                                 "ScheddName.keyword": list(OSG_CONNECT_APS)
                             }},
-                        ]
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
+                        ],
                     }
                 }
             }
@@ -126,7 +126,6 @@ class OsgScheddJobDistroFilter(BaseFilter):
 
     @lru_cache(maxsize=1024)
     def is_ospool_job(self, schedd_name, last_remote_pool):
-        remote_pool = set()
         if last_remote_pool is not None:
             if last_remote_pool.strip():
                 return last_remote_pool in self.collector_hosts

@@ -33,8 +33,6 @@ DEFAULT_COLUMNS = {
     320: "Num Shadw Starts",
     325: "Num Job Holds",
     330: "Num DAG Node Jobs",
-    340: "Num Local Univ Jobs",
-    350: "Num Sched Univ Jobs",
 }
 
 
@@ -49,7 +47,6 @@ DEFAULT_FILTER_ATTRS = [
     "NumJobStarts",
     "NumShadowStarts",
     "NumHolds",
-    "JobUniverse",
     "JobStatus",
     "EnteredCurrentStatus",
     "BytesSent",
@@ -91,7 +88,12 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
                             {"term": {
                                 "JobStatus": 3
                             }}
-                        ]
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
+                        ],
                     }
                 }
             }
@@ -169,7 +171,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -177,15 +179,8 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 0 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -226,7 +221,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -234,15 +229,8 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 0 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -287,7 +275,7 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         filter_attrs = filter_attrs + ["User"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -295,15 +283,8 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 0 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -372,16 +353,11 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # Don't count starts and shadows for jobs that don't/shouldn't have shadows
         num_exec_attempts = []
         num_shadow_starts = []
-        for (job_starts, shadow_starts, no_shadow) in zip(
+        for (job_starts, shadow_starts) in zip(
                 data["NumJobStarts"],
-                data["NumShadowStarts"],
-                data["_NoShadow"]):
-            if no_shadow:
-                num_exec_attempts.append(None)
-                num_shadow_starts.append(None)
-            else:
-                num_exec_attempts.append(job_starts)
-                num_shadow_starts.append(shadow_starts)
+                data["NumShadowStarts"]):
+            num_exec_attempts.append(job_starts)
+            num_shadow_starts.append(shadow_starts)
 
         # Short jobs are jobs that ran for < 1 minute
         is_short_job = []
@@ -401,12 +377,11 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         # so filter out short jobs and removed jobs,
         # and sort them so we can easily grab the percentiles later
         long_times_sorted = []
-        for (is_short, goodput_time, no_shadow, job_status) in zip(
+        for (is_short, goodput_time, job_status) in zip(
                 is_short_job,
                 data["CommittedTime"],
-                data["_NoShadow"],
                 data["JobStatus"]):
-            if (is_short == False) and (no_shadow == False) and (job_status != 3):
+            if (is_short is False) and (job_status != 3):
                 long_times_sorted.append(goodput_time)
         long_times_sorted = self.clean(long_times_sorted)
         long_times_sorted.sort()
@@ -430,8 +405,6 @@ class OsgScheddCpuRemovedFilter(BaseFilter):
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
         row["Num Exec Atts"]    = sum(self.clean(num_exec_attempts))
         row["Num Shadw Starts"] = sum(self.clean(num_shadow_starts))
-        row["Num Local Univ Jobs"] = sum(data["_NumLocalUnivJobs"])
-        row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
 
         # Compute derivative columns
         if row["Num Uniq Job Ids"] - row["Rm'd Jobs w/o Shadw Start"] > 0:

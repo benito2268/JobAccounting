@@ -26,7 +26,7 @@ DEFAULT_FILTER_ATTRS = [
 
 class OsgScheddCpuRetryFilter(BaseFilter):
     name = "OSG schedd retried job history"
-    
+
     def __init__(self, **kwargs):
         self.collector_hosts = {"cm-1.ospool.osg-htc.org", "cm-2.ospool.osg-htc.org", "flock.opensciencegrid.org"}
         self.schedd_collector_host_map_pickle = Path("ospool-host-map.pkl")
@@ -60,10 +60,12 @@ class OsgScheddCpuRetryFilter(BaseFilter):
                                     "gt": 0,
                                 }
                             }},
-                            {"term": {
-                                "JobUniverse": 5,
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
                             }},
-                        ]
+                        ],
                     }
                 }
             }
@@ -129,7 +131,7 @@ class OsgScheddCpuRetryFilter(BaseFilter):
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         o = data["Schedds"][schedd]
 
-        # Filter out jobs that did not run in the OS pool        
+        # Filter out jobs that did not run in the OS pool
         if not self.is_ospool_job(i):
             return
 
@@ -290,6 +292,6 @@ class OsgScheddCpuRetryFilter(BaseFilter):
             else:
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
-            row["Num Users"] = len(set(data["User"]))  
+            row["Num Users"] = len(set(data["User"]))
 
-        return row 
+        return row

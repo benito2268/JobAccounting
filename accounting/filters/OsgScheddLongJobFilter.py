@@ -100,12 +100,12 @@ class OsgScheddLongJobFilter(BaseFilter):
                                     "gt": 3*60*60
                                 }
                             }},
-                            {"term": {
-                                "JobUniverse": {
-                                "value": 5,
-                                }
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
                             }},
-                        ]
+                        ],
                     }
                 }
             }

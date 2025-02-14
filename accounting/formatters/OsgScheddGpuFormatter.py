@@ -163,8 +163,6 @@ class OsgScheddGpuFormatter(BaseFormatter):
         custom_items["Output MB / File"] = "Average size of file in output sandboxes"
 
         custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
-        custom_items["Num Local Univ Jobs"] = "Number of jobs that used local universe"
-        custom_items["Num Sched Univ Jobs"] = "Number of jobs that used scheduler universe"
 
         custom_items["Med Used Mem MB"]  = "Median measured memory usage across all submitted jobs' last execution attempts in MB"
         custom_items["Max Rqst/Used Disk GB"] = "Maximum requested/used disk space across all submittted jobs' last execution attempts in GB"

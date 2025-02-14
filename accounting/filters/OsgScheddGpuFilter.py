@@ -86,7 +86,6 @@ DEFAULT_FILTER_ATTRS = [
     "NumJobStarts",
     "NumShadowStarts",
     "NumHolds",
-    "JobUniverse",
     "JobStatus",
     "EnteredCurrentStatus",
     "BytesSent",
@@ -140,7 +139,12 @@ class OsgScheddGpuFilter(BaseFilter):
                                     "gt": 0
                                 }
                             }}
-                        ]
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
+                        ],
                     }
                 }
             }
@@ -214,7 +218,7 @@ class OsgScheddGpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -222,14 +226,8 @@ class OsgScheddGpuFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Count number of checkpointable jobs
-        if univ == 5 and (
+        if  (
                 i.get("SuccessCheckpointExitBySignal", False) or
                 i.get("SuccessCheckpointExitCode") is not None
             ):
@@ -239,7 +237,6 @@ class OsgScheddGpuFilter(BaseFilter):
 
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -272,7 +269,7 @@ class OsgScheddGpuFilter(BaseFilter):
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -280,14 +277,8 @@ class OsgScheddGpuFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Count number of checkpointable jobs
-        if univ == 5 and (
+        if  (
                 i.get("SuccessCheckpointExitBySignal", False) or
                 i.get("SuccessCheckpointExitCode") is not None
             ):
@@ -297,7 +288,6 @@ class OsgScheddGpuFilter(BaseFilter):
 
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -334,7 +324,7 @@ class OsgScheddGpuFilter(BaseFilter):
         filter_attrs = filter_attrs + ["User"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -342,14 +332,8 @@ class OsgScheddGpuFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Count number of checkpointable jobs
-        if univ == 5 and (
+        if  (
                 i.get("SuccessCheckpointExitBySignal", False) or
                 i.get("SuccessCheckpointExitCode") is not None
             ):
@@ -359,7 +343,6 @@ class OsgScheddGpuFilter(BaseFilter):
 
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -388,10 +371,6 @@ class OsgScheddGpuFilter(BaseFilter):
         if i.get("JobStatus", 4) == 3:
             return
 
-        # Filter out scheduler and local universe jobs
-        if i.get("JobUniverse") in [7, 12]:
-            return
-
         # Get output dict for this institution
         site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
         if (site is None) or (not site):
@@ -409,7 +388,7 @@ class OsgScheddGpuFilter(BaseFilter):
         filter_attrs = filter_attrs + ["User"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -628,16 +607,11 @@ class OsgScheddGpuFilter(BaseFilter):
         # Don't count starts and shadows for jobs that don't/shouldn't have shadows
         num_exec_attempts = []
         num_shadow_starts = []
-        for (job_starts, shadow_starts, no_shadow) in zip(
+        for (job_starts, shadow_starts) in zip(
                 data["NumJobStarts"],
-                data["NumShadowStarts"],
-                data["_NoShadow"]):
-            if no_shadow:
-                num_exec_attempts.append(None)
-                num_shadow_starts.append(None)
-            else:
-                num_exec_attempts.append(job_starts)
-                num_shadow_starts.append(shadow_starts)
+                data["NumShadowStarts"]):
+            num_exec_attempts.append(job_starts)
+            num_shadow_starts.append(shadow_starts)
 
         # Short jobs are jobs that ran for < 1 minute
         is_short_job = []
@@ -657,12 +631,11 @@ class OsgScheddGpuFilter(BaseFilter):
         # so filter out short jobs and removed jobs,
         # and sort them so we can easily grab the percentiles later
         long_times_sorted = []
-        for (is_short, goodput_time, no_shadow, job_status) in zip(
+        for (is_short, goodput_time, job_status) in zip(
                 is_short_job,
                 data["CommittedTime"],
-                data["_NoShadow"],
                 data["JobStatus"]):
-            if (is_short == False) and (no_shadow == False) and (job_status != 3):
+            if (is_short is False) and (job_status != 3):
                 long_times_sorted.append(goodput_time)
         long_times_sorted = self.clean(long_times_sorted)
         long_times_sorted.sort()
@@ -678,7 +651,6 @@ class OsgScheddGpuFilter(BaseFilter):
         osdf_bytes_total = 0
         for (
                 job_status,
-                job_universe,
                 job_starts,
                 input_stats,
                 input_cedar_bytes,
@@ -686,20 +658,12 @@ class OsgScheddGpuFilter(BaseFilter):
                 output_cedar_bytes,
             ) in zip(
                 data["JobStatus"],
-                data["JobUniverse"],
                 data["NumJobStarts"],
                 data["TransferInputStats"],
                 data["BytesRecvd"],
                 data["TransferOutputStats"],
                 data["BytesSent"],
             ):
-
-            if job_universe in {7, 12}:
-                input_files_total_count.append(None)
-                input_files_total_job_starts.append(None)
-                output_files_total_count.append(None)
-                output_files_total_job_stops.append(None)
-                continue
 
             input_files_count = 0
             input_files_bytes = 0
@@ -791,8 +755,6 @@ class OsgScheddGpuFilter(BaseFilter):
         row["Max Rqst Gpus"]    = max(self.clean(data["RequestGpus"], allow_empty_list=False))
         row["Num Exec Atts"]    = sum(self.clean(num_exec_attempts))
         row["Num Shadw Starts"] = sum(self.clean(num_shadow_starts))
-        row["Num Local Univ Jobs"] = sum(data["_NumLocalUnivJobs"])
-        row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
         row["Num Ckpt Able Jobs"]  = sum(data["_NumCkptJobs"])
         row["Num S'ty Jobs"]       = len(self.clean(data["SingularityImage"]))
 

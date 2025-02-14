@@ -57,8 +57,6 @@ DEFAULT_COLUMNS = {
     355: "Num Jobs w/1+ Holds",
     357: "Num Jobs Over Rqst Disk",
     360: "Num Short Jobs",
-    370: "Num Local Univ Jobs",
-    380: "Num Sched Univ Jobs",
     390: "Num Ckpt Able Jobs",
     400: "Num S'ty Jobs",
 
@@ -87,7 +85,6 @@ DEFAULT_FILTER_ATTRS = [
     "NumJobStarts",
     "NumShadowStarts",
     "NumHolds",
-    "JobUniverse",
     "JobStatus",
     "EnteredCurrentStatus",
     "BytesSent",
@@ -134,6 +131,9 @@ class IgwnScheddCpuFilter(BaseFilter):
                             {"term": {
                                 "MATCH_EXP_JOB_GLIDEIN_Site.keyword": "Unknown"
                             }},
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
                         ],
                     }
                 }
@@ -154,7 +154,7 @@ class IgwnScheddCpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -162,31 +162,22 @@ class IgwnScheddCpuFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Count number of checkpointable jobs
-        if univ == 5 and (
-                (
-                    i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
-                    i.get("Is_resumable", False)
-                ) or (
-                    i.get("SuccessCheckpointExitBySignal", False) or
-                    i.get("SuccessCheckpointExitCode") is not None
-                )):
+        if  (
+                i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
+                i.get("Is_resumable", False)
+            ) or (
+                i.get("SuccessCheckpointExitBySignal", False) or
+                i.get("SuccessCheckpointExitCode") is not None
+            ):
             o["_NumCkptJobs"].append(1)
         else:
             o["_NumCkptJobs"].append(0)
 
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
-                #i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
                 i.get("RemoteWallClockTime") != i.get("CommittedTime", 0)
             ):
             o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0)))))
@@ -196,7 +187,7 @@ class IgwnScheddCpuFilter(BaseFilter):
             o["_NumBadJobStarts"].append(0)
 
         # Compute job units
-        if univ not in (7, 12) and i.get("RemoteWallClockTime", 0) > 0:
+        if i.get("RemoteWallClockTime", 0) > 0:
             o["NumJobUnits"].append(get_job_units(
                 cpus=i.get("RequestCpus", 1),
                 memory_gb=i.get("RequestMemory", 1024)/1024,
@@ -229,7 +220,7 @@ class IgwnScheddCpuFilter(BaseFilter):
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -237,31 +228,22 @@ class IgwnScheddCpuFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Count number of checkpointable jobs
-        if univ == 5 and (
-                (
-                    i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
-                    i.get("Is_resumable", False)
-                ) or (
-                    i.get("SuccessCheckpointExitBySignal", False) or
-                    i.get("SuccessCheckpointExitCode") is not None
-                )):
+        if  (
+                i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
+                i.get("Is_resumable", False)
+            ) or (
+                i.get("SuccessCheckpointExitBySignal", False) or
+                i.get("SuccessCheckpointExitCode") is not None
+            ):
             o["_NumCkptJobs"].append(1)
         else:
             o["_NumCkptJobs"].append(0)
 
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
-                #i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
                 i.get("RemoteWallClockTime") != i.get("CommittedTime", 0)
             ):
             o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0)))))
@@ -271,7 +253,7 @@ class IgwnScheddCpuFilter(BaseFilter):
             o["_NumBadJobStarts"].append(0)
 
         # Compute job units
-        if univ not in (7, 12) and i.get("RemoteWallClockTime", 0) > 0:
+        if i.get("RemoteWallClockTime", 0) > 0:
             o["NumJobUnits"].append(get_job_units(
                 cpus=i.get("RequestCpus", 1),
                 memory_gb=i.get("RequestMemory", 1024)/1024,
@@ -308,7 +290,7 @@ class IgwnScheddCpuFilter(BaseFilter):
         filter_attrs = filter_attrs + ["User"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -316,31 +298,22 @@ class IgwnScheddCpuFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Count number of checkpointable jobs
-        if univ == 5 and (
-                (
-                    i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
-                    i.get("Is_resumable", False)
-                ) or (
-                    i.get("SuccessCheckpointExitBySignal", False) or
-                    i.get("SuccessCheckpointExitCode") is not None
-                )):
+        if  (
+                i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
+                i.get("Is_resumable", False)
+            ) or (
+                i.get("SuccessCheckpointExitBySignal", False) or
+                i.get("SuccessCheckpointExitCode") is not None
+            ):
             o["_NumCkptJobs"].append(1)
         else:
             o["_NumCkptJobs"].append(0)
 
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
-                #i.get("RemoteWallClockTime") != int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
                 i.get("RemoteWallClockTime") != i.get("CommittedTime", 0)
             ):
             o["_BadWallClockTime"].append(i["RemoteWallClockTime"] - int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0)))))
@@ -350,7 +323,7 @@ class IgwnScheddCpuFilter(BaseFilter):
             o["_NumBadJobStarts"].append(0)
 
         # Compute job units
-        if univ not in (7, 12) and i.get("RemoteWallClockTime", 0) > 0:
+        if i.get("RemoteWallClockTime", 0) > 0:
             o["NumJobUnits"].append(get_job_units(
                 cpus=i.get("RequestCpus", 1),
                 memory_gb=i.get("RequestMemory", 1024)/1024,
@@ -427,16 +400,11 @@ class IgwnScheddCpuFilter(BaseFilter):
         # Don't count starts and shadows for jobs that don't/shouldn't have shadows
         num_exec_attempts = []
         num_shadow_starts = []
-        for (job_starts, shadow_starts, no_shadow) in zip(
+        for (job_starts, shadow_starts) in zip(
                 data["NumJobStarts"],
-                data["NumShadowStarts"],
-                data["_NoShadow"]):
-            if no_shadow:
-                num_exec_attempts.append(None)
-                num_shadow_starts.append(None)
-            else:
-                num_exec_attempts.append(job_starts)
-                num_shadow_starts.append(shadow_starts)
+                data["NumShadowStarts"]):
+            num_exec_attempts.append(job_starts)
+            num_shadow_starts.append(shadow_starts)
 
         # Short jobs are jobs that ran for < 1 minute
         is_short_job = []
@@ -459,15 +427,14 @@ class IgwnScheddCpuFilter(BaseFilter):
         # so filter out short jobs and removed jobs,
         # and sort them so we can easily grab the percentiles later
         long_times_sorted = []
-        for (is_short, last_wallclock_time, committed_time, no_shadow, job_status) in zip(
+        for (is_short, last_wallclock_time, committed_time, job_status) in zip(
                 is_short_job,
                 data["lastremotewallclocktime"],
                 data["CommittedTime"],
-                data["_NoShadow"],
                 data["JobStatus"]):
             #goodput_time = last_wallclock_time or committed_time
             goodput_time = committed_time
-            if (is_short == False) and (no_shadow == False) and (job_status != 3):
+            if (is_short is False) and (job_status != 3):
                 long_times_sorted.append(goodput_time)
         long_times_sorted = self.clean(long_times_sorted)
         long_times_sorted.sort()
@@ -483,7 +450,6 @@ class IgwnScheddCpuFilter(BaseFilter):
         osdf_bytes_total = 0
         for (
                 job_status,
-                job_universe,
                 job_starts,
                 input_stats,
                 input_cedar_bytes,
@@ -491,20 +457,12 @@ class IgwnScheddCpuFilter(BaseFilter):
                 output_cedar_bytes,
             ) in zip(
                 data["JobStatus"],
-                data["JobUniverse"],
                 data["NumJobStarts"],
                 data["transferinputstats"],
                 data["BytesRecvd"],
                 data["transferoutputstats"],
                 data["BytesSent"],
             ):
-
-            if job_universe in {7, 12}:
-                input_files_total_count.append(None)
-                input_files_total_job_starts.append(None)
-                output_files_total_count.append(None)
-                output_files_total_job_stops.append(None)
-                continue
 
             input_files_count = 0
             input_files_bytes = 0
@@ -607,8 +565,6 @@ class IgwnScheddCpuFilter(BaseFilter):
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
         row["Num Exec Atts"]    = sum(self.clean(num_exec_attempts))
         row["Num Shadw Starts"] = sum(self.clean(num_shadow_starts))
-        row["Num Local Univ Jobs"] = sum(data["_NumLocalUnivJobs"])
-        row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
         row["Num Ckpt Able Jobs"] = sum(data["_NumCkptJobs"])
         row["Num S'ty Jobs"]    = len(self.clean(data["SingularityImage"]))
 

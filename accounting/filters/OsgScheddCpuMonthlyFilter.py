@@ -59,8 +59,6 @@ DEFAULT_COLUMNS = {
     355: "Num Jobs w/1+ Holds",
     357: "Num Jobs Over Rqst Disk",
     360: "Num Short Jobs",
-    370: "Num Local Univ Jobs",
-    380: "Num Sched Univ Jobs",
     390: "Num Ckpt Able Jobs",
     400: "Num S'ty Jobs",
 
@@ -149,23 +147,20 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
     def reduce_data(self, i, o, t, is_site=False):
 
         is_removed = i.get("JobStatus") == 3
-        is_scheduler = i.get("JobUniverse") == 7
-        is_local = i.get("JobUniverse") == 12
-        has_shadow = not (is_scheduler or is_local)
-        is_dagnode = i.get("DAGNodeName") is not None and i.get("JobUniverse", 5) != 12
+        is_dagnode = i.get("DAGNodeName") is not None
         is_exec = i.get("NumJobStarts", 0) >= 1
         is_multiexec = i.get("NumJobStarts", 0) > 1
         has_holds = i.get("NumHolds", 0) > 0
         is_short = False
         is_long = False
         is_singularity = i.get("SingularityImage") is not None
-        is_checkpointable = i.get("JobUniverse") == 5 and (
+        is_checkpointable = (
             i.get("SuccessCheckpointExitBySignal", False) or
             i.get("SuccessCheckpointExitCode") is not None
         )
         is_over_disk_request = i.get("DiskUsage", 0) > i.get("RequestDisk", 1)
         goodput_time = 0
-        if has_shadow and not is_removed:
+        if not is_removed:
             goodput_time = i.get("LastRemoteWallClockTime", i.get("CommittedTime", 0))
             if goodput_time > 0 and goodput_time < 60:
                 is_short = True
@@ -182,7 +177,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         input_bytes = output_bytes = 0
         osdf_files = osdf_bytes = 0
         job_units = 0
-        if has_shadow and not is_site:
+        if not is_site:
             input_file_stats = i.get("TransferInputStats", {})
             output_file_stats = i.get("TransferOutputStats", {})
             got_cedar_input_bytes = False
@@ -212,25 +207,21 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             if not (got_cedar_input_bytes or got_cedar_output_bytes):
                 input_bytes += i.get("BytesRecvd", 0)
                 output_bytes += i.get("BytesSent", 0)
-        if has_shadow:
-            job_units = get_job_units(
-                cpus=i.get("RequestCpus", 1),
-                memory_gb=i.get("RequestMemory", 1024)/1024,
-                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
-            )
+        job_units = get_job_units(
+            cpus=i.get("RequestCpus", 1),
+            memory_gb=i.get("RequestMemory", 1024)/1024,
+            disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+        )
         long_job_wallclock_time = int(is_long) * i.get("LastRemoteWallClockTime", i.get("CommittedTime", 60))
 
         sum_cols = {}
         sum_cols["Jobs"] = 1
         sum_cols["RunJobs"] = int(is_exec)
         sum_cols["RmJobs"] = int(is_removed)
-        sum_cols["SchedulerJobs"] = int(is_scheduler)
-        sum_cols["LocalJobs"] = int(is_local)
         sum_cols["DAGNodeJobs"] = int(is_dagnode)
         sum_cols["MultiExecJobs"] = int(is_multiexec)
         sum_cols["ShortJobs"] = int(is_short)
         sum_cols["LongJobs"] = int(is_long)
-        sum_cols["ShadowJobs"] = int(has_shadow)
         sum_cols["CheckpointableJobs"] = int(is_checkpointable)
         sum_cols["SingularityJobs"] = int(is_singularity)
         sum_cols["OverDiskJobs"] = int(is_over_disk_request)
@@ -240,9 +231,9 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * max(i.get("RequestCpus", 1), 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * max(i.get("RequestCpus", 1), 1))
         sum_cols["JobUnitTime"] = job_units * i.get("RemoteWallClockTime", 0)
-        sum_cols["NumShadowStarts"] = int(has_shadow) * i.get("NumShadowStarts", 0)
-        sum_cols["NumJobStarts"] = int(has_shadow) * i.get("NumJobStarts", 0)
-        sum_cols["NumBadJobStarts"] = int(has_shadow) * max(i.get("NumJobStarts", 0) - 1, 0)
+        sum_cols["NumShadowStarts"] = i.get("NumShadowStarts", 0)
+        sum_cols["NumJobStarts"] = i.get("NumJobStarts", 0)
+        sum_cols["NumBadJobStarts"] = max(i.get("NumJobStarts", 0) - 1, 0)
         sum_cols["HeldJobs"] = int(has_holds)
         sum_cols["NumJobHolds"] = i.get("NumHolds", 0)
         if input_files > 0:
@@ -361,10 +352,6 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if i.get("JobStatus", 4) == 3:
             return
 
-        # Filter out scheduler and local universe jobs
-        if i.get("JobUniverse", 5) in [7, 12]:
-            return
-
         # Get output dict for this institution
         site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
         if (site is None) or (not site):
@@ -411,7 +398,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
-            rm_columns = [30,45,50,51,52,53,54,55,56,57,70,80,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,370,380,390]
+            rm_columns = [30,45,50,51,52,53,54,55,56,57,70,80,180,181,182,190,191,192,300,305,310,320,325,330,340,350,355,390]
             [columns.pop(key) for key in rm_columns if key in columns]
         return columns
 
@@ -484,8 +471,6 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         row["Max Job Units"]    = data["MaxJobUnits"]
         row["Num Exec Atts"]    = data["NumJobStarts"]
         row["Num Shadw Starts"] = data["NumShadowStarts"]
-        row["Num Local Univ Jobs"] = data["LocalJobs"]
-        row["Num Sched Univ Jobs"] = data["SchedulerJobs"]
         row["Num Ckpt Able Jobs"]  = data["CheckpointableJobs"]
         row["Num S'ty Jobs"]       = data["SingularityJobs"]
 
@@ -495,9 +480,9 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             row["Input MB / Exec Att"] = (data["InputBytes"] / data["NumJobStarts"]) / (1024*1024)
         else:
             row["Input Files / Exec Att"] = row["Input MB / Exec Att"] = ""
-        if data["ShadowJobs"] > 0 and data.get("OutputFiles") is not None:
-            row["Output Files / Job"] = data["OutputFiles"] / data["ShadowJobs"]
-            row["Output MB / Job"] = (data["OutputBytes"] / data["ShadowJobs"]) / (1024*1024)
+        if data["Jobs"] > 0 and data.get("OutputFiles") is not None:
+            row["Output Files / Job"] = data["OutputFiles"] / data["Jobs"]
+            row["Output MB / Job"] = (data["OutputBytes"] / data["Jobs"]) / (1024*1024)
         else:
             row["Output Files / Job"] = row["Output MB / Job"] = ""
 
