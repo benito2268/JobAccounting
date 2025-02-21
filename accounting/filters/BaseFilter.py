@@ -79,11 +79,20 @@ class BaseFilter:
             "track_scores": False,
             "body": {
                 "query": {
-                    "range": {
-                        "RecordTime": {
-                            "gte": start_ts,
-                            "lt": end_ts,
-                        }
+                    "bool": {
+                        "filter": [
+                            {"range": {
+                                "RecordTime": {
+                                   "gte": start_ts,
+                                    "lt": end_ts,
+                                }
+                            }},
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
+                        ],
                     }
                 }
             }

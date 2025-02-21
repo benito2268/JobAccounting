@@ -157,7 +157,7 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
         custom_items["Max Rqst Mem MB"]  = "Maximum memory requested across all submitted jobs in MB"
         custom_items["Max Used Mem MB"]  = "Maximum measured memory usage across all submitted jobs' last execution attempts in MB"
         custom_items["Max Rqst Cpus"]    = "Maximum number of CPUs requested across all submitted jobs"
-        
+
         custom_items["Num Shadw Starts"] = "Total times a condor_shadow was spawned across all submitted jobs (excluding Local and Scheduler Universe jobs)"
         custom_items["Num Exec Atts"]    = "Total number of execution attempts (excluding Local and Scheduler Universe jobs)"
         custom_items["Num Rm'd Jobs"]    = "Number of jobs that were removed from the queue instead of allowing to complete"
@@ -180,8 +180,6 @@ class OsgScheddCpuHeldFormatter(BaseFormatter):
         custom_items["Med Used Mem MB"]  = "Median measured memory usage across all submitted jobs' last execution attempts in MB"
 
         custom_items["CPU Hours / Bad Exec Att"] = "Average CPU Hours used in a non-final execution attempt"
-        custom_items["Num Local Univ Jobs"] = "Number of jobs that used local universe"
-        custom_items["Num Sched Univ Jobs"] = "Number of jobs that used scheduler universe"
         html = super().get_legend(custom_items)
         return html
 

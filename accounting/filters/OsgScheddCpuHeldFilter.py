@@ -70,7 +70,7 @@ DEFAULT_COLUMNS = {
     50: "% Rm'd Jobs",
     60: "% Short Jobs",
     70: "% Jobs w/>1 Exec Att",
-    
+
     85: "Shadw Starts / Job Id",
     90: "Exec Atts / Shadw Start",
 
@@ -102,8 +102,6 @@ DEFAULT_COLUMNS = {
     1340: "Num DAG Node Jobs",
     1350: "Num Jobs w/>1 Exec Att",
     1360: "Num Short Jobs",
-    1370: "Num Local Univ Jobs",
-    1380: "Num Sched Univ Jobs",
 }
 
 DEFAULT_FILTER_ATTRS = [
@@ -118,7 +116,6 @@ DEFAULT_FILTER_ATTRS = [
     "NumShadowStarts",
     "NumHolds",
     "NumHoldsByReason",
-    "JobUniverse",
     "JobStatus",
     "EnteredCurrentStatus",
     "BytesSent",
@@ -130,7 +127,7 @@ for i, reason in enumerate(HOLD_REASONS):
 
 class OsgScheddCpuHeldFilter(BaseFilter):
     name = "OSG schedd held job history"
-    
+
     def __init__(self, **kwargs):
         self.collector_hosts = {"cm-1.ospool.osg-htc.org", "cm-2.ospool.osg-htc.org", "flock.opensciencegrid.org"}
         self.schedd_collector_host_map_pickle = Path("ospool-host-map.pkl")
@@ -164,7 +161,12 @@ class OsgScheddCpuHeldFilter(BaseFilter):
                                     "gt": 0
                                 }
                             }}
-                        ]
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
+                        ],
                     }
                 }
             }
@@ -231,7 +233,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         schedd = i.get("ScheddName", "UNKNOWN") or "UNKNOWN"
         o = data["Schedds"][schedd]
 
-        # Filter out jobs that did not run in the OS pool        
+        # Filter out jobs that did not run in the OS pool
         if not self.is_ospool_job(i):
             return
 
@@ -239,7 +241,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -247,15 +249,8 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -288,23 +283,16 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         filter_attrs = filter_attrs + ["ScheddName", "ProjectName"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
-        
+
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -341,7 +329,7 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         filter_attrs = filter_attrs + ["User"]
 
         # Count number of DAGNode Jobs
-        if i.get("DAGNodeName") is not None and i.get("JobUniverse")!=12:
+        if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
         else:
             o["_NumDAGNodes"].append(0)
@@ -349,15 +337,8 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         # Count number of history ads (i.e. number of unique job ids)
         o["_NumJobs"].append(1)
 
-        # Do filtering for scheduler and local universe jobs
-        univ = i.get("JobUniverse", 5)
-        o["_NumSchedulerUnivJobs"].append(univ == 7)
-        o["_NumLocalUnivJobs"].append(univ == 12)
-        o["_NoShadow"].append(univ in [7, 12])
-
         # Compute badput fields
         if (
-                univ not in [7, 12] and
                 i.get("NumJobStarts", 0) > 1 and
                 i.get("RemoteWallClockTime", 0) > 0 and
                 i.get("RemoteWallClockTime") != i.get("CommittedTime")
@@ -435,16 +416,11 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         # Don't count starts and shadows for jobs that don't/shouldn't have shadows
         num_exec_attempts = []
         num_shadow_starts = []
-        for (job_starts, shadow_starts, no_shadow) in zip(
+        for (job_starts, shadow_starts) in zip(
                 data["NumJobStarts"],
-                data["NumShadowStarts"],
-                data["_NoShadow"]):
-            if no_shadow:
-                num_exec_attempts.append(None)
-                num_shadow_starts.append(None)
-            else:
-                num_exec_attempts.append(job_starts)
-                num_shadow_starts.append(shadow_starts)
+                data["NumShadowStarts"]):
+            num_exec_attempts.append(job_starts)
+            num_shadow_starts.append(shadow_starts)
 
         # Short jobs are jobs that ran for < 1 minute
         is_short_job = []
@@ -464,12 +440,11 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         # so filter out short jobs and removed jobs,
         # and sort them so we can easily grab the percentiles later
         long_times_sorted = []
-        for (is_short, goodput_time, no_shadow, job_status) in zip(
+        for (is_short, goodput_time, job_status) in zip(
                 is_short_job,
                 data["CommittedTime"],
-                data["_NoShadow"],
                 data["JobStatus"]):
-            if (is_short == False) and (no_shadow == False) and (job_status != 3):
+            if (is_short is False) and (job_status != 3):
                 long_times_sorted.append(goodput_time)
         long_times_sorted = self.clean(long_times_sorted)
         long_times_sorted.sort()
@@ -493,8 +468,6 @@ class OsgScheddCpuHeldFilter(BaseFilter):
         row["Max Rqst Cpus"]    = max(self.clean(data["RequestCpus"], allow_empty_list=False))
         row["Num Exec Atts"]    = sum(self.clean(num_exec_attempts))
         row["Num Shadw Starts"] = sum(self.clean(num_shadow_starts))
-        row["Num Local Univ Jobs"] = sum(data["_NumLocalUnivJobs"])
-        row["Num Sched Univ Jobs"] = sum(data["_NumSchedulerUnivJobs"])
 
         row["Most Common Hold Reason"] = max(num_holds_by_reason, key=lambda reason: num_holds_by_reason[reason])
         row["% Holds Most Comm Reas"] = 100 * num_holds_by_reason[row["Most Common Hold Reason"]] / row["Num Job Holds"]

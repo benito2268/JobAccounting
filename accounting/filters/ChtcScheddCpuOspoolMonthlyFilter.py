@@ -60,8 +60,6 @@ DEFAULT_COLUMNS = {
     355: "Num Jobs w/1+ Holds",
     357: "Num Jobs Over Rqst Disk",
     360: "Num Short Jobs",
-    370: "Num Local Univ Jobs",
-    380: "Num Sched Univ Jobs",
     390: "Num Ckpt Able Jobs",
     400: "Num S'ty Jobs",
 
@@ -129,7 +127,7 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
                 self.logger.warning(f"Did not find Machine == {schedd} in collectors {', '.join(collectors_queried)}")
 
         return self.schedd_collector_host_map[schedd]
-    
+
     @lru_cache(maxsize=250)
     def is_ospool_job(self, schedd_name, last_remote_pool):
         remote_pool = set()
@@ -161,7 +159,12 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
                             {"regexp": {
                                 "ScheddName.keyword": ".*[.]chtc[.]wisc[.]edu"
                             }}
-                        ]
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
+                        ],
                     }
                 }
             }
@@ -171,10 +174,7 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
     def reduce_data(self, i, o, t, is_site=False):
 
         is_removed = i.get("JobStatus") == 3
-        is_scheduler = i.get("JobUniverse") == 7
-        is_local = i.get("JobUniverse") == 12
-        has_shadow = not (is_scheduler or is_local)
-        is_dagnode = i.get("DAGNodeName") is not None and i.get("JobUniverse", 5) != 12
+        is_dagnode = i.get("DAGNodeName") is not None
         is_exec = i.get("NumJobStarts", 0) >= 1
         is_multiexec = i.get("NumJobStarts", 0) > 1
         has_holds = i.get("NumHolds", 0) > 0
@@ -197,7 +197,7 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
         osdf_files = 0
         osdf_bytes = 0
         job_units = 0
-        if has_shadow and not is_removed:
+        if not is_removed:
             goodput_time = int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
             if goodput_time > 0 and goodput_time < 60:
                 is_short = True
@@ -210,19 +210,18 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
                 is_long = True
         elif not is_removed:
             goodput_time = int(float(i.get("lastremotewallclocktime", i.get("CommittedTime", 0))))
-        if has_shadow:
-            job_units = get_job_units(
-                cpus=i.get("RequestCpus", 1),
-                memory_gb=i.get("RequestMemory", 1024)/1024,
-                disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
-            )
+        job_units = get_job_units(
+            cpus=i.get("RequestCpus", 1),
+            memory_gb=i.get("RequestMemory", 1024)/1024,
+            disk_gb=i.get("RequestDisk", 1024**2)/1024**2,
+        )
         input_files = 0
         input_bytes = 0
         output_files = 0
         output_bytes = 0
         got_cedar_input_bytes = False
         got_cedar_output_bytes = False
-        if has_shadow and not is_site:
+        if not is_site:
             is_ckptable = ((
                     i.get("WhenToTransferOutput", "").upper() == "ON_EXIT_OR_EVICT" and
                     i.get("Is_resumable", False)
@@ -277,13 +276,10 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
         sum_cols["Jobs"] = 1
         sum_cols["RunJobs"] = int(is_exec)
         sum_cols["RmJobs"] = int(is_removed)
-        sum_cols["SchedulerJobs"] = int(is_scheduler)
-        sum_cols["LocalJobs"] = int(is_local)
         sum_cols["DAGNodeJobs"] = int(is_dagnode)
         sum_cols["MultiExecJobs"] = int(is_multiexec)
         sum_cols["ShortJobs"] = int(is_short)
         sum_cols["LongJobs"] = int(is_long)
-        sum_cols["ShadowJobs"] = int(has_shadow)
         sum_cols["Checkpointable"] = int(is_ckptable)
         sum_cols["JobsOverRqstDisk"] = int(is_over_rqst_disk)
         sum_cols["SingularityJobs"] = int(is_singularity_job)
@@ -297,9 +293,9 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
         sum_cols["CpuTime"] = (i.get("RemoteWallClockTime", 0) * max(i.get("RequestCpus", 1), 1))
         sum_cols["BadCpuTime"] = ((i.get("RemoteWallClockTime", 0) - goodput_time) * max(i.get("RequestCpus", 1), 1))
         sum_cols["JobUnitTime"] = job_units * i.get("RemoteWallClockTime", 0)
-        sum_cols["NumShadowStarts"] = int(has_shadow) * i.get("NumShadowStarts", 0)
-        sum_cols["NumJobStarts"] = int(has_shadow) * i.get("NumJobStarts", 0)
-        sum_cols["NumBadJobStarts"] = int(has_shadow) * max(i.get("NumJobStarts", 0) - 1, 0)
+        sum_cols["NumShadowStarts"] = i.get("NumShadowStarts", 0)
+        sum_cols["NumJobStarts"] = i.get("NumJobStarts", 0)
+        sum_cols["NumBadJobStarts"] = max(i.get("NumJobStarts", 0) - 1, 0)
         sum_cols["HeldJobs"] = int(has_holds)
         sum_cols["NumJobHolds"] = i.get("NumHolds", 0)
 
@@ -456,8 +452,6 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
         row["Num Exec Atts"]       = data["NumJobStarts"]
         row["Num Shadw Starts"]    = data["NumShadowStarts"]
         row["Num Job Holds"]       = data["NumJobHolds"]
-        row["Num Local Univ Jobs"] = data["LocalJobs"]
-        row["Num Sched Univ Jobs"] = data["SchedulerJobs"]
         row["Num Ckpt Able Jobs"]  = data["Checkpointable"]
         row["Num S'ty Jobs"]       = data["SingularityJobs"]
 
@@ -465,8 +459,8 @@ class ChtcScheddCpuOspoolMonthlyFilter(BaseFilter):
             row["Input Files / Exec Att"] = data["InputFiles"] / data["NumJobStarts"]
         else:
             row["Input Files / Exec Att"] = ""
-        if data["ShadowJobs"] > 0 and data.get("OutputFiles") is not None:
-            row["Output Files / Job"] = data["OutputFiles"] / data["ShadowJobs"]
+        if data["Jobs"] > 0 and data.get("OutputFiles") is not None:
+            row["Output Files / Job"] = data["OutputFiles"] / data["Jobs"]
         else:
             row["Output Files / Job"] = ""
 

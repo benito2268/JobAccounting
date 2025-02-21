@@ -63,13 +63,15 @@ class ChtcScheddDSIGpuFilter(BaseFilter):
                             {"term": {
                                 "JobStatus": 4
                             }},
-                            {"term": {
-                                "JobUniverse": 5
-                            }},
                             {"regexp": {
                                 "LastRemoteHost.keyword": ".*dsigpu-?[0-9]+[.]chtc[.]wisc[.]edu"
                             }},
-                        ]
+                        ],
+                        "must_not": [
+                            {"terms": {
+                                "JobUniverse": [7, 12]
+                            }},
+                        ],
                     }
                 }
             }
