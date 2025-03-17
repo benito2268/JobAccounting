@@ -113,7 +113,7 @@ class ChtcScheddCpuMonthlyFilter(BaseFilter):
         is_exec = i.get("NumJobStarts", 0) >= 1
         is_multiexec = i.get("NumJobStarts", 0) > 1
         has_holds = i.get("NumHolds", 0) > 0
-        is_over_rqst_disk = i.get("DiskUsage") > i.get("RequestDisk")
+        is_over_rqst_disk = i.get("DiskUsage", 0) > i.get("RequestDisk", 1000)
         is_singularity_job = i.get("SingularityImage") is not None
         has_activation_duration = i.get("activationduration") is not None
         if has_activation_duration:
