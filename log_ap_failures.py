@@ -241,7 +241,7 @@ def main():
     for error in errors:
         schedd = error["schedd"]
         if not schedd in schedd_stats:
-            schedd_stats[schedd] = {"num_seen": 0, "num_failures": 0, "num_ads": 0, "failures": []}
+            schedd_stats[schedd] = {"schedd": schedd, "num_seen": 0, "num_failures": 0, "num_ads": 0, "failures": []}
         schedd_stats[schedd]["num_failures"] += 1
         schedd_stats[schedd]["failures"].append(error.get("htcondor_error", "Unknown/non-HTCondor error"))
     for stats in schedd_stats.values():
