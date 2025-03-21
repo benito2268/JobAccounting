@@ -99,8 +99,8 @@ def get_topology_project_data(cache_file=Path("./topology_project_data.pickle"))
     projects_data = {
         "UNKNOWN": {
             "name": "UNKNOWN",
-            "pi": "UNKNOWN",
-            "pi_institution": "UNKNOWN",
+            "id": "UNKNOWN",
+            "institution": "UNKNOWN",
             "field_of_science": "UNKNOWN",
         }
     }

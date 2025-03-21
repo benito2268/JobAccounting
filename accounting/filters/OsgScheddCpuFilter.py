@@ -949,7 +949,7 @@ class OsgScheddCpuFilter(BaseFilter):
             row["Num Sites"] = len(set(data["_Sites"]))
             if agg_name != "TOTAL":
                 project_map = self.topology_project_map.get(agg_name.lower(), self.topology_project_map["UNKNOWN"])
-                row["PI Institution"] = project_map["pi_institution"]
+                row["PI Institution"] = project_map["institution"]
             else:
                 row["PI Institution"] = ""
 
