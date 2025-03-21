@@ -6,8 +6,7 @@ import statistics as stats
 from datetime import date
 from pathlib import Path
 from .BaseFilter import BaseFilter
-from accounting.pull_topology import get_site_map
-from accounting.functions import get_job_units, get_topology_project_data, get_prp_mapping_data
+from accounting.functions import get_job_units, get_topology_project_data, get_topology_resource_data, get_institution_database
 
 
 DEFAULT_COLUMNS = {
@@ -103,8 +102,8 @@ DEFAULT_FILTER_ATTRS = [
 ]
 
 
-SITE_MAP = get_site_map()
-PRP_ID_MAP = get_prp_mapping_data()
+INSTITUTION_DB = get_institution_database()
+RESOURCE_DATA = get_topology_resource_data()
 
 
 class OsgScheddCpuFilter(BaseFilter):
@@ -398,16 +397,16 @@ class OsgScheddCpuFilter(BaseFilter):
             return
 
         # Get output dict for this institution
-        site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
-        if (site is None) or (not site):
+        resource = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
+        if (resource is None) or (not resource):
             institution = "Unknown (resource name missing)"
         elif "MachineAttrOSG_INSTITUTION_ID0" in i:
             osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
-            institution = PRP_ID_MAP.get(osg_id_short, SITE_MAP.get(site, f"Unmapped resource: {site}"))
+            institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", f"Unmapped PRP resource: {osg_id_short}")
         else:
-            institution = SITE_MAP.get(site, f"Unmapped resource: {site}")
+            institution = RESOURCE_DATA.get(resource, {}).get("institution", f"Unmapped resource: {resource}")
         o = data["Institution"][institution]
-        o["_Sites"].append(site)
+        o["_Sites"].append(resource)
 
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
