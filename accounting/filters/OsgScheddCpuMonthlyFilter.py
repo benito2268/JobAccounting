@@ -10,8 +10,7 @@ from elasticsearch import Elasticsearch
 import elasticsearch.helpers
 from functools import lru_cache
 from .BaseFilter import BaseFilter
-from accounting.pull_topology import get_site_map
-from accounting.functions import get_job_units, get_topology_project_data, get_prp_mapping_data
+from accounting.functions import get_job_units, get_topology_project_data, get_topology_resource_data, get_institution_database
 
 MAX_INT = 2**62
 
@@ -71,8 +70,8 @@ DEFAULT_COLUMNS = {
 }
 
 
-SITE_MAP = get_site_map()
-PRP_ID_MAP = get_prp_mapping_data()
+INSTITUTION_DB = get_institution_database()
+RESOURCE_DATA = get_topology_resource_data()
 
 
 class OsgScheddCpuMonthlyFilter(BaseFilter):
@@ -333,6 +332,17 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         dict_cols = {}
         dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
 
+        resource = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
+        if (resource is None) or (not resource):
+            institution = "UNKNOWN"
+        elif "MachineAttrOSG_INSTITUTION_ID0" in i:
+            osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
+            institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", "UNKNOWN")
+        else:
+            institution = RESOURCE_DATA.get(resource.lower(), {}).get("institution", "UNKNOWN")
+        dict_cols["Institutions"] = institution
+        dict_cols["Sites"] = resource
+
         for col in dict_cols:
             output[col] = output.get(col) or {}
             output[col][dict_cols[col]] = 1
@@ -353,14 +363,14 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             return
 
         # Get output dict for this institution
-        site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
-        if (site is None) or (not site):
+        resource = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
+        if (resource is None) or (not resource):
             institution = "Unknown (resource name missing)"
         elif "MachineAttrOSG_INSTITUTION_ID0" in i:
             osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
-            institution = PRP_ID_MAP.get(osg_id_short, SITE_MAP.get(site, f"Unmapped resource: {site}"))
+            institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", f"Unmapped PRP resource: {osg_id_short}")
         else:
-            institution = SITE_MAP.get(site, f"Unmapped resource: {site}")
+            institution = RESOURCE_DATA.get(resource.lower(), {}).get("institution", f"Unmapped resource: {resource}")
         output = data["Institution"][institution]
         total = data["Institution"]["TOTAL"]
 
@@ -368,7 +378,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
 
         dict_cols = {}
         dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
-        dict_cols["Sites"] = site
+        dict_cols["Sites"] = resource
 
         for col in dict_cols:
             output[col] = output.get(col) or {}
@@ -395,6 +405,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if agg == "Projects":
             columns[4] = "PI Institution"
             columns[5] = "Num Users"
+            columns[6] = "Num Site Instns"
+            columns[7] = "Num Sites"
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
@@ -548,9 +560,11 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(data["Users"])
+            row["Num Site Instns"] = len(data["Institutions"])
+            row["Num Sites"] = len(data["Sites"])
             if agg_name != "TOTAL":
                 project_map = self.topology_project_map.get(agg_name.lower(), self.topology_project_map["UNKNOWN"])
-                row["PI Institution"] = project_map["pi_institution"]
+                row["PI Institution"] = project_map["institution"]
             else:
                 row["PI Institution"] = ""
 

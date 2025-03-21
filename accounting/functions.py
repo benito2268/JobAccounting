@@ -19,9 +19,183 @@ from email import encoders
 from dns.resolver import query as dns_query
 
 
+INSTITUTION_DATABASE_URL = "https://topology-institutions.osg-htc.org/api/institution_ids"
 TOPOLOGY_PROJECT_DATA_URL = "https://topology.opensciencegrid.org/miscproject/xml"
 TOPOLOGY_RESOURCE_DATA_URL = "https://topology.opensciencegrid.org/rgsummary/xml"
-INSTITUTION_IDS_DATA_URL = "https://topology-institutions.osg-htc.org/api/institution_ids"
+
+
+def get_institution_database(cache_file=Path("./institution_database.pickle")) -> dict:
+    institution_db = {}
+
+    # Use cache if less than 20 minutes old
+    if cache_file.exists():
+        try:
+            institution_db = pickle.load(cache_file.open("rb"))
+        except Exception:
+            pass
+    if len(institution_db) > 0 and cache_file.stat().st_mtime > time.time() - 1200:
+        return institution_db
+
+    tries = 0
+    max_tries = 5
+    while tries < max_tries:
+        try:
+            with urlopen(INSTITUTION_DATABASE_URL) as f:
+                for institution in json.load(f):
+                    institution_id = institution.get("id")
+                    if not institution_id:
+                        continue
+                    institution_id_short = institution_id.split("/")[-1]
+                    institution["id_short"] = institution_id_short
+                    institution_db[institution_id] = institution
+                    institution_db[institution_id_short] = institution
+
+                    # OSG_INSTITUTION_IDS mistakenly had the ROR IDs before ~2024-11-07,
+                    # so we map those too (as long as they don't conflict with OSG IDs)
+                    ror_id_short = (institution.get("ror_id") or "").split("/")[-1]
+                    if ror_id_short and ror_id_short not in institution_db:
+                        institution_db[ror_id_short] = institution
+        except HTTPError:
+            time.sleep(2**tries)
+            tries += 1
+            if tries == max_tries and len(institution_db) == 0:
+                raise
+        else:
+            break
+
+    pickle.dump(institution_db, cache_file.open("wb"))
+    return institution_db
+
+
+def get_topology_project_data(cache_file=Path("./topology_project_data.pickle")) -> dict:
+    projects_data = {}
+
+    # Use cache if less than 20 minutes old
+    if cache_file.exists():
+        try:
+            projects_data = pickle.load(cache_file.open("rb"))
+        except Exception:
+            pass
+    if len(projects_data) > 0 and cache_file.stat().st_mtime > time.time() - 1200:
+        return projects_data
+
+    tries = 0
+    max_tries = 5
+    while tries < max_tries:
+        try:
+            with urlopen(TOPOLOGY_PROJECT_DATA_URL) as xml:
+                xmltree = ET.parse(xml)
+        except HTTPError:
+            time.sleep(2**tries)
+            tries += 1
+            if tries == max_tries and len(projects_data) == 0:
+                raise
+        else:
+            break
+    else:  # Return cached data if we can't contact topology
+        return projects_data
+
+    projects = xmltree.getroot()
+    projects_data = {
+        "UNKNOWN": {
+            "name": "UNKNOWN",
+            "id": "UNKNOWN",
+            "institution": "UNKNOWN",
+            "field_of_science": "UNKNOWN",
+        }
+    }
+
+    institution_db = get_institution_database()
+
+    for project in projects:
+        project_map = {}
+        project_institution_id = project.find("InstitutionID").text
+
+        if project_institution_id in institution_db:
+            project_institution = institution_db[project_institution_id]["name"]
+        else:
+            project_institution = project.find("Organization").text
+
+        project_map["name"] = project.find("Name").text
+        project_map["id"] = project.find("ID").text
+        project_map["institution"] = project_institution
+        project_map["institution_id"] = project_institution_id
+        project_map["field_of_science"] = project.find("FieldOfScience").text
+        project_map["field_of_science_id"] = project.find("FieldOfScienceID").text
+        projects_data[project_map["name"].lower()] = project_map.copy()
+
+    pickle.dump(projects_data, cache_file.open("wb"))
+    return projects_data
+
+
+def get_topology_resource_data(cache_file=Path("./topology_resource_data.pickle")) -> dict:
+    resources_data = {}
+
+    # Use cache if less than 20 minutes old
+    if cache_file.exists():
+        try:
+            resources_data = pickle.load(cache_file.open("rb"))
+        except Exception:
+            pass
+    if len(resources_data) >  0 and cache_file.stat().st_mtime > time.time() - 1200:
+            return resources_data
+
+    tries = 0
+    max_tries = 5
+    while tries < max_tries:
+        try:
+            with urlopen(TOPOLOGY_RESOURCE_DATA_URL) as xml:
+                xmltree = ET.parse(xml)
+        except HTTPError:
+            time.sleep(2**tries)
+            tries += 1
+            if tries == max_tries and len(resources_data) == 0:
+                raise
+        else:
+            break
+    else:  # Returned cached data if we can't contact topology
+        return resources_data
+
+    resource_groups = xmltree.getroot()
+    resources_data = {
+        "UNKNOWN": {
+            "name": "UNKNOWN",
+            "institution": "UNKNOWN",
+        }
+    }
+
+    institution_db = get_institution_database()
+
+    for resource_group in resource_groups:
+        resource_map = {}
+
+        resource_institution_id = resource_group.find("Facility").find("InstitutionID").text
+        if resource_institution_id in institution_db:
+            resource_institution = institution_db[resource_institution_id]["name"]
+        else:
+            resource_institution = resource_group.find("Facility").find("Name").text
+
+        resource_map["institution"] = resource_institution
+        resource_map["institution_id"] = resource_institution_id
+
+        resource_group_name = resource_group.find("GroupName").text
+        resource_map["group_name"] = resource_group_name
+
+        resource_site_name = resource_group.find("Site").find("Name").text
+        resource_map["site_name"] = resource_site_name
+        resource_map["name"] = resource_site_name
+
+        resources = resource_group.find("Resources")
+        for resource in resources:
+            resource_name = resource.find("Name").text
+            resource_map["resource_name"] = resource_name
+            resource_map["name"] = resource_name
+            resources_data[resource_name.lower()] = resource_map.copy()
+        resources_data[resource_group_name.lower()] = resource_map.copy()
+        resources_data[resource_site_name.lower()] = resource_map.copy()
+
+    pickle.dump(resources_data, cache_file.open("wb"))
+    return resources_data
 
 
 def get_timestamps(report_period, start_ts, end_ts):
@@ -218,152 +392,3 @@ def get_job_units(cpus, memory_gb, disk_gb):
         max(0, disk_gb/unit_size["disk_gb"])
     ])
     return ceil(job_units)
-
-
-def get_topology_project_data(
-        force_update=False,
-        project_data_path=Path("topology_project_data_map.pickle"),
-    ) -> dict:
-    if (
-        not force_update and
-        project_data_path.is_file() and
-        project_data_path.stat().st_mtime > (time.time() - 3600)
-    ):
-        projects_map = pickle.load(project_data_path.open("rb"))
-    else:
-        tries = 0
-        max_tries = 5
-        while tries < max_tries:
-            try:
-                with urlopen(TOPOLOGY_PROJECT_DATA_URL) as xml:
-                    xmltree = ET.parse(xml)
-            except HTTPError:
-                time.sleep(2**tries)
-                tries += 1
-                if tries == max_tries:
-                    raise
-            else:
-                break
-        projects = xmltree.getroot()
-        projects_map = {
-            "UNKNOWN": {
-                "name": "UNKNOWN",
-                "pi": "UNKNOWN",
-                "pi_institution": "UNKNOWN",
-                "field_of_science": "UNKNOWN",
-            }
-        }
-
-        for project in projects:
-            project_map = {}
-            project_map["name"] = project.find("Name").text
-            project_map["pi"] = project.find("PIName").text
-            project_map["pi_institution"] = project.find("Organization").text
-            project_map["field_of_science"] = project.find("FieldOfScience").text
-            project_map["id"] = project.find("ID").text
-            project_map["pi_institution_id"] = project.find("InstitutionID").text
-            project_map["field_of_science_id"] = project.find("FieldOfScienceID").text
-            projects_map[project_map["name"].lower()] = project_map.copy()
-
-        pickle.dump(projects_map, project_data_path.open("wb"))
-
-    return projects_map
-
-
-def get_topology_resource_data(
-        force_update=False,
-        resource_data_path=Path("topology_resource_data_map.pickle"),
-    ) -> dict:
-    if (
-        not force_update and
-        resource_data_path.is_file() and
-        resource_data_path.stat().st_mtime > (time.time() - 3600)
-    ):
-        resources_map = pickle.load(resource_data_path.open("rb"))
-    else:
-        tries = 0
-        max_tries = 5
-        while tries < max_tries:
-            try:
-                with urlopen(TOPOLOGY_RESOURCE_DATA_URL) as xml:
-                    xmltree = ET.parse(xml)
-            except HTTPError:
-                time.sleep(2**tries)
-                tries += 1
-                if tries == max_tries:
-                    raise
-            else:
-                break
-        resource_groups = xmltree.getroot()
-        resources_map = {
-            "UNKNOWN": {
-                "name": "UNKNOWN",
-                "institution": "UNKNOWN",
-                "osg_id": "UNKNOWN"
-            }
-        }
-
-        for resource_group in resource_groups:
-            resource_institution = resource_group.find("Facility").find("Name").text
-            resource_institution_id = resource_group.find("Facility").find("ID").text
-            resource_institution_osg_id = resource_group.find("Facility").find("InstitutionID").text
-
-            resources = resource_group.find("Resources")
-            for resource in resources:
-                resource_map = {}
-                resource_map["institution"] = resource_institution
-                resource_map["institution_id"] = resource_institution_id
-                resource_map["osg_id"] = resource_institution_osg_id
-                resource_map["name"] = resource.find("Name").text
-                resource_map["id"] = resource.find("ID").text
-                resources_map[resource_map["name"].lower()] = resource_map.copy()
-
-        pickle.dump(resources_map, resource_data_path.open("wb"))
-
-    return resources_map
-
-
-def get_prp_mapping_data(
-        force_update=False,
-        prp_data_path=Path("prp_data_map.pickle"),
-    ) -> dict:
-    if (
-        not force_update and
-        prp_data_path.is_file() and
-        prp_data_path.stat().st_mtime > (time.time() - 3600)
-    ):
-        prp_id_map = pickle.load(prp_data_path.open("rb"))
-    else:
-        topology_resource_map = get_topology_resource_data(force_update=force_update)
-        osg_id_institution_map = {d["osg_id"]: d["institution"] for d in topology_resource_map.values()}
-        prp_id_map = {}
-        tries = 0
-        max_tries = 5
-        while tries < max_tries:
-            try:
-                with urlopen(INSTITUTION_IDS_DATA_URL) as f:
-                    for resource in json.load(f):
-                        osg_id = resource.get("id")
-                        if not osg_id:
-                            continue
-                        institution = osg_id_institution_map.get(osg_id, resource.get("name"))
-                        if not institution:
-                            continue
-                        osg_id_short = osg_id.split("/")[-1]
-                        prp_id_map[osg_id_short] = institution
-                        # OSG_INSTITUTION_IDS mistakenly had the ROR IDs before ~2024-11-07,
-                        # so we map those too (as long as they don't conflict with OSG IDs)
-                        ror_id_short = (resource.get("ror_id") or "").split("/")[-1]
-                        if ror_id_short and ror_id_short not in prp_id_map:
-                            prp_id_map[ror_id_short] = institution
-            except HTTPError:
-                time.sleep(2**tries)
-                tries += 1
-                if tries == max_tries:
-                    raise
-            else:
-                break
-
-        pickle.dump(prp_id_map, prp_data_path.open("wb"))
-
-    return prp_id_map

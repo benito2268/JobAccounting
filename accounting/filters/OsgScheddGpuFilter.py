@@ -6,8 +6,7 @@ import statistics as stats
 from datetime import date
 from pathlib import Path
 from .BaseFilter import BaseFilter
-from accounting.pull_topology import get_site_map
-from accounting.functions import get_prp_mapping_data
+from accounting.functions import get_topology_resource_data, get_institution_database
 
 
 DEFAULT_COLUMNS = {
@@ -99,8 +98,8 @@ DEFAULT_FILTER_ATTRS = [
 ]
 
 
-SITE_MAP = get_site_map()
-PRP_ID_MAP = get_prp_mapping_data()
+INSTITUTION_DB = get_institution_database()
+RESOURCE_DATA = get_topology_resource_data()
 
 
 class OsgScheddGpuFilter(BaseFilter):
@@ -323,6 +322,18 @@ class OsgScheddGpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
 
+        # Get list of sites and institutions this user has run at
+        resource = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
+        if (resource is None) or (not resource):
+            institution = "UNKNOWN"
+        elif "MachineAttrOSG_INSTITUTION_ID0" in i:
+            osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
+            institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", "UNKNOWN")
+        else:
+            institution = RESOURCE_DATA.get(resource.lower(), {}).get("institution", "UNKNOWN")
+        o["_Institutions"].append(institution)
+        o["_Sites"].append(resource)
+
         # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
@@ -372,16 +383,16 @@ class OsgScheddGpuFilter(BaseFilter):
             return
 
         # Get output dict for this institution
-        site = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
-        if (site is None) or (not site):
+        resource = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
+        if (resource is None) or (not resource):
             institution = "Unknown (resource name missing)"
         elif "MachineAttrOSG_INSTITUTION_ID0" in i:
             osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
-            institution = PRP_ID_MAP.get(osg_id_short, SITE_MAP.get(site, f"Unmapped resource: {site}"))
+            institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", f"Unmapped PRP resource: {osg_id_short}")
         else:
-            institution = SITE_MAP.get(site, f"Unmapped resource: {site}")
+            institution = RESOURCE_DATA.get(resource.lower(), {}).get("institution", f"Unmapped resource: {resource}")
         o = data["Institution"][institution]
-        o["_Sites"].append(site)
+        o["_Sites"].append(resource)
 
         # Add custom attrs to the list of attrs
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
@@ -418,6 +429,8 @@ class OsgScheddGpuFilter(BaseFilter):
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
+            columns[6] = "Num Site Instns"
+            columns[7] = "Num Sites"
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
@@ -897,5 +910,7 @@ class OsgScheddGpuFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(set(data["User"]))
+            row["Num Site Instns"] = len(set(data["_Institutions"]))
+            row["Num Sites"] = len(set(data["_Sites"]))
 
         return row
