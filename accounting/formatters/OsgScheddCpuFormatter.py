@@ -128,6 +128,8 @@ class OsgScheddCpuFormatter(BaseFormatter):
 
     def get_legend(self):
         custom_items = OrderedDict()
+        custom_items["Num Site Instns"]  = "Number of unique institutions that the jobs ran at"
+        custom_items["Num Sites"]        = "Number of unique sites that the jobs ran at"
         custom_items["Num Uniq Job Ids"] = "Number of unique job ids across all execution attempts"
         custom_items["All CPU Hours"]    = "Total CPU hours for all execution attempts, including preemption and removal"
         custom_items["% Good CPU Hours"] = "Good CPU Hours per All CPU Hours, as a percentage"

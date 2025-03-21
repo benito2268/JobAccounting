@@ -332,6 +332,17 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         dict_cols = {}
         dict_cols["Users"] = i.get("User", "UNKNOWN") or "UNKNOWN"
 
+        resource = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
+        if (resource is None) or (not resource):
+            institution = "UNKNOWN"
+        elif "MachineAttrOSG_INSTITUTION_ID0" in i:
+            osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
+            institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", "UNKNOWN")
+        else:
+            institution = RESOURCE_DATA.get(resource.lower(), {}).get("institution", "UNKNOWN")
+        dict_cols["Institutions"] = institution
+        dict_cols["Sites"] = resource
+
         for col in dict_cols:
             output[col] = output.get(col) or {}
             output[col][dict_cols[col]] = 1
@@ -394,6 +405,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
         if agg == "Projects":
             columns[4] = "PI Institution"
             columns[5] = "Num Users"
+            columns[6] = "Num Site Instns"
+            columns[7] = "Num Sites"
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
@@ -547,6 +560,8 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(data["Users"])
+            row["Num Site Instns"] = len(data["Institutions"])
+            row["Num Sites"] = len(data["Sites"])
             if agg_name != "TOTAL":
                 project_map = self.topology_project_map.get(agg_name.lower(), self.topology_project_map["UNKNOWN"])
                 row["PI Institution"] = project_map["pi_institution"]

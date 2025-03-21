@@ -322,6 +322,18 @@ class OsgScheddGpuFilter(BaseFilter):
         filter_attrs = DEFAULT_FILTER_ATTRS.copy()
         filter_attrs = filter_attrs + ["User"]
 
+        # Get list of sites and institutions this user has run at
+        resource = i.get("MachineAttrGLIDEIN_ResourceName0", i.get("MATCH_EXP_JOBGLIDEIN_ResourceName"))
+        if (resource is None) or (not resource):
+            institution = "UNKNOWN"
+        elif "MachineAttrOSG_INSTITUTION_ID0" in i:
+            osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
+            institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", "UNKNOWN")
+        else:
+            institution = RESOURCE_DATA.get(resource.lower(), {}).get("institution", "UNKNOWN")
+        o["_Institutions"].append(institution)
+        o["_Sites"].append(resource)
+
         # Count number of DAGNode Jobs
         if i.get("DAGNodeName") is not None:
             o["_NumDAGNodes"].append(1)
@@ -417,6 +429,8 @@ class OsgScheddGpuFilter(BaseFilter):
             columns[175] = "Most Used Schedd"
         if agg == "Projects":
             columns[5] = "Num Users"
+            columns[6] = "Num Site Instns"
+            columns[7] = "Num Sites"
         if agg == "Institution":
             columns[4] = "Num Sites"
             columns[5] = "Num Users"
@@ -896,5 +910,7 @@ class OsgScheddGpuFilter(BaseFilter):
                 row["Most Used Schedd"] = "UNKNOWN"
         if agg == "Projects":
             row["Num Users"] = len(set(data["User"]))
+            row["Num Site Instns"] = len(set(data["_Institutions"]))
+            row["Num Sites"] = len(set(data["_Sites"]))
 
         return row
