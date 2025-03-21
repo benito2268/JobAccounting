@@ -97,11 +97,11 @@ def get_topology_project_data(cache_file=Path("./topology_project_data.pickle"))
 
     projects = xmltree.getroot()
     projects_data = {
-        "Unknown": {
-            "name": "Unknown",
-            "pi": "Unknown",
-            "pi_institution": "Unknown",
-            "field_of_science": "Unknown",
+        "UNKNOWN": {
+            "name": "UNKNOWN",
+            "pi": "UNKNOWN",
+            "pi_institution": "UNKNOWN",
+            "field_of_science": "UNKNOWN",
         }
     }
 
@@ -158,9 +158,9 @@ def get_topology_resource_data(cache_file=Path("./topology_resource_data.pickle"
 
     resource_groups = xmltree.getroot()
     resources_data = {
-        "Unknown": {
-            "name": "Unknown",
-            "institution": "Unknown",
+        "UNKNOWN": {
+            "name": "UNKNOWN",
+            "institution": "UNKNOWN",
         }
     }
 
