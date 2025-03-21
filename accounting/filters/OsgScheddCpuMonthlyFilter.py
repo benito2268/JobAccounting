@@ -359,7 +359,7 @@ class OsgScheddCpuMonthlyFilter(BaseFilter):
             osg_id_short = (i.get("MachineAttrOSG_INSTITUTION_ID0") or "").split("_")[-1]
             institution = INSTITUTION_DB.get(osg_id_short, {}).get("name", f"Unmapped PRP resource: {osg_id_short}")
         else:
-            institution = RESOURCE_DATA.get(resource, {}).get("institution", f"Unmapped resource: {resource}")
+            institution = RESOURCE_DATA.get(resource.lower(), {}).get("institution", f"Unmapped resource: {resource}")
         output = data["Institution"][institution]
         total = data["Institution"]["TOTAL"]
 
