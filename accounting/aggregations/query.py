@@ -250,11 +250,7 @@ totals.aggs.metric("ckptable_filt", "filter", filter=q)
 
 # calculate percentage within ES
 ROWS_AGGS.append(Aggregation(
-            A("bucket_script",
-              buckets_path={"num_ckptable" : "ckptable_filt._count",
-                            "num_job_ids"  : "total_jobs"},
-              script="params.num_ckptable / params.num_job_ids * 100"                 
-             ),
+            get_percent_bucket_script("ckptable_filt._count", "total_jobs"),
             "ckptable_percent",
             "% Ckptable",
             "pipeline",
@@ -269,11 +265,7 @@ totals.aggs.metric("rmd_filt", "filter", filter=rmd_jobs)
 # pipeline aggregation doesn't create a new bucket
 # which appears to take up a lot of memory :)
 ROWS_AGGS.append(Aggregation(
-            A("bucket_script",
-              buckets_path={"num_rmd" : "rmd_filt._count",
-                            "num_job_ids"  : "total_jobs"},
-              script="params.num_rmd / params.num_job_ids * 100"                 
-             ),
+            get_percent_bucket_script("rmd_filt._count", "total_jobs"),
             "rmd_percent",
             "% Removed",
             "pipeline",
@@ -339,11 +331,7 @@ search.aggs["projects"].metric("short_jobs", "filter", filter=short_job_filt)
 totals.aggs.metric("short_jobs", "filter", filter=short_job_filt)
 
 ROWS_AGGS.append(Aggregation(
-                A("bucket_script",
-                  buckets_path={"num_short" : "short_jobs._count",
-                                "num_job_ids"  : "total_jobs"},
-                  script="params.num_short / params.num_job_ids * 100"
-                ),
+                get_percent_bucket_script("short_jobs._count", "total_jobs"),
                 "percent_short_jobs",
                 "% Short",
                 "pipeline",
@@ -355,11 +343,7 @@ search.aggs["projects"].metric("restarted_jobs", "filter", filter=restarted_filt
 totals.aggs.metric("restarted_jobs", "filter", filter=restarted_filt)
 
 ROWS_AGGS.append(Aggregation(
-                A("bucket_script",
-                  buckets_path={"num_restarted" : "restarted_jobs._count",
-                                "num_job_ids"  : "total_jobs"},
-                  script="params.num_restarted / params.num_job_ids * 100"
-                ),
+                get_percent_bucket_script("restarted_jobs._count", "total_jobs"),
                 "percent_restarted",
                 "% Restarted",
                 "pipeline",
@@ -371,11 +355,7 @@ search.aggs["projects"].metric("held_jobs", "filter", filter=one_hold_filt)
 totals.aggs.metric("held_jobs", "filter", filter=one_hold_filt)
 
 ROWS_AGGS.append(Aggregation(
-                A("bucket_script",
-                  buckets_path={"num_held" : "held_jobs._count",
-                                "num_job_ids"  : "total_jobs"},
-                  script="params.num_held / params.num_job_ids * 100"
-                ),
+                get_percent_bucket_script("held_jobs._count", "total_jobs"),
                 "percent_held",
                 "% Held",
                 "pipeline",
@@ -389,11 +369,7 @@ search.aggs["projects"].metric("over_disk_jobs", "filter", filter=over_disk_filt
 totals.aggs.metric("over_disk_jobs", "filter", filter=over_disk_filt)
 
 ROWS_AGGS.append(Aggregation(
-                A("bucket_script",
-                  buckets_path={"num_over_disk" : "over_disk_jobs._count",
-                                "num_job_ids"  : "total_jobs"},
-                  script="params.num_over_disk / params.num_job_ids * 100"
-                ),
+                get_percent_bucket_script("over_disk_jobs._count", "total_jobs"),
                 "percent_over_disk",
                 "% Over Req. Disk",
                 "pipeline",
@@ -405,11 +381,7 @@ search.aggs["projects"].metric("sty_jobs", "filter", filter=sty_filt)
 totals.aggs.metric("sty_jobs", "filter", filter=sty_filt)
 
 ROWS_AGGS.append(Aggregation(
-                A("bucket_script",
-                  buckets_path={"num_sty_jobs" : "sty_jobs._count",
-                                "num_job_ids"  : "total_jobs"},
-                  script="params.num_sty_jobs / params.num_job_ids * 100"
-                ),
+                get_percent_bucket_script("sty_jobs._count", "total_jobs"),
                 "percent_sty",
                 "% S'ty Jobs",
                 "pipeline",
