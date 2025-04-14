@@ -448,8 +448,8 @@ for bucket in response.aggregations.projects.buckets:
     for agg in ROWS_AGGS:
         # check if it's a multi-value aggregation
         if isinstance(agg.pretty_name, list):
-            for obj, name, pretty_name, _ in agg:
-                row.update({pretty_name : bucket[name]})
+            for pretty_name, name in zip(agg.pretty_name, agg.mult_names):
+                row.update({pretty_name : bucket[agg.name]["values"][name]})
         else:
             row.update({agg.pretty_name : bucket[agg.name]["value"]})
    
@@ -463,8 +463,8 @@ for a in TOTALS_AGGS:
     # Aggregation = namedtuple("Aggregation", ['object', 'name', 'pretty_name', 'type'])
     # check if it's a multi-value aggregation
     if isinstance(a.pretty_name, list):
-        for obj, name, pretty_name, _ in a:
-            totals_row.update({pretty_name : totals_raw[name]})
+        for pretty_name, name in zip(agg.pretty_name, agg.mult_names):
+                row.update({pretty_name : bucket[agg.name]["values"][name]})
     else:
         totals_row.update({a.pretty_name : totals_raw[a.name]["value"]})
 
