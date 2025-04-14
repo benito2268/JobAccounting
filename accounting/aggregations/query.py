@@ -407,12 +407,15 @@ ROWS_AGGS.append(Aggregation(A("avg", field="ActivationDuration"), "mean_act_hrs
 TOTALS_AGGS.append(ROWS_AGGS[-1])
 
 # calculate percentiles
-#ROWS_AGGS.append(Aggregation(A("percentiles", field="CpuCoreHours"), 
-#                             "percentiles", 
-#                             "Percentiles", 
-#                             "metric"
-#                ))
-#TOTALS_AGGS.append(ROWS_AGGS[-1])
+percentiles = [25.0, 50.0, 75.0, 95.0]
+ROWS_AGGS.append(Aggregation(A("percentiles", field="CpuCoreHours"), 
+                             "percentiles", 
+                             [f"{p}% Hrs" for p in percentiles], 
+                             "metric",
+                             [str(p) for p in percentiles] # percentiles agg returns keys "25.0", "50.0", ...
+                ))
+TOTALS_AGGS.append(ROWS_AGGS[-1])
+
 
 # =========== add aggregations to the two queries ==============
 
