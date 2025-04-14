@@ -14,14 +14,15 @@ TOTALS_AGGS = []
 
 # command line arguments
 ELASTICSEARCH_ARGS = {
-    "--index"  : {"default" : "chtc-schedd-*"},
-    "--agg-by" : {"default" : "ProjectName.keyword"},
-    "--host"   : {"default" : "http://localhost:9200"},  
+    "--index"  : {"default" : "chtc-schedd-*", "help" : "the ES index to use, defaults to chtc-schedd-*"},
+    "--agg-by" : {"default" : "ProjectName.keyword", "help" : ""},
+    "--host"   : {"default" : "http://localhost:9200", "help" : "the ES server address, defaults to http://localhost:9200"},  
 }
 
 OUTPUT_ARGS = {
-    "--print-table" : {"action" : "store_true"},
-    "--output"      : {"default" : f"{datetime.now().strftime("%Y-%m-%d:%H:%M")}-report.csv"}
+    "--print-table" : {"action" : "store_true", "help" : "prints a CLI table, NOTE: pipe into 'less -S'"},
+    "--output"      : {"default" : f"{datetime.now().strftime("%Y-%m-%d:%H:%M")}-report.csv",
+                       "help" : "specify the CSV output file name, defaults to '<date:time>-report.csv'"}
 }
 
 # =========== helper functions ===========
@@ -35,8 +36,10 @@ def valid_date(date_str: str) -> datetime:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--start", type=valid_date, required=True)
-    parser.add_argument("--end", type=valid_date, default=datetime.strftime(datetime.now(), "%Y-%m-%d"))
+    parser.add_argument("--start", type=valid_date, required=True, 
+                        help="the date to start reporting on 'YYYY-MM-DD'")
+    parser.add_argument("--end", type=valid_date, default=datetime.strftime(datetime.now(), "%Y-%m-%d"),
+                        help="the date to end reporting on 'YYYY-MM-DD', defaults to the current date")
 
     es_opts = parser.add_argument_group("elasticsearch options")
     for name, props in ELASTICSEARCH_ARGS.items():
