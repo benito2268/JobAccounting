@@ -1,4 +1,4 @@
-HTC Elasticsearch DSL Reporting
+CHTC Elasticsearch DSL Reporting
 
 ### Install Required Packages
 * `pip install elasticsearch<8 elasticsearch_dsl<8 tabulate`
