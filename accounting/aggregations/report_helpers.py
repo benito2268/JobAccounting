@@ -11,9 +11,18 @@ Aggregation = namedtuple("Aggregation", ['object', 'name', 'pretty_name', 'type'
                          defaults=[None, None, None, None, []])
 
 
-def add_runtime_script(search: Search, field_name: str, script: str):
+def add_runtime_script(search: Search, field_name: str, script: str, ret_type: str):
+    """ Modify an elasticsearch_dsl Search object by adding a runtime_mapping
+        params:
+            search      - the elasticsearch_dsl Search object to modify
+            field_name  - the name of the runtime field the script will generate
+            script      - the script's source code
+            ret_type    - the type of the field the script will produce 
+
+    """
+    
     d = { field_name : {
-            "type": "double",
+            "type": ret_type,
             "script": {
                 "language": "painless",
                 "source": script,
@@ -26,22 +35,29 @@ def add_runtime_script(search: Search, field_name: str, script: str):
 
     search.update_from_dict({"runtime_mappings" : maps})
 
-# returns an 'A' object that uses a bucket_script aggregation
-# to compute a percentage across two other metrics
-# NOTE: the returned aggregation must be nested under a multi-bucket aggregation
-# and cannot be applied at the top level
-# 
-# example: to calculate percent goodput use
-# get_percent_metric("good_cpu_hours", "total_cpu_hours")
-# if you have already created 2 metrics good_cpu_hours and total_cpu_hours
 def get_percent_bucket_script(want_percent: str, out_of: str) -> A:
-     return A("bucket_script",
-              buckets_path={"a" : want_percent,
-                            "b"  : out_of},
-              script="params.a / params.b * 100"                 
-              )
+    """ returns an 'A' object that uses a bucket_script aggregation
+        to compute a percentage across two other metrics
+        NOTE: the returned aggregation must be nested under a multi-bucket aggregation
+        and cannot be applied at the top level
+         
+        example: to calculate percent goodput use
+        get_percent_metric("good_cpu_hours", "total_cpu_hours")
+        if you have already created 2 metrics good_cpu_hours and total_cpu_hours
+    """
+    
+    return A("bucket_script",
+            buckets_path={"a" : want_percent,
+                          "b"  : out_of},
+            script="params.a / params.b * 100"                 
+            )
 
 def table(rows: list):
+    """ Generates a table to display the report on the command line
+        params:
+            rows - a list of dicts that map column names to values
+    """
+
     try:
         from tabulate import tabulate
 
