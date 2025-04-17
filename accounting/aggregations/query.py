@@ -455,6 +455,15 @@ def main():
                     ))
     TOTALS_AGGS.append(ROWS_AGGS[-1])
 
+    # calculate other stats
+    ROWS_AGGS.append(Aggregation(A("extended_stats", field="CpuCoreHours"),
+                                "stats",
+                                ["Min Hrs", "Std Hrs", "Mean Hrs"],
+                                "metric",
+                                ["min", "avg", "std_deviation"]))
+
+    TOTALS_AGGS.append(ROWS_AGGS[-1])
+
     # =========== add aggregations to the two queries ==============
 
     for agg in ROWS_AGGS: 
@@ -487,7 +496,10 @@ def main():
             # check if it's a multi-value aggregation
             if isinstance(agg.pretty_name, list):
                 for pretty_name, name in zip(agg.pretty_name, agg.mult_names):
-                    row.update({pretty_name : bucket[agg.name]["values"][name]})
+                    try:
+                        row.update({pretty_name : bucket[agg.name]["values"][name]})
+                    except KeyError: 
+                        row.update({pretty_name : bucket[agg.name][name]})
             else:
                 row.update({agg.pretty_name : bucket[agg.name]["value"]})
         
@@ -501,7 +513,10 @@ def main():
         # check if it's a multi-value aggregation
         if isinstance(a.pretty_name, list):
             for pretty_name, name in zip(a.pretty_name, a.mult_names):
-                totals_row.update({pretty_name : totals_raw[a.name]["values"][name]})
+                try:
+                    totals_row.update({pretty_name : totals_raw[a.name]["values"][name]})
+                except KeyError: 
+                    totals_row.update({pretty_name : totals_raw[a.name][name]})
         else:
             totals_row.update({a.pretty_name : totals_raw[a.name]["value"]})
 
