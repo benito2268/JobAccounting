@@ -303,17 +303,22 @@ def get_ospool_aps() -> set:
     return current_ospool_aps | OSPOOL_APS
 
 
-def _smtp_mail(msg, recipient, smtp_server=None, smtp_username=None, smtp_password=None):
+def _smtp_mail(msg, recipient, smtp_server="", smtp_username=None, smtp_password=""):
     sent = False
     result = None
     tries = 0
     sleeptime = 0
+    smtp_args = (smtp_server, 0)
+    try:
+        smtp_args = (smtp_server.split(":")[0], int(smtp_server.split(":")[1]),)
+    except (ValueError, IndexError):
+        pass
     while tries < 3 and sleeptime < 600:
         try:
             if smtp_username is None:
-                smtp = smtplib.SMTP(smtp_server)
+                smtp = smtplib.SMTP(*smtp_args)
             else:
-                smtp = smtplib.SMTP_SSL(smtp_server)
+                smtp = smtplib.SMTP_SSL(*smtp_args)
                 smtp.login(smtp_username, smtp_password)
         except Exception:
             print(f"Could not connect to {smtp_server}", file=sys.stderr)
@@ -325,9 +330,9 @@ def _smtp_mail(msg, recipient, smtp_server=None, smtp_username=None, smtp_passwo
                 print(f"Could not send email to {recipient} using {smtp_server}:\n{result}", file=sys.stderr)
             else:
                 sent = True
-        except Exception:
+        except Exception as err:
             print(f"Could not send to {recipient} using {smtp_server}", file=sys.stderr)
-            print(err, file=sys.stderr)
+            print(str(err), file=sys.stderr)
         finally:
             try:
                 smtp.quit()
