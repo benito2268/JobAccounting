@@ -200,6 +200,23 @@ def main():
                     "metric",
     ))
 
+    # convert lastremotewallclocktime to a double
+    CAST_LRWT_SCRIPT_SRC = """
+        double lrwt = 0;
+        if (doc.containsKey("lastremotewallclocktime.keyword") && doc["lastremotewallclocktime.keyword"].size() > 0) {
+            lrwt = Double.parseDouble(doc["lastremotewallclocktime.keyword"].value);
+        }
+        else if(doc.containsKey("RecordTime") && doc["RecordTime"].size() > 0
+                && doc.containsKey("JobCurrentStartDate") && doc["JobCurrentStartDate"].size() > 0) {
+            lrwt = doc["RecordTime"].value - doc["JobCurrentStartDate"].value;
+        }
+
+        emit(lrwt);
+    """
+
+    add_runtime_script(search, "LastRemoteWallClockTime", CAST_LRWT_SCRIPT_SRC, "double")
+    add_runtime_script(totals, "LastRemoteWallClockTime", CAST_LRWT_SCRIPT_SRC, "double")
+
     # count total job unit hours
     # definition of 1 job unit - interpolated into painless script
     JOB_UNIT_DEF = {
@@ -243,7 +260,7 @@ def main():
     # nested match query read as:
     # job must match JobUniverse=5 AND (WhenToTransferOutput=ON_EXIT_OR_EVICT AND Is_resumable=False)
     # OR (SuccessCheckpointExitBySignal=False AND SuccessCheckpointExitCode exists)
-    # TODO can this be reduced using python '&' and '|' ?
+    # can this be reduced using python '&' and '|' ?
     cond_1 = Q("bool", must=[
                 Q("match", WhenToTransferOutput__keyword="ON_EXIT_OR_EVICT"),
                 Q("match", Is_resumable=False),
@@ -358,7 +375,11 @@ def main():
                     ))
     TOTALS_AGGS.append(ROWS_AGGS[-1])
 
-    short_job_filt = Q("range", lastremotewallclocktime={"lte" : 60})
+    short_job_filt = Q("bool", must=[
+        Q("range", LastRemoteWallClockTime={"lt" : 60}),
+        Q("range", LastRemoteWallClockTime={"gt" : 0}),
+    ])
+ 
     search.aggs["projects"].metric("short_jobs", "filter", filter=short_job_filt)
     totals.aggs.metric("short_jobs", "filter", filter=short_job_filt)
 
