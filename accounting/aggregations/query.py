@@ -1,10 +1,11 @@
 import elasticsearch
 import argparse
-from elasticsearch_dsl import Search, Q, A
+from elasticsearch_dsl import Search, Q, A, connections
 from datetime import datetime, timedelta
 from collections import namedtuple
 from operator import itemgetter
 from pprint import pprint
+from pathlib import Path
 
 from report_helpers import Aggregation, add_runtime_script, get_percent_bucket_script, table, print_error
 
@@ -12,17 +13,36 @@ from report_helpers import Aggregation, add_runtime_script, get_percent_bucket_s
 ROWS_AGGS = []
 TOTALS_AGGS = []
 
-# command line arguments
-ELASTICSEARCH_ARGS = {
-    "--index"  : {"default" : "chtc-schedd-*", "help" : "the ES index to use, defaults to chtc-schedd-*"},
-    "--agg-by" : {"default" : "ProjectName.keyword", "help" : ""},
-    "--host"   : {"default" : "http://localhost:9200", "help" : "the ES server address, defaults to http://localhost:9200"},  
-}
-
 OUTPUT_ARGS = {
     "--print-table" : {"action" : "store_true", "help" : "prints a CLI table, NOTE: pipe into 'less -S'"},
     "--output"      : {"default" : f"{datetime.now().strftime("%Y-%m-%d:%H:%M")}-report.csv",
                        "help" : "specify the CSV output file name, defaults to '<date:time>-report.csv'"}
+}
+
+EMAIL_ARGS = {
+    "--from": {"dest": "from_addr", "default": "no-reply@chtc.wisc.edu"},
+    "--reply-to": {"default": "ospool-reports@g-groups.wisc.edu"},
+    "--to": {"action": "append", "default": []},
+    "--cc": {"action": "append", "default": []},
+    "--bcc": {"action": "append", "default": []},
+    "--smtp-server": {},
+    "--smtp-username": {},
+    "--smtp-password-file": {"type": Path}
+}
+
+ELASTICSEARCH_ARGS = {
+    "--es-host": {"default" : "localhost:9200"},
+    "--es-agg-by" : {"default" : "ProjectName.keyword"},
+    "--es-url-prefix": {"default" : "http://"},
+    "--es-index": {"default" : "chtc-schedd-*"},
+    "--es-user": {},
+    "--es-password-file": {"type": Path},
+    "--es-use-https": {"action": "store_true"},
+    "--es-ca-certs": {},
+    "--es-config-file": {
+        "type": Path,
+        "help": "JSON file containing an object that sets above ES options",
+    }
 }
 
 # =========== helper functions ===========
@@ -37,15 +57,19 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--start", type=valid_date, required=True, 
-                        help="the date to start reporting on 'YYYY-MM-DD'")
+                        help="the date to start reporting on 'YYYY-MM-DD' (REQUIRED)")
     parser.add_argument("--end", type=valid_date, default=datetime.strftime(datetime.now(), "%Y-%m-%d"),
                         help="the date to end reporting on 'YYYY-MM-DD', defaults to the current date")
+
+    email_opts = parser.add_argument_group("email options")
+    for name, props in EMAIL_ARGS.items():
+        email_opts.add_argument(name, **props)
 
     es_opts = parser.add_argument_group("elasticsearch options")
     for name, props in ELASTICSEARCH_ARGS.items():
         es_opts.add_argument(name, **props)
 
-    output_opts = parser.add_argument_group("email options")
+    output_opts = parser.add_argument_group("output options")
     for name, props in OUTPUT_ARGS.items():
         output_opts.add_argument(name, **props)
 
@@ -90,11 +114,30 @@ def main():
     # parse arguments
     args = parse_args()
 
-    client = elasticsearch.Elasticsearch(hosts=[args.host], timeout=120)
+    # set up elasticsearch options
+    es_opts = {
+        "timeout" : 120,
+        "hosts" : [args.es_url_prefix + args.es_host], 
+    }
+
+    if args.es_use_https:
+        es_opts.update({"hosts" : "https://" + args.es_host})
+        es_opts.update({"verify_certs" : True}) 
+        es_opts.update({"ca_certs" : args.es_ca_certs})
+
+    if args.es_user and args.es_password_file:
+        passwd_str = ""    
+        with open(args.es_password_file, 'r') as file:
+           passwd_str = file.read()
+ 
+        es_opts.update({"http_auth" : (args.es_user, passwd_str)})
+
+    client = elasticsearch.Elasticsearch(**es_opts)
+    connections.create_connection(alias="default", client=client)
 
     # nicely the Q object supports ~ for negation :)
     # 'search' is aggregated by project
-    search = Search(using=client, index=args.index) \
+    search = Search(using=client, index=args.es_index) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -102,7 +145,7 @@ def main():
                     .extra(track_scores=False)
 
     # totals query is exactly the same
-    totals = Search(using=client, index=args.index) \
+    totals = Search(using=client, index=args.es_index) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -112,7 +155,7 @@ def main():
     # top level aggregation is by project
     search.aggs.bucket(
         "projects", "terms",
-        field=args.agg_by,
+        field=args.es_agg_by,
         size=1024
     )
 
