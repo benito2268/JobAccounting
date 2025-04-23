@@ -60,27 +60,27 @@ def calc_totals_percents(resp) -> dict:
 
     # TODO what to do about the previously stored pretty names?
     ret.update({"% Goodput" : 
-                buckets["good_core_hours"]["value"] / (buckets["cpu_core_hours"]["value"] if buckets["cpu_core_hours"]["value"] else 0) * 100}) 
+                ((buckets["good_core_hours"]["value"] / buckets["cpu_core_hours"]["value"]) if buckets["cpu_core_hours"]["value"] else 0) * 100}) 
     ret.update({"% Ckptable" : 
-                buckets["ckptable_filt"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["ckptable_filt"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Removed" : 
-                buckets["rmd_filt"]["doc_count"] / (buckets["cpu_core_hours"]["value"] if buckets["cpu_core_hours"]["value"] else 0) * 100})
+                ((buckets["rmd_filt"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["cpu_core_hours"]["value"] else 0) * 100})
     ret.update({"Shadow Starts / ID" : 
-                buckets["num_shadw_starts"]["value"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0)})
+                ((buckets["num_shadw_starts"]["value"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0)})
     ret.update({"Exec Att / Shadow Start" : 
-                buckets["num_exec_attempts"]["value"] / (buckets["num_shadw_starts"]["value"] if buckets["num_shadw_starts"]["value"] else 0)})
+                ((buckets["num_exec_attempts"]["value"] / buckets["num_shadw_starts"]["value"]) if buckets["num_shadw_starts"]["value"] else 0)})
     ret.update({"Holds / ID" : 
-                buckets["num_holds"]["value"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0)})
+                ((buckets["num_holds"]["value"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0)})
     ret.update({"% Short" : 
-                buckets["short_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["short_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Restarted" : 
-                buckets["restarted_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["restarted_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Held" : 
-                buckets["held_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["held_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Over Req. Disk" : 
-                buckets["over_disk_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["over_disk_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% S'ty Jobs" : 
-                buckets["sty_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["sty_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
 
     return ret
 
@@ -375,6 +375,8 @@ def main():
                     ))
     TOTALS_AGGS.append(ROWS_AGGS[-1])
 
+    
+    # calculate % short jobs
     short_job_filt = Q("bool", must=[
         Q("range", LastRemoteWallClockTime={"lt" : 60}),
         Q("range", LastRemoteWallClockTime={"gt" : 0}),
