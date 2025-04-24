@@ -641,7 +641,23 @@ def main():
 
     # add css to make the table look pretty
     html = f"""
-
+        <style>
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+            }}
+            th, td {{
+                padding: 10px;
+                text-align: left;
+            }}
+            tr:nth-child(odd) {{
+                background-color: #f2f2f2;
+            }}
+            tr:nth-child(even) {{
+                background-color: #ffffff;
+            }}
+        </style>
+        {html}
     """
 
     # abort email if tabulate is not installed
