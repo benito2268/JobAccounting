@@ -593,7 +593,7 @@ def main():
 
         # extract data into a row
         # COL_AGG_NAMES defined at top of file
-        row = {"Project" : proj_name}
+        row = {es_opts["es-agg-by"].split('.')[0] : proj_name}
         for agg in ROWS_AGGS:
             # check if it's a multi-value aggregation
             if isinstance(agg.pretty_name, list):
@@ -608,7 +608,7 @@ def main():
         table_rows.append(row)
 
     # create the totals row
-    totals_row = {"Project" : "Totals"}
+    totals_row = {es_opts["es-agg-by"].split('.')[0] : "Totals"}
     totals_raw = totals_response.aggregations.to_dict()
 
     for a in TOTALS_AGGS:
