@@ -2,6 +2,7 @@ import elasticsearch
 import argparse
 import sys
 import json
+from functions import send_email
 from elasticsearch_dsl import Search, Q, A, connections
 from datetime import datetime, timedelta
 from collections import namedtuple
@@ -22,12 +23,13 @@ OUTPUT_ARGS = {
 }
 
 EMAIL_ARGS = {
+    "--no-email" : {"action" : "store_true", "help" : "don't send an email"},
     "--from": {"dest": "from_addr", "default": "no-reply@chtc.wisc.edu"},
     "--reply-to": {"default": "ospool-reports@g-groups.wisc.edu"},
     "--to": {"action": "append", "default": []},
     "--cc": {"action": "append", "default": []},
     "--bcc": {"action": "append", "default": []},
-    "--smtp-server": {},
+    "--smtp-server": {"default" : "smtp.wiscmail.wisc.edu"},
     "--smtp-username": {},
     "--smtp-password-file": {"type": Path}
 }
@@ -114,31 +116,31 @@ def get_client(args: dict):
     # set up elasticsearch options
     es_opts = {
         "timeout" : 120,
-        "hosts" : [args["es-url-prefix"] + args["es-host"]], 
+        "hosts" : [args["es_url_prefix"] + args["es_host"]], 
     }
 
-    if args["es-use-https"]:
-        if args["es-ca-certs"]:
-            es_opts.update({"ca-certs" : str(args["es-ca-certs"])})
+    if args["es_use_https"]:
+        if args["es_ca_certs"]:
+            es_opts.update({"ca_certs" : str(args["es_ca_certs"])})
         
         elif importlib.util.find_spec("certifi") is None:
             print("error: using HTTPS requires either ca_certs or the certifi library to be installed")
             sys.exit(1)
 
-        es_opts.update({"hosts" : "https://" + args["es-host"]})
-        es_opts.update({"use-https" : True})
-        es_opts.update({"verify-certs" : True}) 
+        es_opts.update({"hosts" : "https://" + args["es_host"]})
+        es_opts.update({"use_https" : True})
+        es_opts.update({"verify_certs" : True}) 
 
-    if (not args["es-user"]) ^ (not args["es-password-file"]):
+    if (not args["es_user"]) ^ (not args["es_password_file"]):
         print("error: you must specify a username and password, or neither")
         sys.exit(1)
 
-    elif args["es-user"] and args["es-password-file"]:
+    elif args["es_user"] and args["es_password_file"]:
         passwd_str = ""    
-        with open(args["es-password-file"], 'r') as file:
+        with open(args["es_password_file"], 'r') as file:
            passwd_str = file.read()
  
-        es_opts.update({"http-auth" : (args["es-user"], passwd_str)})
+        es_opts.update({"http_auth" : (args["es_user"], passwd_str)})
 
     client = elasticsearch.Elasticsearch(**es_opts)
     connections.create_connection(alias="default", client=client)
@@ -157,12 +159,12 @@ def main():
         es_opts = json.load(args.es_config_file.open())
     else:
         es_opts = {arg: v for arg, v in vars(args).items() if arg.startswith("es_")}
-
+  
     client = get_client(es_opts)
  
     # nicely the Q object supports ~ for negation :)
     # 'search' is aggregated by project
-    search = Search(using=client, index=es_opts["es-index"]) \
+    search = Search(using=client, index=es_opts["es_index"]) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -170,7 +172,7 @@ def main():
                     .extra(track_scores=False)
 
     # totals query is exactly the same
-    totals = Search(using=client, index=es_opts["es-index"]) \
+    totals = Search(using=client, index=es_opts["es_index"]) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -180,7 +182,7 @@ def main():
     # top level aggregation is by project
     search.aggs.bucket(
         "projects", "terms",
-        field=es_opts["es-agg-by"],
+        field=es_opts["es_agg_by"],
         size=1024
     )
 
@@ -593,7 +595,7 @@ def main():
 
         # extract data into a row
         # COL_AGG_NAMES defined at top of file
-        row = {es_opts["es-agg-by"].split('.')[0] : proj_name}
+        row = {es_opts["es_agg_by"].split('.')[0] : proj_name}
         for agg in ROWS_AGGS:
             # check if it's a multi-value aggregation
             if isinstance(agg.pretty_name, list):
@@ -608,7 +610,7 @@ def main():
         table_rows.append(row)
 
     # create the totals row
-    totals_row = {es_opts["es-agg-by"].split('.')[0] : "Totals"}
+    totals_row = {es_opts["es_agg_by"].split('.')[0] : "Totals"}
     totals_raw = totals_response.aggregations.to_dict()
 
     for a in TOTALS_AGGS:
@@ -633,6 +635,32 @@ def main():
     if args.print_table:
         print(f"Report for {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}")
         table(table_rows)
+
+    # send an email
+    html = table(table_rows, emit_html=True) 
+
+    # add css to make the table look pretty
+    html = f"""
+
+    """
+
+    # abort email if tabulate is not installed
+    if html is None and not args.no_email:
+        sys.exit(1)
+
+    if not args.no_email:    
+        send_email(
+            subject=f"{(args.end - args.start).days}-day CHTC Usage Report {args.start.strftime(r'%Y-%m-%d')} to {args.end.strftime(r'%Y-%m-%d')}",
+            from_addr=args.from_addr,
+            to_addrs=args.to,
+            html=html,
+            cc_addrs=args.cc,
+            bcc_addrs=args.cc,
+            reply_to_addr=args.reply_to,
+            smtp_server=args.smtp_server,
+            smtp_username=args.smtp_username,
+            smtp_password_file=args.smtp_password_file,
+        )
 
 if __name__ == "__main__":
     main()

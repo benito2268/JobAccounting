@@ -1,7 +1,7 @@
 CHTC Elasticsearch DSL Reporting
 
 ### Install Required Packages
-* `pip install elasticsearch<8 elasticsearch_dsl<8 tabulate`
+* `pip install elasticsearch<8 elasticsearch_dsl<8 tabulate dnspython`
 
 ### Command Line Options
 #### Output Options

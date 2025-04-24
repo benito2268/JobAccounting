@@ -52,7 +52,7 @@ def get_percent_bucket_script(want_percent: str, out_of: str) -> A:
             script="params.a / params.b * 100"                 
             )
 
-def table(rows: list):
+def table(rows: list, emit_html: bool=False):
     """ Generates a table to display the report on the command line
         params:
             rows - a list of dicts that map column names to values
@@ -62,19 +62,26 @@ def table(rows: list):
         from tabulate import tabulate
 
     except Exception:
-        print("run 'pip install tabulate' to see a nicer table!\n")
+        print("WARNING: tabulate not installed - required for email HTML table\n")
         # print for debugging
         print("\t".join(list(rows[0].keys())))
         for row in rows:
             pprint(row.values())
             print()
 
+        return None
+
     # print a nice table if tabulate is installed 
     # NOTE: the table is very wide, should pipe into 'less -S'
-    print(tabulate(rows, 
-                   headers="keys", 
-                   tablefmt="grid"
-    ))
+    if not emit_html:
+        print(tabulate(rows, 
+                       headers="keys", 
+                       tablefmt="grid"
+        ))
+        
+        return None
+    else:
+        return tabulate(rows, headers="keys", tablefmt="html")
 
 def print_error(d, depth=0):
     pre = depth*"\t"
