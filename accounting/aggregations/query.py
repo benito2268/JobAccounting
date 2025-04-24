@@ -1,5 +1,7 @@
 import elasticsearch
 import argparse
+import sys
+import json
 from elasticsearch_dsl import Search, Q, A, connections
 from datetime import datetime, timedelta
 from collections import namedtuple
@@ -108,36 +110,59 @@ def calc_totals_percents(resp) -> dict:
 
     return ret
 
+def get_client(args: dict):
+    # set up elasticsearch options
+    es_opts = {
+        "timeout" : 120,
+        "hosts" : [args["es-url-prefix"] + args["es-host"]], 
+    }
+
+    if args["es-use-https"]:
+        if args["es-ca-certs"]:
+            es_opts.update({"ca-certs" : str(args["es-ca-certs"])})
+        
+        elif importlib.util.find_spec("certifi") is None:
+            print("error: using HTTPS requires either ca_certs or the certifi library to be installed")
+            sys.exit(1)
+
+        es_opts.update({"hosts" : "https://" + args["es-host"]})
+        es_opts.update({"use-https" : True})
+        es_opts.update({"verify-certs" : True}) 
+
+    if (not args["es-user"]) ^ (not args["es-password-file"]):
+        print("error: you must specify a username and password, or neither")
+        sys.exit(1)
+
+    elif args["es-user"] and args["es-password-file"]:
+        passwd_str = ""    
+        with open(args["es-password-file"], 'r') as file:
+           passwd_str = file.read()
+ 
+        es_opts.update({"http-auth" : (args["es-user"], passwd_str)})
+
+    client = elasticsearch.Elasticsearch(**es_opts)
+    connections.create_connection(alias="default", client=client)
+   
+    return client
+
 # =========== end of helper functions ===========
 
 def main():
     # parse arguments
     args = parse_args()
 
-    # set up elasticsearch options
-    es_opts = {
-        "timeout" : 120,
-        "hosts" : [args.es_url_prefix + args.es_host], 
-    }
+    # read the config file if there is one
+    es_opts = {}
+    if args.es_config_file:
+        es_opts = json.load(args.es_config_file.open())
+    else:
+        es_opts = {arg: v for arg, v in vars(args).items() if arg.startswith("es_")}
 
-    if args.es_use_https:
-        es_opts.update({"hosts" : "https://" + args.es_host})
-        es_opts.update({"verify_certs" : True}) 
-        es_opts.update({"ca_certs" : args.es_ca_certs})
-
-    if args.es_user and args.es_password_file:
-        passwd_str = ""    
-        with open(args.es_password_file, 'r') as file:
-           passwd_str = file.read()
+    client = get_client(es_opts)
  
-        es_opts.update({"http_auth" : (args.es_user, passwd_str)})
-
-    client = elasticsearch.Elasticsearch(**es_opts)
-    connections.create_connection(alias="default", client=client)
-
     # nicely the Q object supports ~ for negation :)
     # 'search' is aggregated by project
-    search = Search(using=client, index=args.es_index) \
+    search = Search(using=client, index=es_opts["es-index"]) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -145,7 +170,7 @@ def main():
                     .extra(track_scores=False)
 
     # totals query is exactly the same
-    totals = Search(using=client, index=args.es_index) \
+    totals = Search(using=client, index=es_opts["es-index"]) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -155,7 +180,7 @@ def main():
     # top level aggregation is by project
     search.aggs.bucket(
         "projects", "terms",
-        field=args.es_agg_by,
+        field=es_opts["es-agg-by"],
         size=1024
     )
 
