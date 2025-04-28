@@ -256,12 +256,19 @@ def main():
 
     TOTALS_AGGS.append(ROWS_AGGS[-1])
 
-    # these aggs are added dicrectly to the query
-    # because they will not show up in the final table
-    search.aggs["projects"].metric("good_core_hours", "sum", field="GoodCpuCoreHours")
-
+    # this agg are added dicrectly to the query
+    # because it will not show up in the final table
     totals.aggs.metric("cpu_core_hours", "sum", field="CpuCoreHours")
-    totals.aggs.metric("good_core_hours", "sum", field="GoodCpuCoreHours")
+
+    # good core hours is it's own column also
+    ROWS_AGGS.append(Aggregation(
+        A("sum", field="GoodCpuCoreHours"),
+        "good_core_hours",
+        "Good CPU Hours",
+        "metric"
+    ))
+
+    TOTALS_AGGS.append(ROWS_AGGS[-1])
 
     # calculate percentage within ES
     ROWS_AGGS.append(Aggregation(
