@@ -19,7 +19,8 @@ TOTALS_AGGS = []
 OUTPUT_ARGS = {
     "--print-table" : {"action" : "store_true", "help" : "prints a CLI table, NOTE: pipe into 'less -S'"},
     "--output"      : {"default" : f"{datetime.now().strftime("%Y-%m-%d:%H:%M")}-report.csv",
-                       "help" : "specify the CSV output file name, defaults to '<date:time>-report.csv'"}
+                       "help" : "specify the CSV output file name, defaults to '<date:time>-report.csv'"},
+    "--emit-html"   : {"action" : "store_true", "help" : "writes generated HTML to a file"}
 }
 
 EMAIL_ARGS = {
@@ -562,10 +563,24 @@ def main():
     # calculate other stats
     ROWS_AGGS.append(Aggregation(A("extended_stats", field="CpuCoreHours"),
                                 "stats",
-                                ["Min Hrs", "Std Hrs", "Mean Hrs"],
+                                ["Min Hrs", "Std Hrs", "Mean Hrs", "Max Hrs"],
                                 "metric",
-                                ["min", "avg", "std_deviation"]))
+                                ["min", "avg", "std_deviation", "max"]))
 
+    TOTALS_AGGS.append(ROWS_AGGS[-1])
+
+    # calculate mean setup secs
+    # script to cast to double
+    CAST_SETUP_DURATION_SCRIPT_SRC = """
+        if(doc.containsKey("activationsetupduration.keyword") && doc["activationsetupduration.keyword"].size() > 0) {
+            emit(Double.parseDouble(doc["activationsetupduration.keyword"].value));
+        }
+    """
+
+    add_runtime_script(search, "SetupDuration", CAST_SETUP_DURATION_SCRIPT_SRC, "double")
+    add_runtime_script(totals, "SetupDuration", CAST_SETUP_DURATION_SCRIPT_SRC, "double")
+
+    ROWS_AGGS.append(Aggregation(A("avg", field="SetupDuration"), "mean_setup_secs", "Mean Setup Secs", "metric"))
     TOTALS_AGGS.append(ROWS_AGGS[-1])
 
     # =========== add aggregations to the two queries ==============
@@ -640,25 +655,34 @@ def main():
     html = table(table_rows, emit_html=True) 
 
     # add css to make the table look pretty
+    # NOTE: the alternating row colors don't render in outlook
+    # but they will if the html is opened in a browser
     html = f"""
         <style>
             table {{
                 width: 100%;
                 border-collapse: collapse;
             }}
+            th {{
+                white-space: nowrap;
+                background-color: #d6d6d6;
+            }}
             th, td {{
                 padding: 10px;
                 text-align: left;
+                border: 1px solid black;
             }}
-            tr:nth-child(odd) {{
-                background-color: #f2f2f2;
-            }}
-            tr:nth-child(even) {{
-                background-color: #ffffff;
+            table tr:nth-child(even) td{{
+                background-color: #fce3f4;
             }}
         </style>
         {html}
     """
+
+    # write an HTML file if the arg is set
+    if args.emit_html:
+        with open("table.html", 'w') as htmlfile:
+            htmlfile.write(html)
 
     # abort email if tabulate is not installed
     if html is None and not args.no_email:
