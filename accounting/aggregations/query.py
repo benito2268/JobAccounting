@@ -8,78 +8,12 @@ from datetime import datetime, timedelta
 from collections import namedtuple
 from operator import itemgetter
 from pprint import pprint
-from pathlib import Path
 
 from report_helpers import Aggregation, add_runtime_script, get_percent_bucket_script, table, print_error
 
 # lists to hold aggregation objects
 ROWS_AGGS = []
 TOTALS_AGGS = []
-
-OUTPUT_ARGS = {
-    "--print-table" : {"action" : "store_true", "help" : "prints a CLI table, NOTE: pipe into 'less -S'"},
-    "--output"      : {"default" : f"{datetime.now().strftime("%Y-%m-%d:%H:%M")}-report.csv",
-                       "help" : "specify the CSV output file name, defaults to '<date:time>-report.csv'"},
-    "--emit-html"   : {"action" : "store_true", "help" : "writes generated HTML to a file"}
-}
-
-EMAIL_ARGS = {
-    "--no-email" : {"action" : "store_true", "help" : "don't send an email"},
-    "--from": {"dest": "from_addr", "default": "no-reply@chtc.wisc.edu"},
-    "--reply-to": {"default": "ospool-reports@g-groups.wisc.edu"},
-    "--to": {"action": "append", "default": []},
-    "--cc": {"action": "append", "default": []},
-    "--bcc": {"action": "append", "default": []},
-    "--smtp-server": {"default" : "smtp.wiscmail.wisc.edu"},
-    "--smtp-username": {},
-    "--smtp-password-file": {"type": Path}
-}
-
-ELASTICSEARCH_ARGS = {
-    "--es-host": {"default" : "localhost:9200"},
-    "--es-agg-by" : {"default" : "ProjectName.keyword"},
-    "--es-url-prefix": {"default" : "http://"},
-    "--es-index": {"default" : "chtc-schedd-*"},
-    "--es-user": {},
-    "--es-password-file": {"type": Path},
-    "--es-use-https": {"action": "store_true"},
-    "--es-ca-certs": {},
-    "--es-config-file": {
-        "type": Path,
-        "help": "JSON file containing an object that sets above ES options",
-    }
-}
-
-# =========== helper functions ===========
-
-def valid_date(date_str: str) -> datetime:
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d")
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid date string, should match format YYYY-MM-DD: {date_str}")
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--start", type=valid_date, required=True, 
-                        help="the date to start reporting on 'YYYY-MM-DD' (REQUIRED)")
-    parser.add_argument("--end", type=valid_date, default=datetime.strftime(datetime.now(), "%Y-%m-%d"),
-                        help="the date to end reporting on 'YYYY-MM-DD', defaults to the current date")
-
-    email_opts = parser.add_argument_group("email options")
-    for name, props in EMAIL_ARGS.items():
-        email_opts.add_argument(name, **props)
-
-    es_opts = parser.add_argument_group("elasticsearch options")
-    for name, props in ELASTICSEARCH_ARGS.items():
-        es_opts.add_argument(name, **props)
-
-    output_opts = parser.add_argument_group("output options")
-    for name, props in OUTPUT_ARGS.items():
-        output_opts.add_argument(name, **props)
-
-    return parser.parse_args()
-
 
 # percentages for the totals row is calculated in python
 # due to limitations with calculating percents in ES
@@ -113,56 +47,10 @@ def calc_totals_percents(resp) -> dict:
 
     return ret
 
-def get_client(args: dict):
-    # set up elasticsearch options
-    es_opts = {
-        "timeout" : 120,
-        "hosts" : [args["es_url_prefix"] + args["es_host"]], 
-    }
-
-    if args["es_use_https"]:
-        if args["es_ca_certs"]:
-            es_opts.update({"ca_certs" : str(args["es_ca_certs"])})
-        
-        elif importlib.util.find_spec("certifi") is None:
-            print("error: using HTTPS requires either ca_certs or the certifi library to be installed")
-            sys.exit(1)
-
-        es_opts.update({"hosts" : "https://" + args["es_host"]})
-        es_opts.update({"use_https" : True})
-        es_opts.update({"verify_certs" : True}) 
-
-    if (not args["es_user"]) ^ (not args["es_password_file"]):
-        print("error: you must specify a username and password, or neither")
-        sys.exit(1)
-
-    elif args["es_user"] and args["es_password_file"]:
-        passwd_str = ""    
-        with open(args["es_password_file"], 'r') as file:
-           passwd_str = file.read()
- 
-        es_opts.update({"http_auth" : (args["es_user"], passwd_str)})
-
-    client = elasticsearch.Elasticsearch(**es_opts)
-    connections.create_connection(alias="default", client=client)
-   
-    return client
 
 # =========== end of helper functions ===========
 
-def main():
-    # parse arguments
-    args = parse_args()
-
-    # read the config file if there is one
-    es_opts = {}
-    if args.es_config_file:
-        es_opts = json.load(args.es_config_file.open())
-    else:
-        es_opts = {arg: v for arg, v in vars(args).items() if arg.startswith("es_")}
-  
-    client = get_client(es_opts)
- 
+def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse.Namespace, agg_by: str) -> list:
     # nicely the Q object supports ~ for negation :)
     # 'search' is aggregated by project
     search = Search(using=client, index=es_opts["es_index"]) \
@@ -183,7 +71,7 @@ def main():
     # top level aggregation is by project
     search.aggs.bucket(
         "projects", "terms",
-        field=es_opts["es_agg_by"],
+        field=agg_by,
         size=1024
     )
 
@@ -617,7 +505,7 @@ def main():
 
         # extract data into a row
         # COL_AGG_NAMES defined at top of file
-        row = {es_opts["es_agg_by"].split('.')[0] : proj_name}
+        row = {agg_by.split('.')[0] : proj_name}
         for agg in ROWS_AGGS:
             # check if it's a multi-value aggregation
             if isinstance(agg.pretty_name, list):
@@ -632,7 +520,7 @@ def main():
         table_rows.append(row)
 
     # create the totals row
-    totals_row = {es_opts["es_agg_by"].split('.')[0] : "Totals"}
+    totals_row = {agg_by.split('.')[0] : "Totals"}
     totals_raw = totals_response.aggregations.to_dict()
 
     for a in TOTALS_AGGS:
@@ -653,61 +541,4 @@ def main():
     # sort by # of job ids in descending order
     table_rows.sort(key=itemgetter("# Jobs"), reverse=True)
 
-    # compute a table (for now)
-    if args.print_table:
-        print(f"Report for {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}")
-        table(table_rows)
-
-    # send an email
-    html = table(table_rows, emit_html=True) 
-
-    # add css to make the table look pretty
-    # NOTE: the alternating row colors don't render in outlook
-    # but they will if the html is opened in a browser
-    html = f"""
-        <style>
-            table {{
-                width: 100%;
-                border-collapse: collapse;
-            }}
-            th {{
-                white-space: nowrap;
-                background-color: #d6d6d6;
-            }}
-            th, td {{
-                padding: 10px;
-                text-align: left;
-                border: 1px solid black;
-            }}
-            table tr:nth-child(even) td{{
-                background-color: #fce3f4;
-            }}
-        </style>
-        {html}
-    """
-
-    # write an HTML file if the arg is set
-    if args.emit_html:
-        with open("table.html", 'w') as htmlfile:
-            htmlfile.write(html)
-
-    # abort email if tabulate is not installed
-    if html is None and not args.no_email:
-        sys.exit(1)
-
-    if not args.no_email:    
-        send_email(
-            subject=f"{(args.end - args.start).days}-day CHTC Usage Report {args.start.strftime(r'%Y-%m-%d')} to {args.end.strftime(r'%Y-%m-%d')}",
-            from_addr=args.from_addr,
-            to_addrs=args.to,
-            html=html,
-            cc_addrs=args.cc,
-            bcc_addrs=args.cc,
-            reply_to_addr=args.reply_to,
-            smtp_server=args.smtp_server,
-            smtp_username=args.smtp_username,
-            smtp_password_file=args.smtp_password_file,
-        )
-
-if __name__ == "__main__":
-    main()
+    return table_rows 
