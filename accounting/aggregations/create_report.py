@@ -12,13 +12,19 @@ from pprint import pprint
 
 from query import run_query
 from functions import send_email 
-from report_helpers import Aggregation, add_runtime_script, get_percent_bucket_script, table, print_error
+from report_helpers import (
+    Aggregation, 
+    add_runtime_script, 
+    get_percent_bucket_script, 
+    table, print_error, 
+    generate_csv
+)
 
 OUTPUT_ARGS = {
     "--print-table" : {"action" : "store_true", "help" : "prints a CLI table, NOTE: pipe into 'less -S'"},
-    "--output"      : {"default" : f"{datetime.now().strftime("%Y-%m-%d:%H:%M")}-report.csv",
-                       "help" : "specify the CSV output file name, defaults to '<date:time>-report.csv'"},
-    "--emit-html"   : {"action" : "store_true", "help" : "writes generated HTML to a file"}
+    "--emit-csv"      : {"action" : "store_true",
+                       "help" : "output a CSV file named '<date:time>-report.csv'"},
+    "--emit-html"   : {"action" : "store_true", "help" : "writes generated HTML to a file 'table.html'"}
 }
 
 EMAIL_ARGS = {
@@ -35,7 +41,8 @@ EMAIL_ARGS = {
 
 ELASTICSEARCH_ARGS = {
     "--es-host": {"default" : "localhost:9200"},
-    "--es-agg-by" : {"default" : "ProjectName.keyword", "nargs" : "+", "help" : "generate 1 or more tables aggregated by an ES field"},
+    "--es-agg-by" : {"default" : "ProjectName.keyword", "nargs" : "+", 
+                     "help" : "generate 1 or more tables aggregated by an ES field - defaults to 'ProjectName.keyword'"},
     "--es-url-prefix": {"default" : "http://"},
     "--es-index": {"default" : "chtc-schedd-*"},
     "--es-user": {},
@@ -184,6 +191,11 @@ def main():
     # abort email if tabulate is not installed
     if html is None and not args.no_email:
         sys.exit(1)
+
+    # emit a csv file if the args is set
+    if args.emit_csv:
+        for title, r in results:
+            generate_csv(r, title.split('.')[0])  
 
     if not args.no_email:    
         send_email(

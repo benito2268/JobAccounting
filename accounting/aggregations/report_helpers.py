@@ -1,4 +1,5 @@
 import elasticsearch
+import csv
 from elasticsearch_dsl import Search, Q, A
 from datetime import datetime, timedelta
 from collections import namedtuple
@@ -54,8 +55,11 @@ def get_percent_bucket_script(want_percent: str, out_of: str) -> A:
 
 def table(rows: list, emit_html: bool=False):
     """ Generates a table to display the report on the command line
+        OR generate an HTML table
         params:
             rows - a list of dicts that map column names to values
+            emit_html - skips outputing to the command line - instead returns
+                        a string containing and HTML table
     """
 
     try:
@@ -101,4 +105,9 @@ def print_error(d, depth=0):
         else:
             print(f"{pre}{k}:\t{v}")
 
-
+def generate_csv(rows: list, title: str):
+    headers = list(rows[0].keys())    
+    with open(f"{datetime.now().strftime("%Y-%m-%d")}-{title}-report.csv", 'w') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows) 
