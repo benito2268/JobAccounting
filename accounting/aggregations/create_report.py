@@ -29,22 +29,22 @@ OUTPUT_ARGS = {
 
 EMAIL_ARGS = {
     "--no-email" : {"action" : "store_true", "help" : "don't send an email"},
-    "--from": {"dest": "from_addr", "default": "no-reply@chtc.wisc.edu"},
+    "--from": {"dest": "from_addr", "default": "no-reply@chtc.wisc.edu", "help" : "defaults to 'no-reply@chtc.wisc.edu'"},
     "--reply-to": {"default": "ospool-reports@g-groups.wisc.edu"},
     "--to": {"action": "append", "default": []},
     "--cc": {"action": "append", "default": []},
     "--bcc": {"action": "append", "default": []},
-    "--smtp-server": {"default" : "smtp.wiscmail.wisc.edu"},
+    "--smtp-server": {"default" : "smtp.wiscmail.wisc.edu", "help" : "defaults to 'smtp.wiscmail.wisc.edu'"},
     "--smtp-username": {},
     "--smtp-password-file": {"type": Path}
 }
 
 ELASTICSEARCH_ARGS = {
-    "--es-host": {"default" : "localhost:9200"},
+    "--es-host": {"default" : "localhost:9200", "help" : "defaults to localhost:9200"},
     "--es-agg-by" : {"default" : "ProjectName.keyword", "nargs" : "+", 
                      "help" : "generate 1 or more tables aggregated by an ES field - defaults to 'ProjectName.keyword'"},
-    "--es-url-prefix": {"default" : "http://"},
-    "--es-index": {"default" : "chtc-schedd-*"},
+    "--es-url-prefix": {"default" : "http://", "help" : "defaults to http:// or https:// with '--es-use-https'"},
+    "--es-index": {"default" : "chtc-schedd-*", "help" : "defaults to 'chtc-schedd-*'"},
     "--es-user": {},
     "--es-password-file": {"type": Path},
     "--es-use-https": {"action": "store_true"},

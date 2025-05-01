@@ -5,7 +5,8 @@ CHTC Elasticsearch DSL Reporting
 
 ### Command Line Options
 #### Output Options
-* `--output` specify the output CSV file name
+* `--emit-csv` output report data in a CSV file
+* `--emit-html` output a raw HTML file containing the email table
 * `--print-table` prints the report output on the command line
 
 #### Elasticsearch Options
@@ -20,3 +21,15 @@ CHTC Elasticsearch DSL Reporting
 * `--es-use-https` Toggle HTTPS (requires either --es-ca-certs or that `certifi` is installed)
 * `--es-ca-certs` Provide ca-certs
 * `--es-config-file` provide the above options in a JSON config file instead
+
+#### Email Options
+* `--no-email` skip the email part entirely
+* `--from` Defaults to `no-reply@chtc.wisc.edu`
+* `--reply-to`
+* `--to`
+* `--cc`
+* `--bcc`
+* `--smtp-server` Defaults to `smtp.wiscmail.wisc.edu`
+* `--smtp-username`
+* `--smtp-password-file`
+
