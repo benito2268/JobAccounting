@@ -146,7 +146,6 @@ def main():
         for title, r in results:
             print('\n')            
             print(f"CHTC Jobs by {title.split('.')[0]} for {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}")
-            print('got here')
             table(r)
             
     # send an email
