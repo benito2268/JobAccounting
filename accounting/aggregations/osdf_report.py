@@ -326,87 +326,54 @@ if __name__ == "__main__":
         missing="UNKNOWN",
     )
 
-    endpoint_agg.bucket("transfer_type", transfer_type_agg)
     endpoint_agg.metric("unique_jobs", num_jobs_agg)
 
-    resource_name_agg.bucket("transfer_type", transfer_type_agg)
     resource_name_agg.metric("unique_jobs", num_jobs_agg)
 
+    transfer_type_agg.metric("resource_name", resource_name_agg)
+    transfer_type_agg.metric("endpoint", endpoint_agg)
     transfer_type_agg.metric("unique_jobs", num_jobs_agg)
 
-    cache_filter = Q("terms", Endpoint=list(endpoint_types["cache"]))
-    origin_filter = Q("terms", Endpoint=list(endpoint_types["origin"]))
+    osdf_filter = Q("terms", Endpoint=list(endpoint_types["cache"] | endpoint_types["origin"]))
     success_filter = Q("term", TransferSuccess=True)
     final_attempt_failure_filter = Q("term", FinalAttempt=True) & Q("term", TransferSuccess=False)
     all_attempt_failure_filter = Q("term", FinalAttempt=False) | final_attempt_failure_filter
 
-    cache_base_query = base_query.query(cache_filter)
-    origin_base_query = base_query.query(origin_filter)
-
+    base_query = base_query.query(osdf_filter)
     success_query = base_query.query(success_filter)
-    cache_success_query = success_query.query(cache_filter)
-    origin_success_query = success_query.query(origin_filter)
 
     final_attempt_failure_query = base_query.query(final_attempt_failure_filter)
-    cache_final_attempt_failure_query = final_attempt_failure_query.query(cache_filter)
-    origin_final_attempt_failure_query = final_attempt_failure_query.query(origin_filter)
 
     all_attempt_failure_query = base_query.query(all_attempt_failure_filter)
-    cache_all_attempt_failure_query = all_attempt_failure_query.query(cache_filter)
-    origin_all_attempt_failure_query = all_attempt_failure_query.query(origin_filter)
 
     base_query.aggs.bucket("transfer_type", transfer_type_agg)
     base_query.aggs.bucket("resource_name", resource_name_agg)
     base_query.aggs.metric("unique_jobs", num_jobs_agg)
-    cache_base_query.aggs.bucket("endpoint", endpoint_agg)
-    cache_base_query.aggs.metric("unique_jobs", num_jobs_agg)
-    origin_base_query.aggs.bucket("endpoint", endpoint_agg)
-    origin_base_query.aggs.metric("unique_jobs", num_jobs_agg)
 
     success_query.aggs.bucket("transfer_type", transfer_type_agg)
     success_query.aggs.bucket("resource_name", resource_name_agg)
     success_query.aggs.metric("unique_jobs", num_jobs_agg)
-    cache_success_query.aggs.bucket("endpoint", endpoint_agg)
-    cache_success_query.aggs.metric("unique_jobs", num_jobs_agg)
-    origin_success_query.aggs.bucket("endpoint", endpoint_agg)
-    origin_success_query.aggs.metric("unique_jobs", num_jobs_agg)
 
     final_attempt_failure_query.aggs.bucket("transfer_type", transfer_type_agg)
     final_attempt_failure_query.aggs.bucket("resource_name", resource_name_agg)
     final_attempt_failure_query.aggs.metric("unique_jobs", num_jobs_agg)
-    cache_final_attempt_failure_query.aggs.bucket("endpoint", endpoint_agg)
-    cache_final_attempt_failure_query.aggs.metric("unique_jobs", num_jobs_agg)
-    origin_final_attempt_failure_query.aggs.bucket("endpoint", endpoint_agg)
-    origin_final_attempt_failure_query.aggs.metric("unique_jobs", num_jobs_agg)
 
     all_attempt_failure_query.aggs.bucket("transfer_type", transfer_type_agg)
     all_attempt_failure_query.aggs.bucket("resource_name", resource_name_agg)
     all_attempt_failure_query.aggs.metric("unique_jobs", num_jobs_agg)
-    cache_all_attempt_failure_query.aggs.bucket("endpoint", endpoint_agg)
-    cache_all_attempt_failure_query.aggs.metric("unique_jobs", num_jobs_agg)
-    origin_all_attempt_failure_query.aggs.bucket("endpoint", endpoint_agg)
-    origin_all_attempt_failure_query.aggs.metric("unique_jobs", num_jobs_agg)
 
     print(f"{datetime.now()} - Running queries")
     try:
         all_attempts = base_query.execute()
-        cache_all_attempts = cache_base_query.execute()
-        origin_all_attempts = origin_base_query.execute()
         time.sleep(1)
 
         success_attempts = success_query.execute()
-        cache_success_attempts = cache_success_query.execute()
-        origin_success_attempts = origin_success_query.execute()
         time.sleep(1)
 
         final_failed_attempts = final_attempt_failure_query.execute()
-        cache_final_failed_attempts = cache_final_attempt_failure_query.execute()
-        origin_final_failed_attempts = origin_final_attempt_failure_query.execute()
         time.sleep(1)
 
         all_failed_attempts = all_attempt_failure_query.execute()
-        cache_all_failed_attempts = cache_all_attempt_failure_query.execute()
-        origin_all_failed_attempts = origin_all_attempt_failure_query.execute()
     except Exception as err:
         try:
             print_error(err.info)
@@ -415,219 +382,121 @@ if __name__ == "__main__":
         raise err
     print(f"{datetime.now()} - Done.")
 
-    cache_all_endpoint_data = convert_buckets_to_dict(cache_all_attempts.aggregations.endpoint.buckets)
-    origin_all_endpoint_data = convert_buckets_to_dict(origin_all_attempts.aggregations.endpoint.buckets)
     all_transfer_type_data = convert_buckets_to_dict(all_attempts.aggregations.transfer_type.buckets)
     all_resource_name_data = convert_buckets_to_dict(all_attempts.aggregations.resource_name.buckets)
 
-    cache_success_endpoint_data = convert_buckets_to_dict(cache_success_attempts.aggregations.endpoint.buckets)
-    origin_success_endpoint_data = convert_buckets_to_dict(origin_success_attempts.aggregations.endpoint.buckets)
     success_transfer_type_data = convert_buckets_to_dict(success_attempts.aggregations.transfer_type.buckets)
     success_resource_name_data = convert_buckets_to_dict(success_attempts.aggregations.resource_name.buckets)
 
-    cache_final_failed_endpoint_data = convert_buckets_to_dict(cache_final_failed_attempts.aggregations.endpoint.buckets)
-    origin_final_failed_endpoint_data = convert_buckets_to_dict(origin_final_failed_attempts.aggregations.endpoint.buckets)
     final_failed_transfer_type_data = convert_buckets_to_dict(final_failed_attempts.aggregations.transfer_type.buckets)
     final_failed_resource_name_data = convert_buckets_to_dict(final_failed_attempts.aggregations.resource_name.buckets)
 
-    cache_all_failed_endpoint_data = convert_buckets_to_dict(cache_all_failed_attempts.aggregations.endpoint.buckets)
-    origin_all_failed_endpoint_data = convert_buckets_to_dict(origin_all_failed_attempts.aggregations.endpoint.buckets)
     all_failed_transfer_type_data = convert_buckets_to_dict(all_failed_attempts.aggregations.transfer_type.buckets)
     all_failed_resource_name_data = convert_buckets_to_dict(all_failed_attempts.aggregations.resource_name.buckets)
 
     empty_row = {"value": 0, "unique_jobs": 0}
 
-    cache_endpoint_data = []
-    for endpoint in cache_all_endpoint_data:
-        server_info = OSDF_DIRECTOR_SERVERS.get(f"https://{endpoint}")
-        endpoint_institution = ""
-        if server_info:
-            endpoint_name = server_info.get("name")
-            if endpoint_name:
-                endpoint_institution = TOPOLOGY_RESOURCE_DATA.get(endpoint_name.lower(), {"institution": f"Unmapped endpoint {endpoint_name}"})["institution"]
+    endpoint_data = {"download": [], "upload": []}
+    for transfer_type, transfer_type_data in all_transfer_type_data.items():
+        for endpoint in transfer_type_data["endpoint"]:
+            server_info = OSDF_DIRECTOR_SERVERS.get(f"https://{endpoint}")
+            endpoint_institution = ""
+            if server_info:
+                endpoint_name = server_info.get("name")
+                if endpoint_name:
+                    endpoint_institution = TOPOLOGY_RESOURCE_DATA.get(endpoint_name.lower(), {"institution": f"Unmapped endpoint {endpoint_name}"})["institution"]
+                else:
+                    endpoint_name = "Unnamed endpoint"
             else:
-                endpoint_name = "Unnamed endpoint"
-        else:
-            endpoint_name = "Not currently found*"
-        row = {
-            "endpoint": endpoint,
-            "endpoint_institution": endpoint_institution,
-            "endpoint_name": endpoint_name,
-            "endpoint_type": OSDF_DIRECTOR_SERVERS.get(f"https://{endpoint}", {"type": ""}).get("type", "") or "Cache*",
-            "total_attempts": cache_all_endpoint_data[endpoint]["value"],
-            "total_attempts_jobs": cache_all_endpoint_data[endpoint]["unique_jobs"],
-            "success_attempts": cache_success_endpoint_data.get(endpoint, empty_row.copy())["value"],
-            "success_attempts_jobs": cache_success_endpoint_data.get(endpoint, empty_row.copy())["unique_jobs"],
-            "final_failed_attempts": cache_final_failed_endpoint_data.get(endpoint, empty_row.copy())["value"],
-            "final_failed_attempts_jobs": cache_final_failed_endpoint_data.get(endpoint, empty_row.copy())["unique_jobs"],
-            "all_failed_attempts": cache_all_failed_endpoint_data.get(endpoint, empty_row.copy())["value"],
-            "all_failed_attempts_jobs": cache_all_failed_endpoint_data.get(endpoint, empty_row.copy())["unique_jobs"],
+                endpoint_name = "Not currently found*"
+            row = {
+                "endpoint": endpoint,
+                "endpoint_institution": endpoint_institution,
+                "endpoint_name": endpoint_name,
+                "endpoint_type": OSDF_DIRECTOR_SERVERS.get(f"https://{endpoint}", {"type": ""}).get("type", "") or "Cache*",
+                "total_attempts": all_transfer_type_data[transfer_type]["endpoint"][endpoint]["value"],
+                "total_attempts_jobs": all_transfer_type_data[transfer_type]["endpoint"][endpoint]["unique_jobs"],
+                "success_attempts": success_transfer_type_data[transfer_type]["endpoint"].get(endpoint, empty_row.copy())["value"],
+                "success_attempts_jobs": success_transfer_type_data[transfer_type]["endpoint"].get(endpoint, empty_row.copy())["unique_jobs"],
+                "final_failed_attempts": final_failed_transfer_type_data[transfer_type]["endpoint"].get(endpoint, empty_row.copy())["value"],
+                "final_failed_attempts_jobs": final_failed_transfer_type_data[transfer_type]["endpoint"].get(endpoint, empty_row.copy())["unique_jobs"],
+                "all_failed_attempts": all_failed_transfer_type_data[transfer_type]["endpoint"].get(endpoint, empty_row.copy())["value"],
+                "all_failed_attempts_jobs": all_failed_transfer_type_data[transfer_type]["endpoint"].get(endpoint, empty_row.copy())["unique_jobs"],
+            }
+            row["pct_failed_attempts"] = row["all_failed_attempts"] / max(row["total_attempts"], row["all_failed_attempts"], 1)
+            row["failed_attempts_per_job"] = row["all_failed_attempts"] / max(row["total_attempts_jobs"], row["all_failed_attempts"], 1)
+            row["pct_jobs_affected"] = row["final_failed_attempts_jobs"] / max(row["total_attempts_jobs"], row["final_failed_attempts_jobs"], 1)
+            endpoint_data[transfer_type].append(row)
+
+    endpoint_data_totals = {
+        transfer_type: {
+            "endpoint": "",
+            "endpoint_institution": "",
+            "endpoint_name": "TOTALS",
+            "endpoint_type": "",
+            "total_attempts": int(all_transfer_type_data[transfer_type]["value"]),
+            "total_attempts_jobs": int(all_transfer_type_data[transfer_type]["unique_jobs"]),
+            "success_attempts": int(success_transfer_type_data[transfer_type]["value"]),
+            "success_attempts_jobs": int(success_transfer_type_data[transfer_type]["unique_jobs"]),
+            "all_failed_attempts": int(all_failed_transfer_type_data[transfer_type]["value"]),
+            "all_failed_attempts_jobs": int(all_failed_transfer_type_data[transfer_type]["unique_jobs"]),
+            "failed_final_attempt": int(final_failed_transfer_type_data[transfer_type]["value"]),
+            "final_failed_attempts_jobs": int(final_failed_transfer_type_data[transfer_type]["unique_jobs"]),
         }
-        row["pct_failed_attempts"] = row["all_failed_attempts"] / max(row["total_attempts"], row["all_failed_attempts"], 1)
-        row["failed_attempts_per_job"] = row["all_failed_attempts"] / max(row["total_attempts_jobs"], row["all_failed_attempts"], 1)
-        row["pct_jobs_affected"] = row["final_failed_attempts_jobs"] / max(row["total_attempts_jobs"], row["final_failed_attempts_jobs"], 1)
-        row["jobs_failed_to_transfer_input"] = cache_final_failed_endpoint_data.get(endpoint, empty_row.copy()).get("transfer_type", {}).get("download", {}).get("value", 0)
-        row["jobs_failed_to_transfer_output"] = cache_final_failed_endpoint_data.get(endpoint, empty_row.copy()).get("transfer_type", {}).get("upload", {}).get("value", 0)
-        cache_endpoint_data.append(row)
+        for transfer_type in ("download", "upload")}
+    for transfer_type in ("download", "upload"):
+        endpoint_data_totals[transfer_type]["pct_failed_attempts"] = endpoint_data_totals[transfer_type]["all_failed_attempts"] / max(endpoint_data_totals[transfer_type]["total_attempts"], endpoint_data_totals[transfer_type]["all_failed_attempts"], 1)
+        endpoint_data_totals[transfer_type]["failed_attempts_per_job"] = endpoint_data_totals[transfer_type]["all_failed_attempts"] / max(endpoint_data_totals[transfer_type]["total_attempts_jobs"], endpoint_data_totals[transfer_type]["all_failed_attempts"], 1)
+        endpoint_data_totals[transfer_type]["pct_jobs_affected"] = endpoint_data_totals[transfer_type]["final_failed_attempts_jobs"] / max(endpoint_data_totals[transfer_type]["total_attempts_jobs"], endpoint_data_totals[transfer_type]["final_failed_attempts_jobs"], 1)
+        endpoint_data[transfer_type].sort(key=itemgetter("total_attempts"), reverse=True)
+        endpoint_data[transfer_type].insert(0, endpoint_data_totals[transfer_type])
 
-    origin_endpoint_data = []
-    for endpoint in origin_all_endpoint_data:
-        server_info = OSDF_DIRECTOR_SERVERS.get(f"https://{endpoint}")
-        endpoint_institution = ""
-        if server_info:
-            endpoint_name = server_info.get("name")
-            if endpoint_name:
-                endpoint_institution = TOPOLOGY_RESOURCE_DATA.get(endpoint_name.lower(), {"institution": f"Unmapped endpoint {endpoint_name}"})["institution"]
-            else:
-                endpoint_name = "Unnamed endpoint"
-        else:
-            endpoint_name = "Not currently found*"
-        row = {
-            "endpoint": endpoint,
-            "endpoint_institution": endpoint_institution,
-            "endpoint_name": endpoint_name,
-            "endpoint_type": OSDF_DIRECTOR_SERVERS.get(f"https://{endpoint}", {"type": ""}).get("type", "") or "origin*",
-            "total_attempts": origin_all_endpoint_data[endpoint]["value"],
-            "total_attempts_jobs": origin_all_endpoint_data[endpoint]["unique_jobs"],
-            "success_attempts": origin_success_endpoint_data.get(endpoint, empty_row.copy())["value"],
-            "success_attempts_jobs": origin_success_endpoint_data.get(endpoint, empty_row.copy())["unique_jobs"],
-            "final_failed_attempts": origin_final_failed_endpoint_data.get(endpoint, empty_row.copy())["value"],
-            "final_failed_attempts_jobs": origin_final_failed_endpoint_data.get(endpoint, empty_row.copy())["unique_jobs"],
-            "all_failed_attempts": origin_all_failed_endpoint_data.get(endpoint, empty_row.copy())["value"],
-            "all_failed_attempts_jobs": origin_all_failed_endpoint_data.get(endpoint, empty_row.copy())["unique_jobs"],
-        }
-        row["pct_failed_attempts"] = row["all_failed_attempts"] / max(row["total_attempts"], row["all_failed_attempts"], 1)
-        row["failed_attempts_per_job"] = row["all_failed_attempts"] / max(row["total_attempts_jobs"], row["all_failed_attempts"], 1)
-        row["pct_jobs_affected"] = row["final_failed_attempts_jobs"] / max(row["total_attempts_jobs"], row["final_failed_attempts_jobs"], 1)
-        row["jobs_failed_to_transfer_input"] = origin_final_failed_endpoint_data.get(endpoint, empty_row.copy()).get("transfer_type", {}).get("download", {}).get("value", 0)
-        row["jobs_failed_to_transfer_output"] = origin_final_failed_endpoint_data.get(endpoint, empty_row.copy()).get("transfer_type", {}).get("upload", {}).get("value", 0)
-        origin_endpoint_data.append(row)
-
-    resource_name_data = []
-    for resource_name in all_resource_name_data:
-        resource_info = TOPOLOGY_RESOURCE_DATA.get(resource_name.lower())
-        resource_institution = ""
-        if resource_info:
-            resource_institution = resource_info.get("institution")
-        elif resource_name != "UNKNOWN":
-            resource_institution = f"Unmapped resource {resource_name}"
-        row = {
-            "resource_name": resource_name,
-            "resource_institution": resource_institution,
-            "total_attempts": all_resource_name_data[resource_name]["value"],
-            "total_attempts_jobs": all_resource_name_data[resource_name]["unique_jobs"],
-            "success_attempts": success_resource_name_data.get(resource_name, empty_row.copy())["value"],
-            "success_attempts_jobs": success_resource_name_data.get(resource_name, empty_row.copy())["unique_jobs"],
-            "final_failed_attempts": final_failed_resource_name_data.get(resource_name, empty_row.copy())["value"],
-            "final_failed_attempts_jobs": final_failed_resource_name_data.get(resource_name, empty_row.copy())["unique_jobs"],
-            "all_failed_attempts": all_failed_resource_name_data.get(resource_name, empty_row.copy())["value"],
-            "all_failed_attempts_jobs": all_failed_resource_name_data.get(resource_name, empty_row.copy())["unique_jobs"],
-        }
-        row["pct_failed_attempts"] = row["all_failed_attempts"] / max(row["total_attempts"], row["all_failed_attempts"], 1)
-        row["failed_attempts_per_job"] = row["all_failed_attempts"] / max(row["total_attempts_jobs"], row["all_failed_attempts"], 1)
-        row["pct_jobs_affected"] = row["final_failed_attempts_jobs"] / max(row["total_attempts_jobs"], row["final_failed_attempts_jobs"], 1)
-        row["jobs_failed_to_transfer_input"] = final_failed_resource_name_data.get(resource_name, empty_row.copy()).get("transfer_type", {}).get("download", {}).get("value", 0)
-        row["jobs_failed_to_transfer_output"] = final_failed_resource_name_data.get(resource_name, empty_row.copy()).get("transfer_type", {}).get("upload", {}).get("value", 0)
-        resource_name_data.append(row)
-
-    transfer_type_data = []
-    for transfer_type in all_transfer_type_data:
-        row = {
-            "transfer_type": {"download": "INPUT", "upload": "OUTPUT"}[transfer_type],
-            "total_attempts": all_transfer_type_data[transfer_type]["value"],
-            "total_attempts_jobs": all_transfer_type_data[transfer_type]["unique_jobs"],
-            "success_attempts": success_transfer_type_data.get(transfer_type, empty_row.copy())["value"],
-            "success_attempts_jobs": success_transfer_type_data.get(transfer_type, empty_row.copy())["unique_jobs"],
-            "final_failed_attempts": final_failed_transfer_type_data.get(transfer_type, empty_row.copy())["value"],
-            "final_failed_attempts_jobs": final_failed_transfer_type_data.get(transfer_type, empty_row.copy())["unique_jobs"],
-            "all_failed_attempts": all_failed_transfer_type_data.get(transfer_type, empty_row.copy())["value"],
-            "all_failed_attempts_jobs": all_failed_transfer_type_data.get(transfer_type, empty_row.copy())["unique_jobs"],
-        }
-        row["pct_failed_attempts"] = row["all_failed_attempts"] / max(row["total_attempts"], row["all_failed_attempts"], 1)
-        row["failed_attempts_per_job"] = row["all_failed_attempts"] / max(row["total_attempts_jobs"], row["all_failed_attempts"], 1)
-        row["pct_jobs_affected"] = row["final_failed_attempts_jobs"] / max(row["total_attempts_jobs"], row["final_failed_attempts_jobs"], 1)
-        transfer_type_data.append(row)
-
-    cache_endpoint_data_totals = {
-        "endpoint": "",
-        "endpoint_institution": "",
-        "endpoint_name": "TOTALS",
-        "endpoint_type": "",
-        "total_attempts": int(cache_all_attempts.hits.total.value),
-        "total_attempts_jobs": int(cache_all_attempts.aggregations.unique_jobs.value),
-        "success_attempts": int(cache_success_attempts.hits.total.value),
-        "success_attempts_jobs": int(cache_success_attempts.aggregations.unique_jobs.value),
-        "all_failed_attempts": int(cache_all_failed_attempts.hits.total.value),
-        "all_failed_attempts_jobs": int(cache_all_failed_attempts.aggregations.unique_jobs.value),
-        "failed_final_attempt": int(cache_final_failed_attempts.hits.total.value),
-        "final_failed_attempts_jobs": int(cache_final_failed_attempts.aggregations.unique_jobs.value),
-    }
-    cache_endpoint_data_totals["pct_failed_attempts"] = cache_endpoint_data_totals["all_failed_attempts"] / max(cache_endpoint_data_totals["total_attempts"], cache_endpoint_data_totals["all_failed_attempts"], 1)
-    cache_endpoint_data_totals["failed_attempts_per_job"] = cache_endpoint_data_totals["all_failed_attempts"] / max(cache_endpoint_data_totals["total_attempts_jobs"], cache_endpoint_data_totals["all_failed_attempts"], 1)
-    cache_endpoint_data_totals["pct_jobs_affected"] = cache_endpoint_data_totals["final_failed_attempts_jobs"] / max(cache_endpoint_data_totals["total_attempts_jobs"], cache_endpoint_data_totals["final_failed_attempts_jobs"], 1)
-    cache_endpoint_data_totals["jobs_failed_to_transfer_input"] = sum(b.get("transfer_type", {}).get("download", {}).get("value", 0) for b in cache_final_failed_endpoint_data.values())
-    cache_endpoint_data_totals["jobs_failed_to_transfer_output"] = sum(b.get("transfer_type", {}).get("upload", {}).get("value", 0) for b in cache_final_failed_endpoint_data.values())
-    cache_endpoint_data.insert(0, cache_endpoint_data_totals)
-    cache_endpoint_data.sort(key=itemgetter("total_attempts"), reverse=True)
-
-    origin_endpoint_data_totals = {
-        "endpoint": "",
-        "endpoint_institution": "",
-        "endpoint_name": "TOTALS",
-        "endpoint_type": "",
-        "total_attempts": int(origin_all_attempts.hits.total.value),
-        "total_attempts_jobs": int(origin_all_attempts.aggregations.unique_jobs.value),
-        "success_attempts": int(origin_success_attempts.hits.total.value),
-        "success_attempts_jobs": int(origin_success_attempts.aggregations.unique_jobs.value),
-        "all_failed_attempts": int(origin_all_failed_attempts.hits.total.value),
-        "all_failed_attempts_jobs": int(origin_all_failed_attempts.aggregations.unique_jobs.value),
-        "failed_final_attempt": int(origin_final_failed_attempts.hits.total.value),
-        "final_failed_attempts_jobs": int(origin_final_failed_attempts.aggregations.unique_jobs.value),
-    }
-    origin_endpoint_data_totals["pct_failed_attempts"] = origin_endpoint_data_totals["all_failed_attempts"] / max(origin_endpoint_data_totals["total_attempts"], origin_endpoint_data_totals["all_failed_attempts"], 1)
-    origin_endpoint_data_totals["failed_attempts_per_job"] = origin_endpoint_data_totals["all_failed_attempts"] / max(origin_endpoint_data_totals["total_attempts_jobs"], origin_endpoint_data_totals["all_failed_attempts"], 1)
-    origin_endpoint_data_totals["pct_jobs_affected"] = origin_endpoint_data_totals["final_failed_attempts_jobs"] / max(origin_endpoint_data_totals["total_attempts_jobs"], origin_endpoint_data_totals["final_failed_attempts_jobs"], 1)
-    origin_endpoint_data_totals["jobs_failed_to_transfer_input"] = sum(b.get("transfer_type", {}).get("download", {}).get("value", 0) for b in origin_final_failed_endpoint_data.values())
-    origin_endpoint_data_totals["jobs_failed_to_transfer_output"] = sum(b.get("transfer_type", {}).get("upload", {}).get("value", 0) for b in origin_final_failed_endpoint_data.values())
-    origin_endpoint_data.insert(0, origin_endpoint_data_totals)
-    origin_endpoint_data.sort(key=itemgetter("total_attempts"), reverse=True)
+    resource_name_data = {"download": [], "upload": []}
+    for transfer_type, transfer_type_data in all_transfer_type_data.items():
+        for resource_name in transfer_type_data["resource_name"]:
+            resource_info = TOPOLOGY_RESOURCE_DATA.get(resource_name.lower())
+            resource_institution = ""
+            if resource_info:
+                resource_institution = resource_info.get("institution")
+            elif resource_name != "UNKNOWN":
+                resource_institution = f"Unmapped resource {resource_name}"
+            row = {
+                "resource_name": resource_name,
+                "resource_institution": resource_institution,
+                "total_attempts": all_transfer_type_data[transfer_type]["resource_name"][resource_name]["value"],
+                "total_attempts_jobs": all_transfer_type_data[transfer_type]["resource_name"][resource_name]["unique_jobs"],
+                "success_attempts": success_transfer_type_data[transfer_type]["resource_name"].get(resource_name, empty_row.copy())["value"],
+                "success_attempts_jobs": success_transfer_type_data[transfer_type]["resource_name"].get(resource_name, empty_row.copy())["unique_jobs"],
+                "final_failed_attempts": final_failed_transfer_type_data[transfer_type]["resource_name"].get(resource_name, empty_row.copy())["value"],
+                "final_failed_attempts_jobs": final_failed_transfer_type_data[transfer_type]["resource_name"].get(resource_name, empty_row.copy())["unique_jobs"],
+                "all_failed_attempts": all_failed_transfer_type_data[transfer_type]["resource_name"].get(resource_name, empty_row.copy())["value"],
+                "all_failed_attempts_jobs": all_failed_transfer_type_data[transfer_type]["resource_name"].get(resource_name, empty_row.copy())["unique_jobs"],
+            }
+            row["pct_failed_attempts"] = row["all_failed_attempts"] / max(row["total_attempts"], row["all_failed_attempts"], 1)
+            row["failed_attempts_per_job"] = row["all_failed_attempts"] / max(row["total_attempts_jobs"], row["all_failed_attempts"], 1)
+            row["pct_jobs_affected"] = row["final_failed_attempts_jobs"] / max(row["total_attempts_jobs"], row["final_failed_attempts_jobs"], 1)
+            resource_name_data[transfer_type].append(row)
 
     resource_name_data_totals = {
-        "resource_name": "TOTALS",
-        "resource_institution": "",
-        "total_attempts": int(all_attempts.hits.total.value),
-        "total_attempts_jobs": int(all_attempts.aggregations.unique_jobs.value),
-        "success_attempts": int(success_attempts.hits.total.value),
-        "success_attempts_jobs": int(success_attempts.aggregations.unique_jobs.value),
-        "all_failed_attempts": int(all_failed_attempts.hits.total.value),
-        "all_failed_attempts_jobs": int(all_failed_attempts.aggregations.unique_jobs.value),
-        "failed_final_attempt": int(final_failed_attempts.hits.total.value),
-        "final_failed_attempts_jobs": int(final_failed_attempts.aggregations.unique_jobs.value),
-    }
-    resource_name_data_totals["pct_failed_attempts"] = resource_name_data_totals["all_failed_attempts"] / max(resource_name_data_totals["total_attempts"], resource_name_data_totals["all_failed_attempts"], 1)
-    resource_name_data_totals["failed_attempts_per_job"] = resource_name_data_totals["all_failed_attempts"] / max(resource_name_data_totals["total_attempts_jobs"], resource_name_data_totals["all_failed_attempts"], 1)
-    resource_name_data_totals["pct_jobs_affected"] = resource_name_data_totals["final_failed_attempts_jobs"] / max(resource_name_data_totals["total_attempts_jobs"], resource_name_data_totals["final_failed_attempts_jobs"], 1)
-    resource_name_data_totals["jobs_failed_to_transfer_input"] = final_failed_transfer_type_data.get("download", {"value": 0})["value"]
-    resource_name_data_totals["jobs_failed_to_transfer_output"] = final_failed_transfer_type_data.get("upload", {"value": 0})["value"]
-    resource_name_data.sort(key=itemgetter("pct_failed_attempts"), reverse=True)
-    resource_name_data.insert(0, resource_name_data_totals)
-
-    transfer_type_data_totals = {
-        "transfer_type": "TOTALS",
-        "total_attempts": int(all_attempts.hits.total.value),
-        "total_attempts_jobs": int(all_attempts.aggregations.unique_jobs.value),
-        "success_attempts": int(success_attempts.hits.total.value),
-        "success_attempts_jobs": int(success_attempts.aggregations.unique_jobs.value),
-        "all_failed_attempts": int(all_failed_attempts.hits.total.value),
-        "all_failed_attempts_jobs": int(all_failed_attempts.aggregations.unique_jobs.value),
-        "failed_final_attempt": int(final_failed_attempts.hits.total.value),
-        "final_failed_attempts_jobs": int(final_failed_attempts.aggregations.unique_jobs.value),
-    }
-    transfer_type_data_totals["pct_failed_attempts"] = transfer_type_data_totals["all_failed_attempts"] / max(transfer_type_data_totals["total_attempts"], transfer_type_data_totals["all_failed_attempts"], 1)
-    transfer_type_data_totals["failed_attempts_per_job"] = transfer_type_data_totals["all_failed_attempts"] / max(transfer_type_data_totals["total_attempts_jobs"], transfer_type_data_totals["all_failed_attempts"], 1)
-    transfer_type_data_totals["pct_jobs_affected"] = transfer_type_data_totals["final_failed_attempts_jobs"] / max(transfer_type_data_totals["total_attempts_jobs"], transfer_type_data_totals["final_failed_attempts_jobs"], 1)
-    transfer_type_data.insert(0, transfer_type_data_totals)
-    transfer_type_data.sort(key=itemgetter("total_attempts"), reverse=True)
+        transfer_type: {
+            "resource_name": "TOTALS",
+            "resource_institution": "",
+            "total_attempts": int(all_transfer_type_data[transfer_type]["value"]),
+            "total_attempts_jobs": int(all_transfer_type_data[transfer_type]["unique_jobs"]),
+            "success_attempts": int(success_transfer_type_data[transfer_type]["value"]),
+            "success_attempts_jobs": int(success_transfer_type_data[transfer_type]["unique_jobs"]),
+            "all_failed_attempts": int(all_failed_transfer_type_data[transfer_type]["value"]),
+            "all_failed_attempts_jobs": int(all_failed_transfer_type_data[transfer_type]["unique_jobs"]),
+            "failed_final_attempt": int(final_failed_transfer_type_data[transfer_type]["value"]),
+            "final_failed_attempts_jobs": int(final_failed_transfer_type_data[transfer_type]["unique_jobs"]),
+        }
+        for transfer_type in ("download", "upload")}
+    for transfer_type in ("download", "upload"):
+        resource_name_data_totals[transfer_type]["pct_failed_attempts"] = resource_name_data_totals[transfer_type]["all_failed_attempts"] / max(resource_name_data_totals[transfer_type]["total_attempts"], resource_name_data_totals[transfer_type]["all_failed_attempts"], 1)
+        resource_name_data_totals[transfer_type]["failed_attempts_per_job"] = resource_name_data_totals[transfer_type]["all_failed_attempts"] / max(resource_name_data_totals[transfer_type]["total_attempts_jobs"], resource_name_data_totals[transfer_type]["all_failed_attempts"], 1)
+        resource_name_data_totals[transfer_type]["pct_jobs_affected"] = resource_name_data_totals[transfer_type]["final_failed_attempts_jobs"] / max(resource_name_data_totals[transfer_type]["total_attempts_jobs"], resource_name_data_totals[transfer_type]["final_failed_attempts_jobs"], 1)
+        resource_name_data[transfer_type].sort(key=itemgetter("pct_failed_attempts"), reverse=True)
+        resource_name_data[transfer_type].insert(0, resource_name_data_totals[transfer_type])
 
     warn_threshold = 0.05
     err_threshold = 0.15
@@ -655,13 +524,13 @@ if __name__ == "__main__":
     html.append(f'<span style="color: red">Red</span> rows where Percent Failed Attempts are above {err_threshold:.0%}</span><br>')
     html.append('<span style="font-weight: bold">*Not currently found</span> means that the endpoint was not reporting to the director at the time the report was generated.')
 
-    ### CACHE TABLE
+    ### ENDPOINT DOWNLOAD TABLE
 
-    html.append("<h2>Per OSDF cache statistics</h2>")
+    html.append("<h2>Per OSDF endpoint download (i.e. input transfer) statistics</h2>")
 
-    cols = ["endpoint_name", "endpoint_institution", "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs", "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected",    "jobs_failed_to_transfer_input", "endpoint"]
-    hdrs = ["Cache Name",    "Cache Institution",    "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",       "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted", "Jobs Input Sandbox Failed",     "Endpoint Hostname"]
-    fmts = ["s",             "s",                    ",d",             ",d",                  ",d",                  ",d",                    ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%",                  ",d",                            "s"]
+    cols = ["endpoint_name",    "endpoint_institution", "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs", "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected",    "endpoint",          "endpoint_type"]
+    hdrs = ["Endpoint Name",    "Endpoint Institution", "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",       "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted", "Endpoint Hostname", "Endpoint Type"]
+    fmts = ["s",                "s",                    ",d",             ",d",                  ",d",                  ",d",                    ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%",                  "s",                 "s"]
     stys = ["text" if fmt == "s" else "num" for fmt in fmts]
 
     hdrs = dict(zip(cols, hdrs))
@@ -674,7 +543,7 @@ if __name__ == "__main__":
     for col in cols:
         html.append(f"\t\t<th>{hdrs[col]}</th>")
     html.append("\t</tr>")
-    for row in cache_endpoint_data:
+    for row in endpoint_data["download"]:
         row_class = ""
         if row["pct_failed_attempts"] > err_threshold:
             row_class = "err"
@@ -689,13 +558,13 @@ if __name__ == "__main__":
         html.append("\t</tr>")
     html.append("</table>")
 
-    ### ORIGIN TABLE
+    ### ENDPOINT UPLOAD TABLE
 
-    html.append("<h2>Per OSDF origin statistics</h2>")
+    html.append("<h2>Per OSDF origin upload (i.e. output transfer) statistics</h2>")
 
-    cols = ["endpoint_name",  "endpoint_institution",  "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs", "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected",    "jobs_failed_to_transfer_input", "jobs_failed_to_transfer_output", "endpoint"]
-    hdrs = ["Origin Name",    "Origin Institution",    "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",       "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted", "Jobs Input Sandbox Failed",     "Jobs Output Sandbox Failed",     "Endpoint Hostname"]
-    fmts = ["s",              "s",                     ",d",             ",d",                  ",d",                  ",d",                    ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%",                  ",d",                            ",d",                             "s"]
+    cols = ["endpoint_name", "endpoint_institution", "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs", "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected",    "endpoint"]
+    hdrs = ["Origin Name",   "Origin Institution",   "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",       "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted", "Origin Hostname"]
+    fmts = ["s",             "s",                    ",d",             ",d",                  ",d",                  ",d",                    ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%",                  "s"]
     stys = ["text" if fmt == "s" else "num" for fmt in fmts]
 
     hdrs = dict(zip(cols, hdrs))
@@ -708,7 +577,7 @@ if __name__ == "__main__":
     for col in cols:
         html.append(f"\t\t<th>{hdrs[col]}</th>")
     html.append("\t</tr>")
-    for row in origin_endpoint_data:
+    for row in endpoint_data["upload"]:
         row_class = ""
         if row["pct_failed_attempts"] > err_threshold:
             row_class = "err"
@@ -723,13 +592,13 @@ if __name__ == "__main__":
         html.append("\t</tr>")
     html.append("</table>")
 
-    ### RESOURCE TABLE
+    ### RESOURCE DOWNLOAD TABLE
 
-    html.append("<h2>Per OSPool execution resource name statistics</h2>")
+    html.append("<h2>Per OSPool resource download (i.e. input transfer) statistics</h2>")
 
-    cols = ["resource_name", "resource_institution", "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs", "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected",    "jobs_failed_to_transfer_input", "jobs_failed_to_transfer_output"]
-    hdrs = ["Resource Name", "Resource Institution", "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",       "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted", "Jobs Input Sandbox Failed",     "Jobs Output Sandbox Failed"]
-    fmts = ["s",             "s",                    ",d",             ",d",                  ",d",                  ",d",                    ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%",                  ",d",                            ",d"]
+    cols = ["resource_name", "resource_institution", "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs", "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected"]
+    hdrs = ["Resource Name", "Resource Institution", "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",       "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted"]
+    fmts = ["s",             "s",                    ",d",             ",d",                  ",d",                  ",d",                    ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%"]
     stys = ["text" if fmt == "s" else "num" for fmt in fmts]
 
     hdrs = dict(zip(cols, hdrs))
@@ -742,7 +611,7 @@ if __name__ == "__main__":
     for col in cols:
         html.append(f"\t\t<th>{hdrs[col]}</th>")
     html.append("\t</tr>")
-    for row in resource_name_data:
+    for row in resource_name_data["download"]:
         row_class = ""
         if row["pct_failed_attempts"] > err_threshold:
             row_class = "err"
@@ -757,13 +626,13 @@ if __name__ == "__main__":
         html.append("\t</tr>")
     html.append("</table>")
 
-    ### SANDBOX TABLE
+    ### RESOURCE UPLOAD TABLE
 
-    html.append("<h2>Per sandbox transfer direction statistics</h2>")
+    html.append("<h2>Per OSDF origin upload (transfer output) statistics</h2>")
 
-    cols = ["transfer_type", "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs",   "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected"]
-    hdrs = ["Transfer Type", "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",         "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted"]
-    fmts = ["s",             ",d",             ",d",                  ",d",                  ",d",                      ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%"]
+    cols = ["resource_name", "resource_institution", "total_attempts", "total_attempts_jobs", "success_attempts",    "success_attempts_jobs", "all_failed_attempts", "pct_failed_attempts", "failed_attempts_per_job", "all_failed_attempts_jobs",    "final_failed_attempts_jobs", "pct_jobs_affected"]
+    hdrs = ["Resource Name", "Resource Institution", "Total Attempts", "Total Jobs",          "Successful Attempts", "Successful Jobs",       "Failed Attempts",     "Pct Attempts Failed", "Failed Attempts per Job", "Num Jobs w/ Failed Attempts", "Num Jobs Interrupted",       "Pct Jobs Interrupted"]
+    fmts = ["s",             "s",                    ",d",             ",d",                  ",d",                  ",d",                    ",d",                  ".1%",                 ",.2f",                    ",d",                          ",d",                         ".1%"]
     stys = ["text" if fmt == "s" else "num" for fmt in fmts]
 
     hdrs = dict(zip(cols, hdrs))
@@ -776,7 +645,7 @@ if __name__ == "__main__":
     for col in cols:
         html.append(f"\t\t<th>{hdrs[col]}</th>")
     html.append("\t</tr>")
-    for row in transfer_type_data:
+    for row in resource_name_data["upload"]:
         row_class = ""
         if row["pct_failed_attempts"] > err_threshold:
             row_class = "err"
