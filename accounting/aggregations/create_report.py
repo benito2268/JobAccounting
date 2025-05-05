@@ -116,7 +116,6 @@ def get_client(args: dict) -> elasticsearch.Elasticsearch:
         es_opts.update({"http_auth" : (args["es_user"], passwd_str)})
 
     client = elasticsearch.Elasticsearch(**es_opts)
-    connections.create_connection(alias="default", client=client)
    
     return client
 
