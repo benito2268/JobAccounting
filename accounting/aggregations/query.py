@@ -3,7 +3,7 @@ import argparse
 import sys
 import json
 from functions import send_email
-from elasticsearch_dsl import Search, Q, A, connections
+from elasticsearch_dsl import Search, Q, A, connections, response
 from datetime import datetime, timedelta
 from collections import namedtuple
 from operator import itemgetter
@@ -15,13 +15,17 @@ from report_helpers import Aggregation, add_runtime_script, get_percent_bucket_s
 ROWS_AGGS = []
 TOTALS_AGGS = []
 
-# percentages for the totals row is calculated in python
-# due to limitations with calculating percents in ES
-def calc_totals_percents(resp) -> dict:
+def calc_totals_percents(resp: response.Response) -> dict:
+    """ percentages for the totals row is calculated in python
+        due to limitations with calculating percents in ES
+        NOTE: if the 'pretty' name of a column is update it should be changed here
+
+        params:
+            resp - the Elasticserach query response
+    """
     ret = {}
     buckets = resp.aggregations.to_dict()
 
-    # TODO what to do about the previously stored pretty names?
     ret.update({"% Goodput" : 
                 ((buckets["good_core_hours"]["value"] / buckets["cpu_core_hours"]["value"]) if buckets["cpu_core_hours"]["value"] else 0) * 100}) 
     ret.update({"% Ckptable" : 
@@ -51,6 +55,21 @@ def calc_totals_percents(resp) -> dict:
 # =========== end of helper functions ===========
 
 def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse.Namespace, agg_by: str) -> list:
+    """ creates each eggregation and runs two queries - one for each row,
+        and one for the totals row
+
+        params:
+            client  - preconfigured ES client object. See get_client() in create_report.py
+            es_opts - a dictionary containing ES config options. See create_report.py
+            args    - a copy of the command-line args passed to create_report.py
+                      for this function - only needs to contain 'start' and 'end' as UNIX timestamps
+            agg_by  - the name of the ES field you want in the rows dimension (ex. "ProjectName.keyword")
+
+        returns:
+            a list of dicts with each dict representing a table row 
+            (ex. {"ProjectName" : "...", "% Goodput" : "..."})
+    """
+
     # nicely the Q object supports ~ for negation :)
     # 'search' is aggregated by project
     search = Search(using=client, index=es_opts["es_index"]) \
