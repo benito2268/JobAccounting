@@ -508,6 +508,8 @@ def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse
     except Exception as err:
         print(err.info)
         raise err
+ 
+    print(f"{datetime.now()} - Done...")
 
     # extract the final data
     table_rows = []

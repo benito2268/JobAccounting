@@ -49,6 +49,7 @@ ELASTICSEARCH_ARGS = {
     "--es-password-file": {"type": Path},
     "--es-use-https": {"action": "store_true"},
     "--es-ca-certs": {},
+    "--es-timeout" : {"default" : 120, "type" : int, "help" : "defaults to 120 secs"},
     "--es-config-file": {
         "type": Path,
         "help": "JSON file containing an object that sets above ES options",
@@ -88,7 +89,7 @@ def parse_args() -> argparse.Namespace:
 def get_client(args: dict) -> elasticsearch.Elasticsearch:
     # set up elasticsearch options
     es_opts = {
-        "timeout" : 120,
+        "timeout" : args["es_timeout"],
         "hosts" : [args["es_url_prefix"] + args["es_host"]], 
     }
 
@@ -141,16 +142,24 @@ def main():
         results.append((field, run_query(client, es_opts, args, field)))
 
     # generate the outputs
+    start_str = args.start.strftime('%Y-%m-%d %H:%M:%S')
+    end_str = args.end.strftime('%Y-%m-%d %H:%M:%S')
+
     if args.print_table: 
         for title, r in results:
             print('\n')            
-            print(f"CHTC Jobs by {title.split('.')[0]} for {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"CHTC Jobs by {title.split('.')[0]} for {start_str} TO {end_str}")
             table(r)
             
     # send an email
     html_tables = []
     for title, r in results:
-        header_str = f"<h1>CHTC Jobs by {title.split('.')[0]} from {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}</h1>"
+        header_str = (
+            "<h1>"
+                f"CHTC Jobs by {title.split('.')[0]} from {start_str} TO {end_str}"
+            "</h1>"
+        )
+
         html_tables.append((header_str, table(r, emit_html=True)))
 
     # add css to make the table look pretty
@@ -197,7 +206,7 @@ def main():
 
     if not args.no_email:    
         send_email(
-            subject=f"{(args.end - args.start).days}-day CHTC Usage Report {args.start.strftime(r'%Y-%m-%d')} to {args.end.strftime(r'%Y-%m-%d')}",
+            subject=f"{(args.end - args.start).days}-day CHTC Usage Report {start_str} to {end_str}",
             from_addr=args.from_addr,
             to_addrs=args.to,
             html=html,
