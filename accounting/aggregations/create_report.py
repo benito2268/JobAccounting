@@ -196,6 +196,9 @@ def main():
     # but they will if the html is opened in a browser
     html = f"""
         <style>
+            h1 {{
+                font-size: 18px;
+            }}
             table {{
                 width: 100%;
                 border-collapse: collapse;
