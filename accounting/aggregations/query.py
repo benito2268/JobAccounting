@@ -1,6 +1,9 @@
 import elasticsearch
 import argparse
-from elasticsearch_dsl import Search, Q, A
+import sys
+import json
+from functions import send_email
+from elasticsearch_dsl import Search, Q, A, connections, response
 from datetime import datetime, timedelta
 from collections import namedtuple
 from operator import itemgetter
@@ -12,89 +15,64 @@ from report_helpers import Aggregation, add_runtime_script, get_percent_bucket_s
 ROWS_AGGS = []
 TOTALS_AGGS = []
 
-# command line arguments
-ELASTICSEARCH_ARGS = {
-    "--index"  : {"default" : "chtc-schedd-*", "help" : "the ES index to use, defaults to chtc-schedd-*"},
-    "--agg-by" : {"default" : "ProjectName.keyword", "help" : ""},
-    "--host"   : {"default" : "http://localhost:9200", "help" : "the ES server address, defaults to http://localhost:9200"},  
-}
+def calc_totals_percents(resp: response.Response) -> dict:
+    """ percentages for the totals row is calculated in python
+        due to limitations with calculating percents in ES
+        NOTE: if the 'pretty' name of a column is update it should be changed here
 
-OUTPUT_ARGS = {
-    "--print-table" : {"action" : "store_true", "help" : "prints a CLI table, NOTE: pipe into 'less -S'"},
-    "--output"      : {"default" : f"{datetime.now().strftime("%Y-%m-%d:%H:%M")}-report.csv",
-                       "help" : "specify the CSV output file name, defaults to '<date:time>-report.csv'"}
-}
-
-# =========== helper functions ===========
-
-def valid_date(date_str: str) -> datetime:
-    try:
-        return datetime.strptime(date_str, "%Y-%m-%d")
-    except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid date string, should match format YYYY-MM-DD: {date_str}")
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("--start", type=valid_date, required=True, 
-                        help="the date to start reporting on 'YYYY-MM-DD'")
-    parser.add_argument("--end", type=valid_date, default=datetime.strftime(datetime.now(), "%Y-%m-%d"),
-                        help="the date to end reporting on 'YYYY-MM-DD', defaults to the current date")
-
-    es_opts = parser.add_argument_group("elasticsearch options")
-    for name, props in ELASTICSEARCH_ARGS.items():
-        es_opts.add_argument(name, **props)
-
-    output_opts = parser.add_argument_group("email options")
-    for name, props in OUTPUT_ARGS.items():
-        output_opts.add_argument(name, **props)
-
-    return parser.parse_args()
-
-
-# percentages for the totals row is calculated in python
-# due to limitations with calculating percents in ES
-def calc_totals_percents(resp) -> dict:
+        params:
+            resp - the Elasticserach query response
+    """
     ret = {}
     buckets = resp.aggregations.to_dict()
 
-    # TODO what to do about the previously stored pretty names?
     ret.update({"% Goodput" : 
-                buckets["good_core_hours"]["value"] / (buckets["cpu_core_hours"]["value"] if buckets["cpu_core_hours"]["value"] else 0) * 100}) 
+                ((buckets["good_core_hours"]["value"] / buckets["cpu_core_hours"]["value"]) if buckets["cpu_core_hours"]["value"] else 0) * 100}) 
     ret.update({"% Ckptable" : 
-                buckets["ckptable_filt"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["ckptable_filt"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Removed" : 
-                buckets["rmd_filt"]["doc_count"] / (buckets["cpu_core_hours"]["value"] if buckets["cpu_core_hours"]["value"] else 0) * 100})
+                ((buckets["rmd_filt"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["cpu_core_hours"]["value"] else 0) * 100})
     ret.update({"Shadow Starts / ID" : 
-                buckets["num_shadw_starts"]["value"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0)})
+                ((buckets["num_shadw_starts"]["value"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0)})
     ret.update({"Exec Att / Shadow Start" : 
-                buckets["num_exec_attempts"]["value"] / (buckets["num_shadw_starts"]["value"] if buckets["num_shadw_starts"]["value"] else 0)})
+                ((buckets["num_exec_attempts"]["value"] / buckets["num_shadw_starts"]["value"]) if buckets["num_shadw_starts"]["value"] else 0)})
     ret.update({"Holds / ID" : 
-                buckets["num_holds"]["value"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0)})
+                ((buckets["num_holds"]["value"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0)})
     ret.update({"% Short" : 
-                buckets["short_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["short_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Restarted" : 
-                buckets["restarted_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["restarted_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Held" : 
-                buckets["held_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["held_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% Over Req. Disk" : 
-                buckets["over_disk_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["over_disk_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
     ret.update({"% S'ty Jobs" : 
-                buckets["sty_jobs"]["doc_count"] / (buckets["uniq_job_ids"]["value"] if buckets["uniq_job_ids"]["value"] else 0) * 100})
+                ((buckets["sty_jobs"]["doc_count"] / buckets["uniq_job_ids"]["value"]) if buckets["uniq_job_ids"]["value"] else 0) * 100})
 
     return ret
 
+
 # =========== end of helper functions ===========
 
-def main():
-    # parse arguments
-    args = parse_args()
+def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse.Namespace, agg_by: str) -> list:
+    """ creates each eggregation and runs two queries - one for each row,
+        and one for the totals row
 
-    client = elasticsearch.Elasticsearch(hosts=[args.host], timeout=120)
+        params:
+            client  - preconfigured ES client object. See get_client() in create_report.py
+            es_opts - a dictionary containing ES config options. See create_report.py
+            args    - a copy of the command-line args passed to create_report.py
+                      for this function - only needs to contain 'start' and 'end' as UNIX timestamps
+            agg_by  - the name of the ES field you want in the rows dimension (ex. "ProjectName.keyword")
+
+        returns:
+            a list of dicts with each dict representing a table row 
+            (ex. {"ProjectName" : "...", "% Goodput" : "..."})
+    """
 
     # nicely the Q object supports ~ for negation :)
     # 'search' is aggregated by project
-    search = Search(using=client, index=args.index) \
+    search = Search(using=client, index=es_opts["es_index"]) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -102,7 +80,7 @@ def main():
                     .extra(track_scores=False)
 
     # totals query is exactly the same
-    totals = Search(using=client, index=args.index) \
+    totals = Search(using=client, index=es_opts["es_index"]) \
                     .filter("range", RecordTime={"gte" : args.start.timestamp(), "lt" : args.end.timestamp()}) \
                     .filter(~Q("terms", JobUniverse=[7, 12])) \
                     .filter("wildcard", **{"ScheddName.keyword": {"value": "*.chtc.wisc.edu"}}) \
@@ -112,7 +90,7 @@ def main():
     # top level aggregation is by project
     search.aggs.bucket(
         "projects", "terms",
-        field=args.agg_by,
+        field=agg_by,
         size=1024
     )
 
@@ -158,6 +136,20 @@ def main():
         emit((double)cpus * hours);
     """
 
+# % goodput is off when lastremotewallclocktime is used
+# but it matches the example when CommittedTime is used
+#    GOOD_CPU_HOURS_SCRIPT_SRC = """
+#        double hours = 0;
+#        int cpus = 1;
+#        if (doc.containsKey("CommittedTime") && doc["CommittedTime"].size() > 0) {
+#            hours = doc["CommittedTime"].value / (double)3600;
+#        }
+#        if (doc.containsKey("RequestCpus") && doc["RequestCpus"].size() > 0) {
+#            cpus = (int)doc["RequestCpus"].value;
+#        }
+#        emit((double)cpus * hours);
+#    """
+   
     GOOD_CPU_HOURS_SCRIPT_SRC = """
         double hours = 0;
         int cpus = 1;
@@ -185,12 +177,19 @@ def main():
 
     TOTALS_AGGS.append(ROWS_AGGS[-1])
 
-    # these aggs are added dicrectly to the query
-    # because they will not show up in the final table
-    search.aggs["projects"].metric("good_core_hours", "sum", field="GoodCpuCoreHours")
-
+    # this agg are added dicrectly to the query
+    # because it will not show up in the final table
     totals.aggs.metric("cpu_core_hours", "sum", field="CpuCoreHours")
-    totals.aggs.metric("good_core_hours", "sum", field="GoodCpuCoreHours")
+
+    # good core hours is it's own column also
+    ROWS_AGGS.append(Aggregation(
+        A("sum", field="GoodCpuCoreHours"),
+        "good_core_hours",
+        "Good CPU Hours",
+        "metric"
+    ))
+
+    TOTALS_AGGS.append(ROWS_AGGS[-1])
 
     # calculate percentage within ES
     ROWS_AGGS.append(Aggregation(
@@ -199,6 +198,23 @@ def main():
                     "% Goodput",
                     "metric",
     ))
+
+    # convert lastremotewallclocktime to a double
+    CAST_LRWT_SCRIPT_SRC = """
+        double lrwt = 0;
+        if (doc.containsKey("lastremotewallclocktime.keyword") && doc["lastremotewallclocktime.keyword"].size() > 0) {
+            lrwt = Double.parseDouble(doc["lastremotewallclocktime.keyword"].value);
+        }
+        else if(doc.containsKey("RecordTime") && doc["RecordTime"].size() > 0
+                && doc.containsKey("JobCurrentStartDate") && doc["JobCurrentStartDate"].size() > 0) {
+            lrwt = doc["RecordTime"].value - doc["JobCurrentStartDate"].value;
+        }
+
+        emit(lrwt);
+    """
+
+    add_runtime_script(search, "LastRemoteWallClockTime", CAST_LRWT_SCRIPT_SRC, "double")
+    add_runtime_script(totals, "LastRemoteWallClockTime", CAST_LRWT_SCRIPT_SRC, "double")
 
     # count total job unit hours
     # definition of 1 job unit - interpolated into painless script
@@ -243,7 +259,7 @@ def main():
     # nested match query read as:
     # job must match JobUniverse=5 AND (WhenToTransferOutput=ON_EXIT_OR_EVICT AND Is_resumable=False)
     # OR (SuccessCheckpointExitBySignal=False AND SuccessCheckpointExitCode exists)
-    # TODO can this be reduced using python '&' and '|' ?
+    # can this be reduced using python '&' and '|' ?
     cond_1 = Q("bool", must=[
                 Q("match", WhenToTransferOutput__keyword="ON_EXIT_OR_EVICT"),
                 Q("match", Is_resumable=False),
@@ -357,11 +373,14 @@ def main():
                                 [str(p) for p in percentiles] # percentiles agg returns keys "25.0", "50.0", ...
                     ))
     TOTALS_AGGS.append(ROWS_AGGS[-1])
-
-    short_job_filt = Q("range", lastremotewallclocktime={"lte" : 60})
+ 
+    short_job_filt = Q("bool", must=[
+        Q("range", LastRemoteWallClockTime={"lt" : 60}),
+        Q("range", LastRemoteWallClockTime={"gt" : 0}),
+    ])
+ 
     search.aggs["projects"].metric("short_jobs", "filter", filter=short_job_filt)
     totals.aggs.metric("short_jobs", "filter", filter=short_job_filt)
-
 
     ROWS_AGGS.append(Aggregation(
                     A("bucket_script",
@@ -469,10 +488,24 @@ def main():
     # calculate other stats
     ROWS_AGGS.append(Aggregation(A("extended_stats", field="CpuCoreHours"),
                                 "stats",
-                                ["Min Hrs", "Std Hrs", "Mean Hrs"],
+                                ["Min Hrs", "Std Hrs", "Mean Hrs", "Max Hrs"],
                                 "metric",
-                                ["min", "avg", "std_deviation"]))
+                                ["min", "avg", "std_deviation", "max"]))
 
+    TOTALS_AGGS.append(ROWS_AGGS[-1])
+
+    # calculate mean setup secs
+    # script to cast to double
+    CAST_SETUP_DURATION_SCRIPT_SRC = """
+        if(doc.containsKey("activationsetupduration.keyword") && doc["activationsetupduration.keyword"].size() > 0) {
+            emit(Double.parseDouble(doc["activationsetupduration.keyword"].value));
+        }
+    """
+
+    add_runtime_script(search, "SetupDuration", CAST_SETUP_DURATION_SCRIPT_SRC, "double")
+    add_runtime_script(totals, "SetupDuration", CAST_SETUP_DURATION_SCRIPT_SRC, "double")
+
+    ROWS_AGGS.append(Aggregation(A("avg", field="SetupDuration"), "mean_setup_secs", "Mean Setup Secs", "metric"))
     TOTALS_AGGS.append(ROWS_AGGS[-1])
 
     # =========== add aggregations to the two queries ==============
@@ -494,6 +527,8 @@ def main():
     except Exception as err:
         print(err.info)
         raise err
+ 
+    print(f"{datetime.now()} - Done...")
 
     # extract the final data
     table_rows = []
@@ -502,7 +537,7 @@ def main():
 
         # extract data into a row
         # COL_AGG_NAMES defined at top of file
-        row = {"Project" : proj_name}
+        row = {agg_by.split('.')[0] : proj_name}
         for agg in ROWS_AGGS:
             # check if it's a multi-value aggregation
             if isinstance(agg.pretty_name, list):
@@ -517,7 +552,7 @@ def main():
         table_rows.append(row)
 
     # create the totals row
-    totals_row = {"Project" : "Totals"}
+    totals_row = {agg_by.split('.')[0] : "Totals"}
     totals_raw = totals_response.aggregations.to_dict()
 
     for a in TOTALS_AGGS:
@@ -538,10 +573,4 @@ def main():
     # sort by # of job ids in descending order
     table_rows.sort(key=itemgetter("# Jobs"), reverse=True)
 
-    # compute a table (for now)
-    if args.print_table:
-        print(f"Report for {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}")
-        table(table_rows)
-
-if __name__ == "__main__":
-    main()
+    return table_rows 

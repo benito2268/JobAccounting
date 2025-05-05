@@ -1,4 +1,5 @@
 import elasticsearch
+import csv
 from elasticsearch_dsl import Search, Q, A
 from datetime import datetime, timedelta
 from collections import namedtuple
@@ -52,29 +53,39 @@ def get_percent_bucket_script(want_percent: str, out_of: str) -> A:
             script="params.a / params.b * 100"                 
             )
 
-def table(rows: list):
+def table(rows: list, emit_html: bool=False):
     """ Generates a table to display the report on the command line
+        OR generate an HTML table
         params:
             rows - a list of dicts that map column names to values
+            emit_html - skips outputing to the command line - instead returns
+                        a string containing and HTML table
     """
 
     try:
         from tabulate import tabulate
 
     except Exception:
-        print("run 'pip install tabulate' to see a nicer table!\n")
+        print("WARNING: tabulate not installed - required for email HTML table\n")
         # print for debugging
         print("\t".join(list(rows[0].keys())))
         for row in rows:
             pprint(row.values())
             print()
 
+        return None
+
     # print a nice table if tabulate is installed 
     # NOTE: the table is very wide, should pipe into 'less -S'
-    print(tabulate(rows, 
-                   headers="keys", 
-                   tablefmt="grid"
-    ))
+    if not emit_html:
+        print(tabulate(rows, 
+                       headers="keys", 
+                       tablefmt="grid"
+        ))
+        
+        return None
+    else:
+        return tabulate(rows, headers="keys", tablefmt="html")
 
 def print_error(d, depth=0):
     pre = depth*"\t"
@@ -94,4 +105,9 @@ def print_error(d, depth=0):
         else:
             print(f"{pre}{k}:\t{v}")
 
-
+def generate_csv(rows: list, title: str):
+    headers = list(rows[0].keys())    
+    with open(f"{datetime.now().strftime("%Y-%m-%d")}-{title}-report.csv", 'w') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows) 
