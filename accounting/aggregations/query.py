@@ -117,6 +117,20 @@ def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse
         emit((double)cpus * hours);
     """
 
+# % goodput is off when lastremotewallclocktime is used
+# but it matches the example when CommittedTime is used
+#    GOOD_CPU_HOURS_SCRIPT_SRC = """
+#        double hours = 0;
+#        int cpus = 1;
+#        if (doc.containsKey("CommittedTime") && doc["CommittedTime"].size() > 0) {
+#            hours = doc["CommittedTime"].value / (double)3600;
+#        }
+#        if (doc.containsKey("RequestCpus") && doc["RequestCpus"].size() > 0) {
+#            cpus = (int)doc["RequestCpus"].value;
+#        }
+#        emit((double)cpus * hours);
+#    """
+   
     GOOD_CPU_HOURS_SCRIPT_SRC = """
         double hours = 0;
         int cpus = 1;
@@ -340,9 +354,7 @@ def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse
                                 [str(p) for p in percentiles] # percentiles agg returns keys "25.0", "50.0", ...
                     ))
     TOTALS_AGGS.append(ROWS_AGGS[-1])
-
-    
-    # calculate % short jobs
+ 
     short_job_filt = Q("bool", must=[
         Q("range", LastRemoteWallClockTime={"lt" : 60}),
         Q("range", LastRemoteWallClockTime={"gt" : 0}),
@@ -350,7 +362,6 @@ def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse
  
     search.aggs["projects"].metric("short_jobs", "filter", filter=short_job_filt)
     totals.aggs.metric("short_jobs", "filter", filter=short_job_filt)
-
 
     ROWS_AGGS.append(Aggregation(
                     A("bucket_script",
