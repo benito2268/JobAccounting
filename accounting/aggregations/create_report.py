@@ -150,7 +150,7 @@ def main():
     # send an email
     html_tables = []
     for title, r in results:
-        header_str = f"<h3>CHTC Jobs by {title.split('.')[0]} from {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}</h3>"
+        header_str = f"<h1>CHTC Jobs by {title.split('.')[0]} from {args.start.strftime('%Y-%m-%d %H:%M:%S')} TO {args.end.strftime('%Y-%m-%d %H:%M:%S')}</h1>"
         html_tables.append((header_str, table(r, emit_html=True)))
 
     # add css to make the table look pretty
