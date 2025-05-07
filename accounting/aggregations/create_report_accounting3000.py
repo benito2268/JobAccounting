@@ -10,7 +10,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from pprint import pprint
 
-from query import run_query
+import query_tiger
+import query_accounting3000
 from functions import send_email 
 from report_helpers import (
     Aggregation, 
@@ -50,6 +51,7 @@ ELASTICSEARCH_ARGS = {
     "--es-use-https": {"action": "store_true"},
     "--es-ca-certs": {},
     "--es-timeout" : {"default" : 120, "type" : int, "help" : "defaults to 120 secs"},
+    "--es-use-tiger" : {"action" : "store_true"},
     "--es-config-file": {
         "type": Path,
         "help": "JSON file containing an object that sets above ES options",
@@ -145,12 +147,12 @@ def get_client(args: dict) -> elasticsearch.Elasticsearch:
    
     return client
 
+
 def main():
     """ creates a table for each field in --es-agg-by
         and handles output to email, file, or CLI table
     """
-
-    # parse arguments
+        # parse arguments
     args = parse_args()
 
     # read the config file if there is one
@@ -168,7 +170,12 @@ def main():
      
     results = []
     for field in args.es_agg_by:
-        results.append((field, run_query(client, es_opts, args, field)))
+        print('yoyoyoyo')
+        print(args.es_use_tiger)
+        if args.es_use_tiger:
+            results.append((field, query_tiger.run_query(client, es_opts, args, field)))
+        else:
+            results.append((field, query_accounting3000.run_query(client, es_opts, args, field)))
 
     # generate the outputs
     start_str = args.start.strftime('%Y-%m-%d %H:%M:%S')
@@ -194,7 +201,7 @@ def main():
     # add css to make the table look pretty
     # NOTE: the alternating row colors don't render in outlook
     # but they will if the html is opened in a browser
-    html = f"""
+    html = """
         <style>
             h1 {{
                 font-size: 18px;
@@ -248,7 +255,7 @@ def main():
             smtp_server=args.smtp_server,
             smtp_username=args.smtp_username,
             smtp_password_file=args.smtp_password_file,
-        )
+        )  
 
 if __name__ == "__main__":
     main()

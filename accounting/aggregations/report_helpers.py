@@ -107,7 +107,7 @@ def print_error(d, depth=0):
 
 def generate_csv(rows: list, title: str):
     headers = list(rows[0].keys())    
-    with open(f"{datetime.now().strftime("%Y-%m-%d")}-{title}-report.csv", 'w') as csvfile:
+    with open(f"{datetime.now().strftime('%Y-%m-%d')}-{title}-report.csv", 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=headers)
         writer.writeheader()
         writer.writerows(rows) 
