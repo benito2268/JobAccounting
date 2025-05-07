@@ -159,7 +159,15 @@ def run_query(client: elasticsearch.Elasticsearch, es_opts: dict, args: argparse
         if (doc.containsKey("RequestCpus") && doc["RequestCpus"].size() > 0) {
             cpus = (int)doc["RequestCpus"].value;
         }
-        emit((double)cpus * hours);
+        
+        if (doc.containsKey("JobStatus") && doc["JobStatus"].size() > 0) {
+            if (doc["JobStatus"].value == 4) {
+                emit((double)cpus * hours);
+            }
+            else {
+                emit(0);
+            }
+        }
     """
 
     add_runtime_script(search, "CpuCoreHours", CPU_CORE_HOURS_SCRIPT_SRC, "double")
